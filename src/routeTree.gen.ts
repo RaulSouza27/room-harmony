@@ -19,7 +19,9 @@ import { Route as AppMinhasReservasRouteImport } from './routes/app.minhas-reser
 import { Route as AppPerfilRouteImport } from './routes/app.perfil'
 import { Route as AppProfissionaisRouteImport } from './routes/app.profissionais'
 import { Route as AppReservasRouteImport } from './routes/app.reservas'
+import { Route as AppSalasRouteImport } from './routes/app.salas'
 import { Route as AppSolicitarRouteImport } from './routes/app.solicitar'
+import { Route as AppUnidadesRouteImport } from './routes/app.unidades'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -71,9 +73,19 @@ const AppReservasRoute = AppReservasRouteImport.update({
   path: '/reservas',
   getParentRoute: () => AppRoute,
 } as any)
+const AppSalasRoute = AppSalasRouteImport.update({
+  id: '/salas',
+  path: '/salas',
+  getParentRoute: () => AppRoute,
+} as any)
 const AppSolicitarRoute = AppSolicitarRouteImport.update({
   id: '/solicitar',
   path: '/solicitar',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppUnidadesRoute = AppUnidadesRouteImport.update({
+  id: '/unidades',
+  path: '/unidades',
   getParentRoute: () => AppRoute,
 } as any)
 
@@ -87,7 +99,9 @@ export interface FileRoutesByFullPath {
   '/app/perfil': typeof AppPerfilRoute
   '/app/profissionais': typeof AppProfissionaisRoute
   '/app/reservas': typeof AppReservasRoute
+  '/app/salas': typeof AppSalasRoute
   '/app/solicitar': typeof AppSolicitarRoute
+  '/app/unidades': typeof AppUnidadesRoute
   '/app/': typeof AppIndexRoute
 }
 export interface FileRoutesByTo {
@@ -99,7 +113,9 @@ export interface FileRoutesByTo {
   '/app/perfil': typeof AppPerfilRoute
   '/app/profissionais': typeof AppProfissionaisRoute
   '/app/reservas': typeof AppReservasRoute
+  '/app/salas': typeof AppSalasRoute
   '/app/solicitar': typeof AppSolicitarRoute
+  '/app/unidades': typeof AppUnidadesRoute
   '/app': typeof AppIndexRoute
 }
 export interface FileRoutesById {
@@ -113,7 +129,9 @@ export interface FileRoutesById {
   '/app/perfil': typeof AppPerfilRoute
   '/app/profissionais': typeof AppProfissionaisRoute
   '/app/reservas': typeof AppReservasRoute
+  '/app/salas': typeof AppSalasRoute
   '/app/solicitar': typeof AppSolicitarRoute
+  '/app/unidades': typeof AppUnidadesRoute
   '/app/': typeof AppIndexRoute
 }
 export interface FileRouteTypes {
@@ -128,7 +146,9 @@ export interface FileRouteTypes {
     | '/app/perfil'
     | '/app/profissionais'
     | '/app/reservas'
+    | '/app/salas'
     | '/app/solicitar'
+    | '/app/unidades'
     | '/app/'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -140,7 +160,9 @@ export interface FileRouteTypes {
     | '/app/perfil'
     | '/app/profissionais'
     | '/app/reservas'
+    | '/app/salas'
     | '/app/solicitar'
+    | '/app/unidades'
     | '/app'
   id:
     | '__root__'
@@ -153,7 +175,9 @@ export interface FileRouteTypes {
     | '/app/perfil'
     | '/app/profissionais'
     | '/app/reservas'
+    | '/app/salas'
     | '/app/solicitar'
+    | '/app/unidades'
     | '/app/'
   fileRoutesById: FileRoutesById
 }
@@ -234,11 +258,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppReservasRouteImport
       parentRoute: typeof AppRoute
     }
+    '/app/salas': {
+      id: '/app/salas'
+      path: '/salas'
+      fullPath: '/app/salas'
+      preLoaderRoute: typeof AppSalasRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/app/solicitar': {
       id: '/app/solicitar'
       path: '/solicitar'
       fullPath: '/app/solicitar'
       preLoaderRoute: typeof AppSolicitarRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/unidades': {
+      id: '/app/unidades'
+      path: '/unidades'
+      fullPath: '/app/unidades'
+      preLoaderRoute: typeof AppUnidadesRouteImport
       parentRoute: typeof AppRoute
     }
   }
@@ -252,7 +290,9 @@ interface AppRouteChildren {
   AppPerfilRoute: typeof AppPerfilRoute
   AppProfissionaisRoute: typeof AppProfissionaisRoute
   AppReservasRoute: typeof AppReservasRoute
+  AppSalasRoute: typeof AppSalasRoute
   AppSolicitarRoute: typeof AppSolicitarRoute
+  AppUnidadesRoute: typeof AppUnidadesRoute
   AppIndexRoute: typeof AppIndexRoute
 }
 
@@ -264,7 +304,9 @@ const AppRouteChildren: AppRouteChildren = {
   AppPerfilRoute: AppPerfilRoute,
   AppProfissionaisRoute: AppProfissionaisRoute,
   AppReservasRoute: AppReservasRoute,
+  AppSalasRoute: AppSalasRoute,
   AppSolicitarRoute: AppSolicitarRoute,
+  AppUnidadesRoute: AppUnidadesRoute,
   AppIndexRoute: AppIndexRoute,
 }
 
