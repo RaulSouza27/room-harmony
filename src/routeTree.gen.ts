@@ -10,33 +10,180 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as AppRouteImport } from './routes/app'
+import { Route as AppIndexRouteImport } from './routes/app.index'
+import { Route as AppAgendaRouteImport } from './routes/app.agenda'
+import { Route as AppAprovacoesRouteImport } from './routes/app.aprovacoes'
+import { Route as AppDashboardRouteImport } from './routes/app.dashboard'
+import { Route as AppMinhasReservasRouteImport } from './routes/app.minhas-reservas'
+import { Route as AppPerfilRouteImport } from './routes/app.perfil'
+import { Route as AppProfissionaisRouteImport } from './routes/app.profissionais'
+import { Route as AppReservasRouteImport } from './routes/app.reservas'
+import { Route as AppSalasRouteImport } from './routes/app.salas'
+import { Route as AppSolicitarRouteImport } from './routes/app.solicitar'
+import { Route as AppUnidadesRouteImport } from './routes/app.unidades'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AppRoute = AppRouteImport.update({
+  id: '/app',
+  path: '/app',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AppIndexRoute = AppIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppAgendaRoute = AppAgendaRouteImport.update({
+  id: '/agenda',
+  path: '/agenda',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppAprovacoesRoute = AppAprovacoesRouteImport.update({
+  id: '/aprovacoes',
+  path: '/aprovacoes',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppDashboardRoute = AppDashboardRouteImport.update({
+  id: '/dashboard',
+  path: '/dashboard',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppMinhasReservasRoute = AppMinhasReservasRouteImport.update({
+  id: '/minhas-reservas',
+  path: '/minhas-reservas',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppPerfilRoute = AppPerfilRouteImport.update({
+  id: '/perfil',
+  path: '/perfil',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppProfissionaisRoute = AppProfissionaisRouteImport.update({
+  id: '/profissionais',
+  path: '/profissionais',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppReservasRoute = AppReservasRouteImport.update({
+  id: '/reservas',
+  path: '/reservas',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppSalasRoute = AppSalasRouteImport.update({
+  id: '/salas',
+  path: '/salas',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppSolicitarRoute = AppSolicitarRouteImport.update({
+  id: '/solicitar',
+  path: '/solicitar',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppUnidadesRoute = AppUnidadesRouteImport.update({
+  id: '/unidades',
+  path: '/unidades',
+  getParentRoute: () => AppRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/app': typeof AppRouteWithChildren
+  '/app/agenda': typeof AppAgendaRoute
+  '/app/aprovacoes': typeof AppAprovacoesRoute
+  '/app/dashboard': typeof AppDashboardRoute
+  '/app/minhas-reservas': typeof AppMinhasReservasRoute
+  '/app/perfil': typeof AppPerfilRoute
+  '/app/profissionais': typeof AppProfissionaisRoute
+  '/app/reservas': typeof AppReservasRoute
+  '/app/salas': typeof AppSalasRoute
+  '/app/solicitar': typeof AppSolicitarRoute
+  '/app/unidades': typeof AppUnidadesRoute
+  '/app/': typeof AppIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/app/agenda': typeof AppAgendaRoute
+  '/app/aprovacoes': typeof AppAprovacoesRoute
+  '/app/dashboard': typeof AppDashboardRoute
+  '/app/minhas-reservas': typeof AppMinhasReservasRoute
+  '/app/perfil': typeof AppPerfilRoute
+  '/app/profissionais': typeof AppProfissionaisRoute
+  '/app/reservas': typeof AppReservasRoute
+  '/app/salas': typeof AppSalasRoute
+  '/app/solicitar': typeof AppSolicitarRoute
+  '/app/unidades': typeof AppUnidadesRoute
+  '/app': typeof AppIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/app': typeof AppRouteWithChildren
+  '/app/agenda': typeof AppAgendaRoute
+  '/app/aprovacoes': typeof AppAprovacoesRoute
+  '/app/dashboard': typeof AppDashboardRoute
+  '/app/minhas-reservas': typeof AppMinhasReservasRoute
+  '/app/perfil': typeof AppPerfilRoute
+  '/app/profissionais': typeof AppProfissionaisRoute
+  '/app/reservas': typeof AppReservasRoute
+  '/app/salas': typeof AppSalasRoute
+  '/app/solicitar': typeof AppSolicitarRoute
+  '/app/unidades': typeof AppUnidadesRoute
+  '/app/': typeof AppIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/'
+  fullPaths:
+    | '/'
+    | '/app'
+    | '/app/agenda'
+    | '/app/aprovacoes'
+    | '/app/dashboard'
+    | '/app/minhas-reservas'
+    | '/app/perfil'
+    | '/app/profissionais'
+    | '/app/reservas'
+    | '/app/salas'
+    | '/app/solicitar'
+    | '/app/unidades'
+    | '/app/'
   fileRoutesByTo: FileRoutesByTo
-  to: '/'
-  id: '__root__' | '/'
+  to:
+    | '/'
+    | '/app/agenda'
+    | '/app/aprovacoes'
+    | '/app/dashboard'
+    | '/app/minhas-reservas'
+    | '/app/perfil'
+    | '/app/profissionais'
+    | '/app/reservas'
+    | '/app/salas'
+    | '/app/solicitar'
+    | '/app/unidades'
+    | '/app'
+  id:
+    | '__root__'
+    | '/'
+    | '/app'
+    | '/app/agenda'
+    | '/app/aprovacoes'
+    | '/app/dashboard'
+    | '/app/minhas-reservas'
+    | '/app/perfil'
+    | '/app/profissionais'
+    | '/app/reservas'
+    | '/app/salas'
+    | '/app/solicitar'
+    | '/app/unidades'
+    | '/app/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  AppRoute: typeof AppRouteWithChildren
 }
 
 declare module '@tanstack/react-router' {
@@ -48,22 +195,127 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/app': {
+      id: '/app'
+      path: '/app'
+      fullPath: '/app'
+      preLoaderRoute: typeof AppRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/app/': {
+      id: '/app/'
+      path: '/'
+      fullPath: '/app/'
+      preLoaderRoute: typeof AppIndexRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/agenda': {
+      id: '/app/agenda'
+      path: '/agenda'
+      fullPath: '/app/agenda'
+      preLoaderRoute: typeof AppAgendaRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/aprovacoes': {
+      id: '/app/aprovacoes'
+      path: '/aprovacoes'
+      fullPath: '/app/aprovacoes'
+      preLoaderRoute: typeof AppAprovacoesRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/dashboard': {
+      id: '/app/dashboard'
+      path: '/dashboard'
+      fullPath: '/app/dashboard'
+      preLoaderRoute: typeof AppDashboardRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/minhas-reservas': {
+      id: '/app/minhas-reservas'
+      path: '/minhas-reservas'
+      fullPath: '/app/minhas-reservas'
+      preLoaderRoute: typeof AppMinhasReservasRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/perfil': {
+      id: '/app/perfil'
+      path: '/perfil'
+      fullPath: '/app/perfil'
+      preLoaderRoute: typeof AppPerfilRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/profissionais': {
+      id: '/app/profissionais'
+      path: '/profissionais'
+      fullPath: '/app/profissionais'
+      preLoaderRoute: typeof AppProfissionaisRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/reservas': {
+      id: '/app/reservas'
+      path: '/reservas'
+      fullPath: '/app/reservas'
+      preLoaderRoute: typeof AppReservasRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/salas': {
+      id: '/app/salas'
+      path: '/salas'
+      fullPath: '/app/salas'
+      preLoaderRoute: typeof AppSalasRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/solicitar': {
+      id: '/app/solicitar'
+      path: '/solicitar'
+      fullPath: '/app/solicitar'
+      preLoaderRoute: typeof AppSolicitarRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/unidades': {
+      id: '/app/unidades'
+      path: '/unidades'
+      fullPath: '/app/unidades'
+      preLoaderRoute: typeof AppUnidadesRouteImport
+      parentRoute: typeof AppRoute
+    }
   }
 }
 
+interface AppRouteChildren {
+  AppAgendaRoute: typeof AppAgendaRoute
+  AppAprovacoesRoute: typeof AppAprovacoesRoute
+  AppDashboardRoute: typeof AppDashboardRoute
+  AppMinhasReservasRoute: typeof AppMinhasReservasRoute
+  AppPerfilRoute: typeof AppPerfilRoute
+  AppProfissionaisRoute: typeof AppProfissionaisRoute
+  AppReservasRoute: typeof AppReservasRoute
+  AppSalasRoute: typeof AppSalasRoute
+  AppSolicitarRoute: typeof AppSolicitarRoute
+  AppUnidadesRoute: typeof AppUnidadesRoute
+  AppIndexRoute: typeof AppIndexRoute
+}
+
+const AppRouteChildren: AppRouteChildren = {
+  AppAgendaRoute: AppAgendaRoute,
+  AppAprovacoesRoute: AppAprovacoesRoute,
+  AppDashboardRoute: AppDashboardRoute,
+  AppMinhasReservasRoute: AppMinhasReservasRoute,
+  AppPerfilRoute: AppPerfilRoute,
+  AppProfissionaisRoute: AppProfissionaisRoute,
+  AppReservasRoute: AppReservasRoute,
+  AppSalasRoute: AppSalasRoute,
+  AppSolicitarRoute: AppSolicitarRoute,
+  AppUnidadesRoute: AppUnidadesRoute,
+  AppIndexRoute: AppIndexRoute,
+}
+
+const AppRouteWithChildren = AppRoute._addFileChildren(AppRouteChildren)
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  AppRoute: AppRouteWithChildren,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-import type { getRouter } from './router.tsx'
-import type { startInstance } from './start.ts'
-declare module '@tanstack/react-start' {
-  interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
-    config: Awaited<ReturnType<typeof startInstance.getOptions>>
-  }
-}
