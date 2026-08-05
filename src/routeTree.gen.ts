@@ -12,7 +12,9 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AppRouteImport } from './routes/app'
 import { Route as AppIndexRouteImport } from './routes/app.index'
+import { Route as AppAgendaRouteImport } from './routes/app.agenda'
 import { Route as AppDashboardRouteImport } from './routes/app.dashboard'
+import { Route as AppSolicitarRouteImport } from './routes/app.solicitar'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -29,36 +31,60 @@ const AppIndexRoute = AppIndexRouteImport.update({
   path: '/',
   getParentRoute: () => AppRoute,
 } as any)
+const AppAgendaRoute = AppAgendaRouteImport.update({
+  id: '/agenda',
+  path: '/agenda',
+  getParentRoute: () => AppRoute,
+} as any)
 const AppDashboardRoute = AppDashboardRouteImport.update({
   id: '/dashboard',
   path: '/dashboard',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppSolicitarRoute = AppSolicitarRouteImport.update({
+  id: '/solicitar',
+  path: '/solicitar',
   getParentRoute: () => AppRoute,
 } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/app': typeof AppRouteWithChildren
+  '/app/agenda': typeof AppAgendaRoute
   '/app/dashboard': typeof AppDashboardRoute
+  '/app/solicitar': typeof AppSolicitarRoute
   '/app/': typeof AppIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/app/agenda': typeof AppAgendaRoute
   '/app/dashboard': typeof AppDashboardRoute
+  '/app/solicitar': typeof AppSolicitarRoute
   '/app': typeof AppIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/app': typeof AppRouteWithChildren
+  '/app/agenda': typeof AppAgendaRoute
   '/app/dashboard': typeof AppDashboardRoute
+  '/app/solicitar': typeof AppSolicitarRoute
   '/app/': typeof AppIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/app' | '/app/dashboard' | '/app/'
+  fullPaths:
+    '/' | '/app' | '/app/agenda' | '/app/dashboard' | '/app/solicitar' | '/app/'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/app/dashboard' | '/app'
-  id: '__root__' | '/' | '/app' | '/app/dashboard' | '/app/'
+  to: '/' | '/app/agenda' | '/app/dashboard' | '/app/solicitar' | '/app'
+  id:
+    | '__root__'
+    | '/'
+    | '/app'
+    | '/app/agenda'
+    | '/app/dashboard'
+    | '/app/solicitar'
+    | '/app/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -89,6 +115,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppIndexRouteImport
       parentRoute: typeof AppRoute
     }
+    '/app/agenda': {
+      id: '/app/agenda'
+      path: '/agenda'
+      fullPath: '/app/agenda'
+      preLoaderRoute: typeof AppAgendaRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/app/dashboard': {
       id: '/app/dashboard'
       path: '/dashboard'
@@ -96,16 +129,27 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppDashboardRouteImport
       parentRoute: typeof AppRoute
     }
+    '/app/solicitar': {
+      id: '/app/solicitar'
+      path: '/solicitar'
+      fullPath: '/app/solicitar'
+      preLoaderRoute: typeof AppSolicitarRouteImport
+      parentRoute: typeof AppRoute
+    }
   }
 }
 
 interface AppRouteChildren {
+  AppAgendaRoute: typeof AppAgendaRoute
   AppDashboardRoute: typeof AppDashboardRoute
+  AppSolicitarRoute: typeof AppSolicitarRoute
   AppIndexRoute: typeof AppIndexRoute
 }
 
 const AppRouteChildren: AppRouteChildren = {
+  AppAgendaRoute: AppAgendaRoute,
   AppDashboardRoute: AppDashboardRoute,
+  AppSolicitarRoute: AppSolicitarRoute,
   AppIndexRoute: AppIndexRoute,
 }
 
