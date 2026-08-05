@@ -9,8 +9,8 @@ export interface User {
   papel: Role;
   status: UserStatus;
   telefone: string;
-  especialidade?: string;
-  foto?: string;
+  especialidade?: string | undefined;
+  foto?: string | undefined;
   unidades: string[];
 }
 
@@ -45,9 +45,9 @@ export interface Reserva {
   hora_fim: string; // HH:mm
   status: ReservaStatus;
   criado_em: string;
-  observacoes?: string;
-  motivo_negacao?: string;
-  aprovado_por?: string;
+  observacoes?: string | undefined;
+  motivo_negacao?: string | undefined;
+  aprovado_por?: string | undefined;
   recorrencia: Recorrencia;
 }
 
@@ -58,7 +58,7 @@ export interface NovaReserva {
   data: string;
   hora_inicio: string;
   hora_fim: string;
-  observacoes?: string;
-  recorrencia?: Recorrencia;
-  status?: ReservaStatus;
+  observacoes?: string | undefined;
+  recorrencia?: Recorrencia | undefined;
+  status?: ReservaStatus | undefined;
 }
