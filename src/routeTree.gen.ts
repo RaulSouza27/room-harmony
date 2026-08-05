@@ -17,6 +17,8 @@ import { Route as AppAprovacoesRouteImport } from './routes/app.aprovacoes'
 import { Route as AppDashboardRouteImport } from './routes/app.dashboard'
 import { Route as AppMinhasReservasRouteImport } from './routes/app.minhas-reservas'
 import { Route as AppPerfilRouteImport } from './routes/app.perfil'
+import { Route as AppProfissionaisRouteImport } from './routes/app.profissionais'
+import { Route as AppReservasRouteImport } from './routes/app.reservas'
 import { Route as AppSolicitarRouteImport } from './routes/app.solicitar'
 
 const IndexRoute = IndexRouteImport.update({
@@ -59,6 +61,16 @@ const AppPerfilRoute = AppPerfilRouteImport.update({
   path: '/perfil',
   getParentRoute: () => AppRoute,
 } as any)
+const AppProfissionaisRoute = AppProfissionaisRouteImport.update({
+  id: '/profissionais',
+  path: '/profissionais',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppReservasRoute = AppReservasRouteImport.update({
+  id: '/reservas',
+  path: '/reservas',
+  getParentRoute: () => AppRoute,
+} as any)
 const AppSolicitarRoute = AppSolicitarRouteImport.update({
   id: '/solicitar',
   path: '/solicitar',
@@ -73,6 +85,8 @@ export interface FileRoutesByFullPath {
   '/app/dashboard': typeof AppDashboardRoute
   '/app/minhas-reservas': typeof AppMinhasReservasRoute
   '/app/perfil': typeof AppPerfilRoute
+  '/app/profissionais': typeof AppProfissionaisRoute
+  '/app/reservas': typeof AppReservasRoute
   '/app/solicitar': typeof AppSolicitarRoute
   '/app/': typeof AppIndexRoute
 }
@@ -83,6 +97,8 @@ export interface FileRoutesByTo {
   '/app/dashboard': typeof AppDashboardRoute
   '/app/minhas-reservas': typeof AppMinhasReservasRoute
   '/app/perfil': typeof AppPerfilRoute
+  '/app/profissionais': typeof AppProfissionaisRoute
+  '/app/reservas': typeof AppReservasRoute
   '/app/solicitar': typeof AppSolicitarRoute
   '/app': typeof AppIndexRoute
 }
@@ -95,6 +111,8 @@ export interface FileRoutesById {
   '/app/dashboard': typeof AppDashboardRoute
   '/app/minhas-reservas': typeof AppMinhasReservasRoute
   '/app/perfil': typeof AppPerfilRoute
+  '/app/profissionais': typeof AppProfissionaisRoute
+  '/app/reservas': typeof AppReservasRoute
   '/app/solicitar': typeof AppSolicitarRoute
   '/app/': typeof AppIndexRoute
 }
@@ -108,6 +126,8 @@ export interface FileRouteTypes {
     | '/app/dashboard'
     | '/app/minhas-reservas'
     | '/app/perfil'
+    | '/app/profissionais'
+    | '/app/reservas'
     | '/app/solicitar'
     | '/app/'
   fileRoutesByTo: FileRoutesByTo
@@ -118,6 +138,8 @@ export interface FileRouteTypes {
     | '/app/dashboard'
     | '/app/minhas-reservas'
     | '/app/perfil'
+    | '/app/profissionais'
+    | '/app/reservas'
     | '/app/solicitar'
     | '/app'
   id:
@@ -129,6 +151,8 @@ export interface FileRouteTypes {
     | '/app/dashboard'
     | '/app/minhas-reservas'
     | '/app/perfil'
+    | '/app/profissionais'
+    | '/app/reservas'
     | '/app/solicitar'
     | '/app/'
   fileRoutesById: FileRoutesById
@@ -196,6 +220,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppPerfilRouteImport
       parentRoute: typeof AppRoute
     }
+    '/app/profissionais': {
+      id: '/app/profissionais'
+      path: '/profissionais'
+      fullPath: '/app/profissionais'
+      preLoaderRoute: typeof AppProfissionaisRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/reservas': {
+      id: '/app/reservas'
+      path: '/reservas'
+      fullPath: '/app/reservas'
+      preLoaderRoute: typeof AppReservasRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/app/solicitar': {
       id: '/app/solicitar'
       path: '/solicitar'
@@ -212,6 +250,8 @@ interface AppRouteChildren {
   AppDashboardRoute: typeof AppDashboardRoute
   AppMinhasReservasRoute: typeof AppMinhasReservasRoute
   AppPerfilRoute: typeof AppPerfilRoute
+  AppProfissionaisRoute: typeof AppProfissionaisRoute
+  AppReservasRoute: typeof AppReservasRoute
   AppSolicitarRoute: typeof AppSolicitarRoute
   AppIndexRoute: typeof AppIndexRoute
 }
@@ -222,6 +262,8 @@ const AppRouteChildren: AppRouteChildren = {
   AppDashboardRoute: AppDashboardRoute,
   AppMinhasReservasRoute: AppMinhasReservasRoute,
   AppPerfilRoute: AppPerfilRoute,
+  AppProfissionaisRoute: AppProfissionaisRoute,
+  AppReservasRoute: AppReservasRoute,
   AppSolicitarRoute: AppSolicitarRoute,
   AppIndexRoute: AppIndexRoute,
 }
