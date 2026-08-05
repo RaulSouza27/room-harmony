@@ -13,7 +13,10 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as AppRouteImport } from './routes/app'
 import { Route as AppIndexRouteImport } from './routes/app.index'
 import { Route as AppAgendaRouteImport } from './routes/app.agenda'
+import { Route as AppAprovacoesRouteImport } from './routes/app.aprovacoes'
 import { Route as AppDashboardRouteImport } from './routes/app.dashboard'
+import { Route as AppMinhasReservasRouteImport } from './routes/app.minhas-reservas'
+import { Route as AppPerfilRouteImport } from './routes/app.perfil'
 import { Route as AppSolicitarRouteImport } from './routes/app.solicitar'
 
 const IndexRoute = IndexRouteImport.update({
@@ -36,9 +39,24 @@ const AppAgendaRoute = AppAgendaRouteImport.update({
   path: '/agenda',
   getParentRoute: () => AppRoute,
 } as any)
+const AppAprovacoesRoute = AppAprovacoesRouteImport.update({
+  id: '/aprovacoes',
+  path: '/aprovacoes',
+  getParentRoute: () => AppRoute,
+} as any)
 const AppDashboardRoute = AppDashboardRouteImport.update({
   id: '/dashboard',
   path: '/dashboard',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppMinhasReservasRoute = AppMinhasReservasRouteImport.update({
+  id: '/minhas-reservas',
+  path: '/minhas-reservas',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppPerfilRoute = AppPerfilRouteImport.update({
+  id: '/perfil',
+  path: '/perfil',
   getParentRoute: () => AppRoute,
 } as any)
 const AppSolicitarRoute = AppSolicitarRouteImport.update({
@@ -51,14 +69,20 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/app': typeof AppRouteWithChildren
   '/app/agenda': typeof AppAgendaRoute
+  '/app/aprovacoes': typeof AppAprovacoesRoute
   '/app/dashboard': typeof AppDashboardRoute
+  '/app/minhas-reservas': typeof AppMinhasReservasRoute
+  '/app/perfil': typeof AppPerfilRoute
   '/app/solicitar': typeof AppSolicitarRoute
   '/app/': typeof AppIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/app/agenda': typeof AppAgendaRoute
+  '/app/aprovacoes': typeof AppAprovacoesRoute
   '/app/dashboard': typeof AppDashboardRoute
+  '/app/minhas-reservas': typeof AppMinhasReservasRoute
+  '/app/perfil': typeof AppPerfilRoute
   '/app/solicitar': typeof AppSolicitarRoute
   '/app': typeof AppIndexRoute
 }
@@ -67,22 +91,44 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/app': typeof AppRouteWithChildren
   '/app/agenda': typeof AppAgendaRoute
+  '/app/aprovacoes': typeof AppAprovacoesRoute
   '/app/dashboard': typeof AppDashboardRoute
+  '/app/minhas-reservas': typeof AppMinhasReservasRoute
+  '/app/perfil': typeof AppPerfilRoute
   '/app/solicitar': typeof AppSolicitarRoute
   '/app/': typeof AppIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
-    '/' | '/app' | '/app/agenda' | '/app/dashboard' | '/app/solicitar' | '/app/'
+    | '/'
+    | '/app'
+    | '/app/agenda'
+    | '/app/aprovacoes'
+    | '/app/dashboard'
+    | '/app/minhas-reservas'
+    | '/app/perfil'
+    | '/app/solicitar'
+    | '/app/'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/app/agenda' | '/app/dashboard' | '/app/solicitar' | '/app'
+  to:
+    | '/'
+    | '/app/agenda'
+    | '/app/aprovacoes'
+    | '/app/dashboard'
+    | '/app/minhas-reservas'
+    | '/app/perfil'
+    | '/app/solicitar'
+    | '/app'
   id:
     | '__root__'
     | '/'
     | '/app'
     | '/app/agenda'
+    | '/app/aprovacoes'
     | '/app/dashboard'
+    | '/app/minhas-reservas'
+    | '/app/perfil'
     | '/app/solicitar'
     | '/app/'
   fileRoutesById: FileRoutesById
@@ -122,11 +168,32 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppAgendaRouteImport
       parentRoute: typeof AppRoute
     }
+    '/app/aprovacoes': {
+      id: '/app/aprovacoes'
+      path: '/aprovacoes'
+      fullPath: '/app/aprovacoes'
+      preLoaderRoute: typeof AppAprovacoesRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/app/dashboard': {
       id: '/app/dashboard'
       path: '/dashboard'
       fullPath: '/app/dashboard'
       preLoaderRoute: typeof AppDashboardRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/minhas-reservas': {
+      id: '/app/minhas-reservas'
+      path: '/minhas-reservas'
+      fullPath: '/app/minhas-reservas'
+      preLoaderRoute: typeof AppMinhasReservasRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/perfil': {
+      id: '/app/perfil'
+      path: '/perfil'
+      fullPath: '/app/perfil'
+      preLoaderRoute: typeof AppPerfilRouteImport
       parentRoute: typeof AppRoute
     }
     '/app/solicitar': {
@@ -141,14 +208,20 @@ declare module '@tanstack/react-router' {
 
 interface AppRouteChildren {
   AppAgendaRoute: typeof AppAgendaRoute
+  AppAprovacoesRoute: typeof AppAprovacoesRoute
   AppDashboardRoute: typeof AppDashboardRoute
+  AppMinhasReservasRoute: typeof AppMinhasReservasRoute
+  AppPerfilRoute: typeof AppPerfilRoute
   AppSolicitarRoute: typeof AppSolicitarRoute
   AppIndexRoute: typeof AppIndexRoute
 }
 
 const AppRouteChildren: AppRouteChildren = {
   AppAgendaRoute: AppAgendaRoute,
+  AppAprovacoesRoute: AppAprovacoesRoute,
   AppDashboardRoute: AppDashboardRoute,
+  AppMinhasReservasRoute: AppMinhasReservasRoute,
+  AppPerfilRoute: AppPerfilRoute,
   AppSolicitarRoute: AppSolicitarRoute,
   AppIndexRoute: AppIndexRoute,
 }
