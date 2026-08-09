@@ -181,13 +181,50 @@ export function ReservaFormDialog({
                 <SelectContent>
                   {salasDaUnidade.map((s) => (
                     <SelectItem key={s.id} value={s.id}>
-                      {s.nome} · {s.capacidade} lugares
+                      {s.nome}
                     </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
             </div>
           </div>
+
+          {salas.find((s) => s.id === salaId) ? (
+            <div className="rounded-lg border border-border p-3 bg-muted/10 space-y-2">
+              <p className="text-xs font-semibold text-foreground">Imagens e detalhes da sala:</p>
+              {(() => {
+                const s = salas.find((x) => x.id === salaId)!;
+                return (
+                  <>
+                    {s.descricao ? (
+                      <p className="text-xs text-muted-foreground leading-relaxed">{s.descricao}</p>
+                    ) : null}
+                    {s.fotos && s.fotos.length > 0 ? (
+                      <div className="grid grid-cols-4 gap-2 mt-1">
+                        {s.fotos.map((foto, index) => (
+                          <div
+                            key={index}
+                            className="aspect-square rounded border border-border overflow-hidden bg-muted"
+                          >
+                            <img
+                              src={foto}
+                              alt={`Foto ${index + 1}`}
+                              className="w-full h-full object-cover cursor-pointer hover:scale-105 transition-transform"
+                              onClick={() => window.open(foto, "_blank")}
+                            />
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <p className="text-[10px] text-muted-foreground/60 italic">
+                        Nenhuma foto cadastrada para esta sala.
+                      </p>
+                    )}
+                  </>
+                );
+              })()}
+            </div>
+          ) : null}
 
           {isAdmin ? (
             <div className="space-y-2">

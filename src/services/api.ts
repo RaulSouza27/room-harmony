@@ -156,62 +156,139 @@ export async function deleteUnidade(id: string): Promise<void> {
 
 /* ------------------------------- Salas ------------------------------ */
 export async function listSalas(): Promise<Sala[]> {
-  await delay();
-  return readDB().salas;
+  const response = await fetch(`${BACKEND_URL}/rooms/readAll`, {
+    headers: getHeaders(),
+  });
+  if (!response.ok) {
+    throw new Error("Falha ao carregar salas.");
+  }
+  const data = await response.json();
+  return data.map((item: any) => ({
+    id: String(item.id),
+    unidade_id: String(item.unitId),
+    nome: item.name,
+    descricao: item.description || "",
+    status: item.status ? "ativa" : "inativa",
+    fotos: item.photos || [],
+  }));
 }
 
 export async function saveSala(input: Omit<Sala, "id"> & { id?: string }): Promise<Sala> {
-  await delay();
-  const db = readDB();
-  if (input.id) {
-    db.salas = db.salas.map((s) => (s.id === input.id ? ({ ...s, ...input } as Sala) : s));
-    writeDB(db);
-    return db.salas.find((s) => s.id === input.id)!;
+  const isUpdate = !!input.id;
+  const url = isUpdate ? `${BACKEND_URL}/rooms/${input.id}` : `${BACKEND_URL}/rooms`;
+  const method = isUpdate ? "PUT" : "POST";
+
+  const body = {
+    name: input.nome,
+    unitId: Number(input.unidade_id),
+    status: input.status === "ativa",
+    description: input.descricao,
+    comments: "",
+    photos: input.fotos || [],
+  };
+
+  const response = await fetch(url, {
+    method,
+    headers: getHeaders(),
+    body: JSON.stringify(body),
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    throw new Error(errorText || "Falha ao salvar sala.");
   }
-  const nova: Sala = { ...input, id: uid("s") };
-  db.salas.push(nova);
-  writeDB(db);
-  return nova;
+
+  const data = await response.json();
+  return {
+    id: String(data.id),
+    unidade_id: String(data.unitId),
+    nome: data.name,
+    descricao: data.description || "",
+    status: data.status ? "ativa" : "inativa",
+    fotos: data.photos || [],
+  };
 }
 
 export async function deleteSala(id: string): Promise<void> {
-  await delay();
+  const response = await fetch(`${BACKEND_URL}/rooms/${id}`, {
+    method: "DELETE",
+    headers: getHeaders(),
+  });
+  if (!response.ok) {
+    const errorText = await response.text();
+    throw new Error(errorText || "Falha ao excluir sala.");
+  }
+
+  // Sincronizar reservas no localStorage para evitar inconsistências
   const db = readDB();
-  db.salas = db.salas.filter((s) => s.id !== id);
   db.reservas = db.reservas.filter((r) => r.sala_id !== id);
   writeDB(db);
 }
 
 /* --------------------------- Profissionais -------------------------- */
 export async function listUsuarios(): Promise<User[]> {
-  await delay();
-  return readDB().users;
+  const response = await fetch(`${BACKEND_URL}/users`, {
+    headers: getHeaders(),
+  });
+  if (!response.ok) {
+    throw new Error("Falha ao carregar profissionais.");
+  }
+  const data = await response.json();
+  return data.map((item: any) => ({
+    id: String(item.id),
+    nome: item.username,
+    email: item.email,
+    senha: "",
+    papel: item.accessLevel === "admin" ? "ADMINISTRADOR" : "PSICOLOGO",
+    status: item.status ? "ativo" : "inativo",
+    telefone: item.phone || "",
+    especialidade: item.specialty || "",
+    foto: item.photo || "",
+    unidades: item.units || [],
+  }));
 }
 
 export async function saveUsuario(input: Partial<User> & { id?: string }): Promise<User> {
-  await delay();
-  const db = readDB();
-  if (input.id) {
-    db.users = db.users.map((u) => (u.id === input.id ? { ...u, ...input } : u));
-    writeDB(db);
-    return db.users.find((u) => u.id === input.id)!;
-  }
-  if (db.users.some((u) => u.email.toLowerCase() === input.email?.toLowerCase()))
-    throw new Error("Já existe um usuário com este e-mail.");
-  const novo: User = {
-    id: uid("p"),
-    nome: input.nome ?? "",
-    email: input.email ?? "",
-    senha: input.senha ?? "psi123",
-    papel: input.papel ?? "PSICOLOGO",
-    status: input.status ?? "ativo",
-    telefone: input.telefone ?? "",
-    especialidade: input.especialidade,
-    unidades: input.unidades ?? [],
+  const isUpdate = !!input.id;
+  const url = isUpdate ? `${BACKEND_URL}/users/${input.id}` : `${BACKEND_URL}/users`;
+  const method = isUpdate ? "PUT" : "POST";
+
+  const body = {
+    username: input.nome,
+    email: input.email,
+    password: input.senha,
+    accessLevel: input.papel === "ADMINISTRADOR" ? "admin" : "psi",
+    status: input.status === "ativo",
+    phone: input.telefone,
+    specialty: input.especialidade,
+    photo: input.foto,
+    units: input.unidades,
   };
-  db.users.push(novo);
-  writeDB(db);
-  return novo;
+
+  const response = await fetch(url, {
+    method,
+    headers: getHeaders(),
+    body: JSON.stringify(body),
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    throw new Error(errorText || "Falha ao salvar profissional.");
+  }
+
+  const data = await response.json();
+  return {
+    id: String(data.id),
+    nome: data.username,
+    email: data.email,
+    senha: "",
+    papel: data.accessLevel === "admin" ? "ADMINISTRADOR" : "PSICOLOGO",
+    status: data.status ? "ativo" : "inativo",
+    telefone: data.phone || "",
+    especialidade: data.specialty || "",
+    foto: data.photo || "",
+    unidades: data.units || [],
+  };
 }
 
 /* ------------------------------ Reservas ---------------------------- */
