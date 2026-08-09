@@ -166,7 +166,9 @@ export function AppShell({
           <div className="min-w-0 flex-1">
             <h1 className="truncate text-base font-semibold text-foreground md:text-lg">{title}</h1>
             {description ? (
-              <p className="hidden truncate text-sm text-muted-foreground sm:block">{description}</p>
+              <p className="hidden truncate text-sm text-muted-foreground sm:block">
+                {description}
+              </p>
             ) : null}
           </div>
           {actions}

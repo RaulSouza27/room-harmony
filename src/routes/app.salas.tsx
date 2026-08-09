@@ -187,7 +187,12 @@ function SalaDialog({
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="space-y-2">
               <Label htmlFor="nome">Nome / número</Label>
-              <Input id="nome" value={nome} onChange={(e) => setNome(e.target.value)} maxLength={60} />
+              <Input
+                id="nome"
+                value={nome}
+                onChange={(e) => setNome(e.target.value)}
+                maxLength={60}
+              />
             </div>
             <div className="space-y-2">
               <Label>Unidade</Label>

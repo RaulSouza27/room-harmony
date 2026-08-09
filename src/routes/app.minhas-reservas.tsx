@@ -16,10 +16,14 @@ export const Route = createFileRoute("/app/minhas-reservas")({
       { title: "Minhas reservas — Clínica Serena" },
       {
         name: "description",
-        content: "Histórico das suas reservas de sala com status, cancelamento e motivo de negação.",
+        content:
+          "Histórico das suas reservas de sala com status, cancelamento e motivo de negação.",
       },
       { property: "og:title", content: "Minhas reservas — Clínica Serena" },
-      { property: "og:description", content: "Acompanhe pendentes, aprovadas, negadas e canceladas." },
+      {
+        property: "og:description",
+        content: "Acompanhe pendentes, aprovadas, negadas e canceladas.",
+      },
     ],
   }),
   component: MinhasReservasPage,
@@ -76,10 +80,7 @@ function MinhasReservasPage() {
               const unidade = unidades.find((u) => u.id === r.unidade_id);
               const futura = r.data >= hojeISO();
               return (
-                <li
-                  key={r.id}
-                  className="rounded-xl border border-border bg-card p-4 shadow-soft"
-                >
+                <li key={r.id} className="rounded-xl border border-border bg-card p-4 shadow-soft">
                   <div className="flex flex-wrap items-start justify-between gap-3">
                     <div className="min-w-0">
                       <p className="text-sm font-semibold text-card-foreground">

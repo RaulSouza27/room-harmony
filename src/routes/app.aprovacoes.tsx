@@ -18,7 +18,10 @@ export const Route = createFileRoute("/app/aprovacoes")({
         content: "Fila de solicitações de reserva aguardando aprovação do administrador.",
       },
       { property: "og:title", content: "Aprovações pendentes — Clínica Serena" },
-      { property: "og:description", content: "Aprove ou negue solicitações com alerta de conflito." },
+      {
+        property: "og:description",
+        content: "Aprove ou negue solicitações com alerta de conflito.",
+      },
     ],
   }),
   component: AprovacoesPage,

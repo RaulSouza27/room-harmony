@@ -1,12 +1,5 @@
 import { overlaps, readDB, uid, writeDB } from "./db";
-import type {
-  NovaReserva,
-  Reserva,
-  ReservaStatus,
-  Sala,
-  Unidade,
-  User,
-} from "@/types";
+import type { NovaReserva, Reserva, ReservaStatus, Sala, Unidade, User } from "@/types";
 
 /**
  * Camada de serviço mockada. As assinaturas imitam uma API REST
@@ -27,6 +20,31 @@ export async function login(email: string, senha: string): Promise<User> {
   return user;
 }
 
+export async function bypassLogin(papel: "ADMINISTRADOR" | "PSICOLOGO"): Promise<User> {
+  await delay();
+  const db = readDB();
+  const id = papel === "ADMINISTRADOR" ? "admin-bypass" : "psicologo-bypass";
+  let user = db.users.find((u) => u.id === id);
+
+  if (!user) {
+    user = {
+      id,
+      nome: papel === "ADMINISTRADOR" ? "Administrador (Bypass)" : "Psicólogo (Bypass)",
+      email: papel === "ADMINISTRADOR" ? "admin@clinica.com" : "psicologo@clinica.com",
+      senha: "",
+      papel,
+      status: "ativo",
+      telefone: "(85) 99999-0000",
+      especialidade: papel === "PSICOLOGO" ? "Psicologia Geral" : undefined,
+      unidades: [],
+    };
+    db.users.push(user);
+    writeDB(db);
+  }
+
+  return user;
+}
+
 export async function getUser(id: string): Promise<User | undefined> {
   await delay(80);
   return readDB().users.find((u) => u.id === id);
@@ -42,7 +60,7 @@ export async function saveUnidade(input: Omit<Unidade, "id"> & { id?: string }):
   await delay();
   const db = readDB();
   if (input.id) {
-    db.unidades = db.unidades.map((u) => (u.id === input.id ? { ...u, ...input } as Unidade : u));
+    db.unidades = db.unidades.map((u) => (u.id === input.id ? ({ ...u, ...input } as Unidade) : u));
     writeDB(db);
     return db.unidades.find((u) => u.id === input.id)!;
   }
@@ -130,7 +148,13 @@ export async function listReservas(): Promise<Reserva[]> {
 /** Conflitos que ocupam o horário (aprovadas e pendentes). */
 export function findConflitos(
   reservas: Reserva[],
-  input: { sala_id: string; data: string; hora_inicio: string; hora_fim: string; ignoreId?: string },
+  input: {
+    sala_id: string;
+    data: string;
+    hora_inicio: string;
+    hora_fim: string;
+    ignoreId?: string;
+  },
 ) {
   return reservas.filter(
     (r) =>

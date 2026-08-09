@@ -1,7 +1,13 @@
 import { Link, createFileRoute } from "@tanstack/react-router";
 import { CalendarClock, CalendarPlus, ClipboardList, DoorOpen, Percent } from "lucide-react";
 import { AppShell } from "@/components/AppShell";
-import { EmptyState, ErrorState, LoadingState, SectionCard, StatusBadge } from "@/components/common";
+import {
+  EmptyState,
+  ErrorState,
+  LoadingState,
+  SectionCard,
+  StatusBadge,
+} from "@/components/common";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/contexts/AuthContext";
 import { useReservas, useSalas, useUnidades, useUsuarios } from "@/hooks/useApi";

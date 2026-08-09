@@ -32,7 +32,10 @@ export const Route = createFileRoute("/app/reservas")({
         content: "Gestão completa das reservas: filtros por unidade, sala, profissional e período.",
       },
       { property: "og:title", content: "Todas as reservas — Clínica Serena" },
-      { property: "og:description", content: "Edite, cancele ou exclua reservas de qualquer profissional." },
+      {
+        property: "og:description",
+        content: "Edite, cancele ou exclua reservas de qualquer profissional.",
+      },
     ],
   }),
   component: ReservasPage,
@@ -186,9 +189,7 @@ function ReservasPage() {
                       {formatarData(r.data)} · {r.hora_inicio}–{r.hora_fim}
                     </p>
                     {r.motivo_negacao ? (
-                      <p className="mt-1 text-xs text-destructive">
-                        Negada: {r.motivo_negacao}
-                      </p>
+                      <p className="mt-1 text-xs text-destructive">Negada: {r.motivo_negacao}</p>
                     ) : null}
                   </div>
                   <div className="flex flex-wrap items-center gap-2">

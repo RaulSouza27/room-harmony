@@ -165,7 +165,12 @@ function UnidadeDialog({
         <div className="space-y-4">
           <div className="space-y-2">
             <Label htmlFor="nome">Nome</Label>
-            <Input id="nome" value={nome} onChange={(e) => setNome(e.target.value)} maxLength={80} />
+            <Input
+              id="nome"
+              value={nome}
+              onChange={(e) => setNome(e.target.value)}
+              maxLength={80}
+            />
           </div>
           <div className="space-y-2">
             <Label htmlFor="end">Endereço</Label>
