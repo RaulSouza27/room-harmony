@@ -35,13 +35,13 @@ export const Route = createFileRoute("/app/agenda")({
   ssr: false,
   head: () => ({
     meta: [
-      { title: "Disponibilidade de salas — Clínica Serena" },
+      { title: "Disponibilidade de salas — Salas Psi" },
       {
         name: "description",
         content:
           "Grade de disponibilidade das salas por unidade e horário: livre, pendente ou ocupado.",
       },
-      { property: "og:title", content: "Disponibilidade de salas — Clínica Serena" },
+      { property: "og:title", content: "Disponibilidade de salas — Salas Psi" },
       {
         property: "og:description",
         content: "Consulte livre, pendente e ocupado em todas as unidades.",

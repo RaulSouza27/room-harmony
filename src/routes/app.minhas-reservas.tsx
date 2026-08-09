@@ -13,13 +13,13 @@ export const Route = createFileRoute("/app/minhas-reservas")({
   ssr: false,
   head: () => ({
     meta: [
-      { title: "Minhas reservas — Clínica Serena" },
+      { title: "Minhas reservas — Salas Psi" },
       {
         name: "description",
         content:
           "Histórico das suas reservas de sala com status, cancelamento e motivo de negação.",
       },
-      { property: "og:title", content: "Minhas reservas — Clínica Serena" },
+      { property: "og:title", content: "Minhas reservas — Salas Psi" },
       {
         property: "og:description",
         content: "Acompanhe pendentes, aprovadas, negadas e canceladas.",

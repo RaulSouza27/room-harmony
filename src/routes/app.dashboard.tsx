@@ -18,12 +18,12 @@ export const Route = createFileRoute("/app/dashboard")({
   ssr: false,
   head: () => ({
     meta: [
-      { title: "Dashboard — Clínica Serena Gestão de Salas" },
+      { title: "Dashboard — Salas Psi Gestão de Salas" },
       {
         name: "description",
         content: "Resumo das reservas, pendências e ocupação das salas da clínica.",
       },
-      { property: "og:title", content: "Dashboard — Clínica Serena" },
+      { property: "og:title", content: "Dashboard — Salas Psi" },
       { property: "og:description", content: "Resumo de reservas e ocupação das salas." },
     ],
   }),

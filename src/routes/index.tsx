@@ -10,16 +10,16 @@ export const Route = createFileRoute("/")({
   ssr: false,
   head: () => ({
     meta: [
-      { title: "Entrar — Clínica Serena Gestão de Salas" },
+      { title: "Entrar — Salas Psi Gestão de Salas" },
       {
         name: "description",
         content:
-          "Acesse o sistema de gestão de salas da Clínica Serena para consultar disponibilidade e solicitar reservas.",
+          "Acesse o sistema de gestão de salas da Salas Psi para consultar disponibilidade e solicitar reservas.",
       },
-      { property: "og:title", content: "Entrar — Clínica Serena Gestão de Salas" },
+      { property: "og:title", content: "Entrar — Salas Psi Gestão de Salas" },
       {
         property: "og:description",
-        content: "Login para psicólogos e administradores da Clínica Serena.",
+        content: "Login para psicólogos e administradores da Salas Psi.",
       },
     ],
   }),
@@ -59,7 +59,7 @@ function LoginPage() {
           <div className="flex size-10 items-center justify-center rounded-xl bg-primary/10 text-primary">
             <Stethoscope className="size-5" />
           </div>
-          <p className="text-sm font-semibold">Clínica Serena</p>
+          <p className="text-sm font-semibold">Salas Psi</p>
         </div>
         <div className="max-w-md">
           <h2 className="text-3xl font-semibold leading-tight text-foreground">
@@ -81,7 +81,7 @@ function LoginPage() {
             <div className="flex size-10 items-center justify-center rounded-xl bg-primary/10 text-primary">
               <Stethoscope className="size-5" />
             </div>
-            <p className="text-sm font-semibold">Clínica Serena</p>
+            <p className="text-sm font-semibold">Salas Psi</p>
           </div>
 
           <h1 className="text-2xl font-semibold text-foreground">Entrar</h1>

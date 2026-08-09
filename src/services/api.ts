@@ -9,6 +9,15 @@ import type { NovaReserva, Reserva, ReservaStatus, Sala, Unidade, User } from "@
  */
 const delay = (ms = 260) => new Promise((r) => setTimeout(r, ms));
 
+function getHeaders(): HeadersInit {
+  const token =
+    typeof window !== "undefined" ? window.localStorage.getItem("clinica-salas-jwt") : null;
+  return {
+    "Content-Type": "application/json",
+    ...(token ? { Authorization: `Bearer ${token}` } : {}),
+  };
+}
+
 /* ------------------------------- Auth ------------------------------- */
 export async function login(email: string, senha: string): Promise<User> {
   let response: Response;
@@ -85,31 +94,64 @@ export async function getUser(id: string): Promise<User | undefined> {
 
 /* ----------------------------- Unidades ----------------------------- */
 export async function listUnidades(): Promise<Unidade[]> {
-  await delay();
-  return readDB().unidades;
+  const response = await fetch(`${BACKEND_URL}/units/readAll`, {
+    headers: getHeaders(),
+  });
+  if (!response.ok) {
+    throw new Error("Falha ao carregar unidades.");
+  }
+  const data = await response.json();
+  return data.map((item: any) => ({
+    id: String(item.id),
+    nome: item.name,
+    endereco: item.address,
+    status: item.status ? "ativa" : "inativa",
+  }));
 }
 
 export async function saveUnidade(input: Omit<Unidade, "id"> & { id?: string }): Promise<Unidade> {
-  await delay();
-  const db = readDB();
-  if (input.id) {
-    db.unidades = db.unidades.map((u) => (u.id === input.id ? ({ ...u, ...input } as Unidade) : u));
-    writeDB(db);
-    return db.unidades.find((u) => u.id === input.id)!;
+  const body = {
+    name: input.nome,
+    address: input.endereco,
+    status: input.status === "ativa",
+  };
+
+  const url = input.id ? `${BACKEND_URL}/units/${input.id}` : `${BACKEND_URL}/units`;
+  const method = input.id ? "PUT" : "POST";
+
+  const response = await fetch(url, {
+    method,
+    headers: getHeaders(),
+    body: JSON.stringify(body),
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    throw new Error(errorText || "Falha ao salvar unidade.");
   }
-  const nova: Unidade = { ...input, id: uid("u") };
-  db.unidades.push(nova);
-  writeDB(db);
-  return nova;
+
+  const data = await response.json();
+  return {
+    id: String(data.id),
+    nome: data.name,
+    endereco: data.address,
+    status: data.status ? "ativa" : "inativa",
+  };
 }
 
 export async function deleteUnidade(id: string): Promise<void> {
-  await delay();
   const db = readDB();
   if (db.salas.some((s) => s.unidade_id === id))
     throw new Error("Existem salas vinculadas a esta unidade.");
-  db.unidades = db.unidades.filter((u) => u.id !== id);
-  writeDB(db);
+
+  const response = await fetch(`${BACKEND_URL}/units/${id}`, {
+    method: "DELETE",
+    headers: getHeaders(),
+  });
+  if (!response.ok) {
+    const errorText = await response.text();
+    throw new Error(errorText || "Falha ao excluir unidade.");
+  }
 }
 
 /* ------------------------------- Salas ------------------------------ */

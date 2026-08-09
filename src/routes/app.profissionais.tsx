@@ -30,12 +30,12 @@ export const Route = createFileRoute("/app/profissionais")({
   ssr: false,
   head: () => ({
     meta: [
-      { title: "Profissionais — Clínica Serena" },
+      { title: "Profissionais — Salas Psi" },
       {
         name: "description",
         content: "Cadastro de psicólogos e administradores, unidades de acesso e status.",
       },
-      { property: "og:title", content: "Profissionais — Clínica Serena" },
+      { property: "og:title", content: "Profissionais — Salas Psi" },
       { property: "og:description", content: "Crie, edite e ative/inative profissionais." },
     ],
   }),
