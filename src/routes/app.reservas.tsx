@@ -11,6 +11,7 @@ import { EmptyState, ErrorState, LoadingState, StatusBadge } from "@/components/
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Dialog, DialogContent } from "@/components/ui/dialog";
 import {
   Select,
   SelectContent,
@@ -55,6 +56,9 @@ function ReservasPage() {
   const [ate, setAte] = useState("");
   const [criar, setCriar] = useState(false);
   const [editando, setEditando] = useState<Reserva | null>(null);
+  const [alvoVisualizacaoComprovante, setAlvoVisualizacaoComprovante] = useState<string | null>(
+    null,
+  );
 
   const reservas = reservasQ.data ?? [];
   const salas = salasQ.data ?? [];
@@ -131,7 +135,7 @@ function ReservasPage() {
               <SelectContent>
                 <SelectItem value="todos">Todos</SelectItem>
                 {usuarios
-                  .filter((u) => u.papel === "PSICOLOGO")
+                  .filter((u) => u.status === "ativo")
                   .map((u) => (
                     <SelectItem key={u.id} value={u.id}>
                       {u.nome}
@@ -191,6 +195,16 @@ function ReservasPage() {
                     {r.motivo_negacao ? (
                       <p className="mt-1 text-xs text-destructive">Negada: {r.motivo_negacao}</p>
                     ) : null}
+                    {r.comprovante && r.comprovante !== "empty" ? (
+                      <span
+                        className="text-xs text-primary underline cursor-pointer inline-flex items-center gap-1 mt-1 block"
+                        onClick={() => {
+                          setAlvoVisualizacaoComprovante(r.comprovante!);
+                        }}
+                      >
+                        📄 Ver comprovante de pagamento
+                      </span>
+                    ) : null}
                   </div>
                   <div className="flex flex-wrap items-center gap-2">
                     {r.status === "pendente" ? (
@@ -227,6 +241,26 @@ function ReservasPage() {
           reservas={reservas}
           reserva={editando}
         />
+      ) : null}
+
+      {alvoVisualizacaoComprovante ? (
+        <Dialog
+          open={!!alvoVisualizacaoComprovante}
+          onOpenChange={() => setAlvoVisualizacaoComprovante(null)}
+        >
+          <DialogContent className="sm:max-w-xl p-3 flex flex-col items-center justify-center bg-background/95 border-none shadow-2xl">
+            <div className="relative w-full aspect-video rounded-lg overflow-hidden bg-black flex items-center justify-center">
+              <img
+                src={alvoVisualizacaoComprovante}
+                alt="Comprovante de pagamento"
+                className="max-w-full max-h-full object-contain animate-fade-in"
+              />
+            </div>
+            <div className="mt-2 text-xs text-muted-foreground font-medium">
+              Comprovante de Pagamento Anexado
+            </div>
+          </DialogContent>
+        </Dialog>
       ) : null}
     </AppShell>
   );

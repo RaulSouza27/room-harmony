@@ -49,6 +49,7 @@ export interface Reserva {
   motivo_negacao?: string | undefined;
   aprovado_por?: string | undefined;
   recorrencia: Recorrencia;
+  comprovante?: string;
 }
 
 export interface NovaReserva {
@@ -61,4 +62,5 @@ export interface NovaReserva {
   observacoes?: string | undefined;
   recorrencia?: Recorrencia | undefined;
   status?: ReservaStatus | undefined;
+  comprovante?: string;
 }

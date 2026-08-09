@@ -318,6 +318,7 @@ export async function listReservas(): Promise<Reserva[]> {
       motivo_negacao: item.motivoNegacao || "",
       aprovado_por: item.aprovadoPor || "",
       recorrencia: item.recorrencia || "unica",
+      comprovante: item.depositImage || "",
     };
   });
 }
@@ -350,7 +351,7 @@ export async function createReserva(input: NovaReserva): Promise<Reserva> {
     data: input.data,
     horaInicio: input.hora_inicio.length === 5 ? `${input.hora_inicio}:00` : input.hora_inicio,
     horaFim: input.hora_fim.length === 5 ? `${input.hora_fim}:00` : input.hora_fim,
-    depositImage: "empty",
+    depositImage: input.comprovante || "empty",
     description: input.observacoes || "",
     statusString: input.status || "pendente",
     motivoNegacao: "",
@@ -387,6 +388,7 @@ export async function createReserva(input: NovaReserva): Promise<Reserva> {
     motivo_negacao: data.motivoNegacao || "",
     aprovado_por: data.aprovadoPor || "",
     recorrencia: data.recorrencia || "unica",
+    comprovante: data.depositImage || "",
   };
 }
 
@@ -407,6 +409,7 @@ export async function updateReserva(id: string, patch: Partial<Reserva>): Promis
   if (patch.motivo_negacao !== undefined) body.motivoNegacao = patch.motivo_negacao;
   if (patch.aprovado_por !== undefined) body.aprovadoPor = patch.aprovado_por;
   if (patch.recorrencia !== undefined) body.recorrencia = patch.recorrencia;
+  if (patch.comprovante !== undefined) body.depositImage = patch.comprovante;
 
   const response = await fetch(`${BACKEND_URL}/reservations/${id}`, {
     method: "PUT",
@@ -437,6 +440,7 @@ export async function updateReserva(id: string, patch: Partial<Reserva>): Promis
     motivo_negacao: data.motivoNegacao || "",
     aprovado_por: data.aprovadoPor || "",
     recorrencia: data.recorrencia || "unica",
+    comprovante: data.depositImage || "",
   };
 }
 

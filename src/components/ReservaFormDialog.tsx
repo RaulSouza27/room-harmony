@@ -72,6 +72,7 @@ export function ReservaFormDialog({
   const [profissionalId, setProfissionalId] = useState("");
   const [observacoes, setObservacoes] = useState("");
   const [recorrencia, setRecorrencia] = useState<"unica" | "semanal">("unica");
+  const [comprovante, setComprovante] = useState("");
   const [selectedPhotoIndex, setSelectedPhotoIndex] = useState<number | null>(null);
 
   useEffect(() => {
@@ -90,6 +91,7 @@ export function ReservaFormDialog({
     setProfissionalId(reserva?.profissional_id ?? (isAdmin ? "" : (user?.id ?? "")));
     setObservacoes(reserva?.observacoes ?? "");
     setRecorrencia(reserva?.recorrencia ?? "unica");
+    setComprovante(reserva?.comprovante ?? "");
   }, [open, reserva, preset, unidadesDisponiveis, isAdmin, user]);
 
   const salasDaUnidade = salas.filter((s) => s.unidade_id === unidadeId && s.status === "ativa");
@@ -124,6 +126,7 @@ export function ReservaFormDialog({
           profissional_id: profissionalId,
           observacoes,
           recorrencia,
+          comprovante,
         },
       });
     } else {
@@ -137,6 +140,7 @@ export function ReservaFormDialog({
         observacoes,
         recorrencia,
         status: isAdmin ? "aprovada" : "pendente",
+        comprovante,
       });
     }
     onOpenChange(false);
@@ -312,6 +316,49 @@ export function ReservaFormDialog({
             />
           </div>
 
+          <div className="space-y-2">
+            <Label>Comprovante de Pagamento</Label>
+            {comprovante ? (
+              <div className="relative border border-border rounded-lg p-2 bg-muted/10">
+                <div className="relative aspect-video rounded overflow-hidden bg-black flex items-center justify-center h-40">
+                  <img
+                    src={comprovante}
+                    alt="Comprovante"
+                    className="max-w-full max-h-full object-contain"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setComprovante("")}
+                    className="absolute top-1 right-1 bg-destructive text-destructive-foreground hover:bg-destructive/90 rounded-full p-1 text-[10px]"
+                  >
+                    ✕
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <label className="flex flex-col items-center justify-center cursor-pointer border border-dashed border-border rounded-lg p-4 h-24 bg-muted/20 hover:bg-muted/30 transition-colors">
+                <span className="text-sm font-medium text-foreground">Anexar Comprovante</span>
+                <span className="text-xs text-muted-foreground mt-1">Upload de imagem</span>
+                <input
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={async (e) => {
+                    const file = e.target.files?.[0];
+                    if (file) {
+                      try {
+                        const base64 = await fileToBase64Helper(file);
+                        setComprovante(base64);
+                      } catch (err) {
+                        console.error(err);
+                      }
+                    }
+                  }}
+                />
+              </label>
+            )}
+          </div>
+
           {horarioInvalido ? (
             <p className="rounded-md border border-destructive/30 bg-destructive/5 px-3 py-2 text-sm text-destructive">
               O horário final deve ser depois do horário inicial.
@@ -384,4 +431,13 @@ export function ReservaFormDialog({
       ) : null}
     </Dialog>
   );
+}
+
+function fileToBase64Helper(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.readAsDataURL(file);
+    reader.onload = () => resolve(reader.result as string);
+    reader.onerror = (error) => reject(error);
+  });
 }

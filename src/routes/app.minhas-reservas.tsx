@@ -3,6 +3,7 @@ import { useState } from "react";
 import { AppShell } from "@/components/AppShell";
 import { CancelarReservaButton } from "@/components/ReservaActions";
 import { EmptyState, ErrorState, LoadingState, StatusBadge } from "@/components/common";
+import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useAuth } from "@/contexts/AuthContext";
 import { useReservas, useSalas, useUnidades } from "@/hooks/useApi";
@@ -43,6 +44,9 @@ function MinhasReservasPage() {
   const salasQ = useSalas();
   const unidadesQ = useUnidades();
   const [filtro, setFiltro] = useState<"todas" | ReservaStatus>("todas");
+  const [alvoVisualizacaoComprovante, setAlvoVisualizacaoComprovante] = useState<string | null>(
+    null,
+  );
 
   const salas = salasQ.data ?? [];
   const unidades = unidadesQ.data ?? [];
@@ -101,6 +105,16 @@ function MinhasReservasPage() {
                           Motivo da negação: {r.motivo_negacao}
                         </p>
                       ) : null}
+                      {r.comprovante && r.comprovante !== "empty" ? (
+                        <span
+                          className="text-xs text-primary underline cursor-pointer inline-flex items-center gap-1 mt-2 block"
+                          onClick={() => {
+                            setAlvoVisualizacaoComprovante(r.comprovante!);
+                          }}
+                        >
+                          📄 Ver comprovante de pagamento
+                        </span>
+                      ) : null}
                     </div>
                     <div className="flex items-center gap-2">
                       <StatusBadge status={r.status} />
@@ -115,6 +129,26 @@ function MinhasReservasPage() {
           </ul>
         )}
       </div>
+
+      {alvoVisualizacaoComprovante ? (
+        <Dialog
+          open={!!alvoVisualizacaoComprovante}
+          onOpenChange={() => setAlvoVisualizacaoComprovante(null)}
+        >
+          <DialogContent className="sm:max-w-xl p-3 flex flex-col items-center justify-center bg-background/95 border-none shadow-2xl">
+            <div className="relative w-full aspect-video rounded-lg overflow-hidden bg-black flex items-center justify-center">
+              <img
+                src={alvoVisualizacaoComprovante}
+                alt="Comprovante de pagamento"
+                className="max-w-full max-h-full object-contain animate-fade-in"
+              />
+            </div>
+            <div className="mt-2 text-xs text-muted-foreground font-medium">
+              Comprovante de Pagamento Anexado
+            </div>
+          </DialogContent>
+        </Dialog>
+      ) : null}
     </AppShell>
   );
 }

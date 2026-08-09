@@ -9,9 +9,9 @@ import {
   LayoutDashboard,
   LogOut,
   Menu,
-  Stethoscope,
   UserRound,
   Users,
+  Armchair,
 } from "lucide-react";
 import { useState, type ReactNode } from "react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -98,7 +98,7 @@ export function AppShell({
   const brand = (
     <div className="flex items-center gap-2.5 border-b border-sidebar-border px-4 py-4">
       <div className="flex size-9 items-center justify-center rounded-lg bg-primary/10 text-primary">
-        <Stethoscope className="size-5" />
+        <Armchair className="size-5" />
       </div>
       <div className="min-w-0">
         <p className="truncate text-sm font-semibold text-sidebar-foreground">Salas Psi</p>

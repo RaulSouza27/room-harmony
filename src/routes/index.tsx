@@ -1,5 +1,5 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { Loader2, Stethoscope } from "lucide-react";
+import { Armchair, Loader2 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -57,7 +57,7 @@ function LoginPage() {
       <div className="hidden flex-col justify-between bg-sidebar p-12 lg:flex">
         <div className="flex items-center gap-2.5">
           <div className="flex size-10 items-center justify-center rounded-xl bg-primary/10 text-primary">
-            <Stethoscope className="size-5" />
+            <Armchair className="size-5" />
           </div>
           <p className="text-sm font-semibold">Salas Psi</p>
         </div>
@@ -79,7 +79,7 @@ function LoginPage() {
         <div className="w-full max-w-sm">
           <div className="mb-8 flex items-center gap-2.5 lg:hidden">
             <div className="flex size-10 items-center justify-center rounded-xl bg-primary/10 text-primary">
-              <Stethoscope className="size-5" />
+              <Armchair className="size-5" />
             </div>
             <p className="text-sm font-semibold">Salas Psi</p>
           </div>
