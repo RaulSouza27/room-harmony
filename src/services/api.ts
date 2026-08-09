@@ -1,3 +1,4 @@
+import { BACKEND_URL } from "@/config/api";
 import { overlaps, readDB, uid, writeDB } from "./db";
 import type { NovaReserva, Reserva, ReservaStatus, Sala, Unidade, User } from "@/types";
 
@@ -10,37 +11,69 @@ const delay = (ms = 260) => new Promise((r) => setTimeout(r, ms));
 
 /* ------------------------------- Auth ------------------------------- */
 export async function login(email: string, senha: string): Promise<User> {
-  await delay();
-  const db = readDB();
-  const user = db.users.find(
-    (u) => u.email.toLowerCase() === email.trim().toLowerCase() && u.senha === senha,
-  );
-  if (!user) throw new Error("E-mail ou senha inválidos.");
-  if (user.status === "inativo") throw new Error("Usuário inativo. Procure o administrador.");
-  return user;
-}
-
-export async function bypassLogin(papel: "ADMINISTRADOR" | "PSICOLOGO"): Promise<User> {
-  await delay();
-  const db = readDB();
-  const id = papel === "ADMINISTRADOR" ? "admin-bypass" : "psicologo-bypass";
-  let user = db.users.find((u) => u.id === id);
-
-  if (!user) {
-    user = {
-      id,
-      nome: papel === "ADMINISTRADOR" ? "Administrador (Bypass)" : "Psicólogo (Bypass)",
-      email: papel === "ADMINISTRADOR" ? "admin@clinica.com" : "psicologo@clinica.com",
-      senha: "",
-      papel,
-      status: "ativo",
-      telefone: "(85) 99999-0000",
-      especialidade: papel === "PSICOLOGO" ? "Psicologia Geral" : undefined,
-      unidades: [],
-    };
-    db.users.push(user);
-    writeDB(db);
+  let response: Response;
+  try {
+    response = await fetch(`${BACKEND_URL}/auth/login`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ email, password: senha }),
+    });
+  } catch (error) {
+    console.error("Erro de conexão com o backend:", error);
+    throw new Error(
+      "Não foi possível conectar ao servidor. Por favor, verifique se o backend está ativo e rodando.",
+    );
   }
+
+  if (response.status === 403) {
+    throw new Error("Usuário inativo. Procure o administrador.");
+  }
+  if (response.status === 401) {
+    throw new Error("E-mail ou senha inválidos.");
+  }
+  if (!response.ok) {
+    throw new Error("Erro no servidor ao realizar login. Tente novamente mais tarde.");
+  }
+
+  let data;
+  try {
+    data = await response.json();
+  } catch (error) {
+    console.error("Erro ao analisar resposta JSON:", error);
+    throw new Error("Resposta inválida recebida do servidor.");
+  }
+
+  if (!data || !data.token) {
+    throw new Error(data?.message || "Credenciais ou resposta do servidor incorretas.");
+  }
+
+  const papel = data.accessLevel === "admin" ? "ADMINISTRADOR" : "PSICOLOGO";
+
+  const user: User = {
+    id: data.username || email,
+    nome: data.username || "Usuário",
+    email: data.email || email,
+    senha: "",
+    papel,
+    status: "ativo",
+    telefone: "",
+    unidades: [],
+  };
+
+  const db = readDB();
+  const index = db.users.findIndex(
+    (u) => u.email && user.email && u.email.toLowerCase() === user.email.toLowerCase(),
+  );
+  if (index > -1) {
+    db.users[index] = { ...db.users[index], ...user };
+  } else {
+    db.users.push(user);
+  }
+  writeDB(db);
+
+  window.localStorage.setItem("clinica-salas-jwt", data.token);
 
   return user;
 }

@@ -27,25 +27,12 @@ export const Route = createFileRoute("/")({
 });
 
 function LoginPage() {
-  const { user, loading, signIn, signInBypass } = useAuth();
+  const { user, loading, signIn } = useAuth();
   const navigate = useNavigate();
   const [email, setEmail] = useState("");
   const [senha, setSenha] = useState("");
   const [erro, setErro] = useState<string | null>(null);
   const [enviando, setEnviando] = useState(false);
-
-  async function handleBypass(papel: "ADMINISTRADOR" | "PSICOLOGO") {
-    setErro(null);
-    setEnviando(true);
-    try {
-      await signInBypass(papel);
-      navigate({ to: "/app/dashboard", replace: true });
-    } catch (err) {
-      setErro(err instanceof Error ? err.message : "Falha no bypass.");
-    } finally {
-      setEnviando(false);
-    }
-  }
 
   useEffect(() => {
     if (user) navigate({ to: "/app/dashboard", replace: true });
@@ -137,41 +124,6 @@ function LoginPage() {
               Entrar
             </Button>
           </form>
-
-          <div className="mt-8 rounded-xl border border-border bg-card/50 p-5 backdrop-blur-sm transition-all duration-300 hover:shadow-md">
-            <div className="flex items-center gap-2">
-              <span className="flex size-2 rounded-full bg-primary animate-pulse" />
-              <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                Acesso Rápido (Bypass)
-              </p>
-            </div>
-            <p className="mt-2 text-xs leading-relaxed text-muted-foreground">
-              Todos os dados mockados pré-existentes foram removidos. Use os botões abaixo para
-              acessar diretamente com o papel desejado:
-            </p>
-            <div className="mt-4 grid grid-cols-2 gap-2">
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                className="group relative flex items-center justify-center gap-1.5 overflow-hidden border-primary/20 bg-background/50 hover:bg-primary/5 hover:text-primary transition-all duration-300"
-                onClick={() => handleBypass("ADMINISTRADOR")}
-                disabled={enviando || loading}
-              >
-                Entrar como Admin
-              </Button>
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                className="group relative flex items-center justify-center gap-1.5 overflow-hidden border-primary/20 bg-background/50 hover:bg-primary/5 hover:text-primary transition-all duration-300"
-                onClick={() => handleBypass("PSICOLOGO")}
-                disabled={enviando || loading}
-              >
-                Entrar como Psicólogo
-              </Button>
-            </div>
-          </div>
         </div>
       </div>
     </div>

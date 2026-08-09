@@ -10,7 +10,6 @@ interface AuthValue {
   loading: boolean;
   isAdmin: boolean;
   signIn: (email: string, senha: string) => Promise<User>;
-  signInBypass: (papel: "ADMINISTRADOR" | "PSICOLOGO") => Promise<User>;
   signOut: () => void;
   refresh: () => Promise<void>;
   hasRole: (role: Role) => boolean;
@@ -41,13 +40,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return u;
   }, []);
 
-  const signInBypass = useCallback(async (papel: "ADMINISTRADOR" | "PSICOLOGO") => {
-    const u = await api.bypassLogin(papel);
-    window.localStorage.setItem(STORAGE_KEY, u.id);
-    setUser(u);
-    return u;
-  }, []);
-
   const signOut = useCallback(() => {
     window.localStorage.removeItem(STORAGE_KEY);
     setUser(null);
@@ -65,12 +57,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       loading,
       isAdmin: user?.papel === "ADMINISTRADOR",
       signIn,
-      signInBypass,
       signOut,
       refresh,
       hasRole: (role: Role) => user?.papel === role,
     }),
-    [user, loading, signIn, signInBypass, signOut, refresh],
+    [user, loading, signIn, signOut, refresh],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
