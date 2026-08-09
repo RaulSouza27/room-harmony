@@ -71,7 +71,11 @@ function AgendaPage() {
   const usuarios = usuariosQ.data ?? [];
 
   const unidadesVisiveis = useMemo(
-    () => unidades.filter((u) => isAdmin || (user?.unidades ?? []).includes(u.id)),
+    () =>
+      unidades.filter(
+        (u) =>
+          isAdmin || !user?.unidades || user.unidades.length === 0 || user.unidades.includes(u.id),
+      ),
     [unidades, isAdmin, user],
   );
 

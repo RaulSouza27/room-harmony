@@ -61,7 +61,7 @@ export async function login(email: string, senha: string): Promise<User> {
   const papel = data.accessLevel === "admin" ? "ADMINISTRADOR" : "PSICOLOGO";
 
   const user: User = {
-    id: data.username || email,
+    id: data.id ? String(data.id) : data.username || email,
     nome: data.username || "Usuário",
     email: data.email || email,
     senha: "",
@@ -293,8 +293,33 @@ export async function saveUsuario(input: Partial<User> & { id?: string }): Promi
 
 /* ------------------------------ Reservas ---------------------------- */
 export async function listReservas(): Promise<Reserva[]> {
-  await delay();
-  return readDB().reservas;
+  const rooms = await listSalas();
+
+  const response = await fetch(`${BACKEND_URL}/reservations/readAll`, {
+    headers: getHeaders(),
+  });
+  if (!response.ok) {
+    throw new Error("Falha ao carregar reservas.");
+  }
+  const data = await response.json();
+  return data.map((item: any) => {
+    const room = rooms.find((r) => r.id === String(item.roomsId));
+    return {
+      id: String(item.id),
+      sala_id: String(item.roomsId),
+      unidade_id: room ? room.unidade_id : "",
+      profissional_id: String(item.userId),
+      data: item.data,
+      hora_inicio: item.horaInicio.slice(0, 5),
+      hora_fim: item.horaFim.slice(0, 5),
+      status: item.statusString || "pendente",
+      criado_em: new Date().toISOString(),
+      observacoes: item.description || "",
+      motivo_negacao: item.motivoNegacao || "",
+      aprovado_por: item.aprovadoPor || "",
+      recorrencia: item.recorrencia || "unica",
+    };
+  });
 }
 
 /** Conflitos que ocupam o horário (aprovadas e pendentes). */
@@ -319,34 +344,100 @@ export function findConflitos(
 }
 
 export async function createReserva(input: NovaReserva): Promise<Reserva> {
-  await delay();
-  const db = readDB();
-  const conflitos = findConflitos(db.reservas, input).filter((r) => r.status === "aprovada");
-  if (conflitos.length) throw new Error("Horário já reservado para esta sala.");
-  const nova: Reserva = {
-    id: uid("r"),
-    sala_id: input.sala_id,
-    unidade_id: input.unidade_id,
-    profissional_id: input.profissional_id,
+  const body = {
+    roomsId: Number(input.sala_id),
+    userId: Number(input.profissional_id),
     data: input.data,
-    hora_inicio: input.hora_inicio,
-    hora_fim: input.hora_fim,
-    status: input.status ?? "pendente",
-    criado_em: new Date().toISOString(),
-    observacoes: input.observacoes,
-    recorrencia: input.recorrencia ?? "unica",
+    horaInicio: input.hora_inicio.length === 5 ? `${input.hora_inicio}:00` : input.hora_inicio,
+    horaFim: input.hora_fim.length === 5 ? `${input.hora_fim}:00` : input.hora_fim,
+    depositImage: "empty",
+    description: input.observacoes || "",
+    statusString: input.status || "pendente",
+    motivoNegacao: "",
+    aprovadoPor: "",
+    recorrencia: input.recorrencia || "unica",
   };
-  db.reservas.push(nova);
-  writeDB(db);
-  return nova;
+
+  const response = await fetch(`${BACKEND_URL}/reservations`, {
+    method: "POST",
+    headers: getHeaders(),
+    body: JSON.stringify(body),
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    throw new Error(errorText || "Falha ao criar reserva.");
+  }
+
+  const data = await response.json();
+  const rooms = await listSalas();
+  const room = rooms.find((r) => r.id === String(data.roomsId));
+
+  return {
+    id: String(data.id),
+    sala_id: String(data.roomsId),
+    unidade_id: room ? room.unidade_id : "",
+    profissional_id: String(data.userId),
+    data: data.data,
+    hora_inicio: data.horaInicio.slice(0, 5),
+    hora_fim: data.horaFim.slice(0, 5),
+    status: data.statusString || "pendente",
+    criado_em: new Date().toISOString(),
+    observacoes: data.description || "",
+    motivo_negacao: data.motivoNegacao || "",
+    aprovado_por: data.aprovadoPor || "",
+    recorrencia: data.recorrencia || "unica",
+  };
 }
 
 export async function updateReserva(id: string, patch: Partial<Reserva>): Promise<Reserva> {
-  await delay();
-  const db = readDB();
-  db.reservas = db.reservas.map((r) => (r.id === id ? { ...r, ...patch } : r));
-  writeDB(db);
-  return db.reservas.find((r) => r.id === id)!;
+  const body: any = {};
+  if (patch.sala_id !== undefined) body.roomsId = Number(patch.sala_id);
+  if (patch.profissional_id !== undefined) body.userId = Number(patch.profissional_id);
+  if (patch.data !== undefined) body.data = patch.data;
+  if (patch.hora_inicio !== undefined) {
+    body.horaInicio =
+      patch.hora_inicio.length === 5 ? `${patch.hora_inicio}:00` : patch.hora_inicio;
+  }
+  if (patch.hora_fim !== undefined) {
+    body.horaFim = patch.hora_fim.length === 5 ? `${patch.hora_fim}:00` : patch.hora_fim;
+  }
+  if (patch.observacoes !== undefined) body.description = patch.observacoes;
+  if (patch.status !== undefined) body.statusString = patch.status;
+  if (patch.motivo_negacao !== undefined) body.motivoNegacao = patch.motivo_negacao;
+  if (patch.aprovado_por !== undefined) body.aprovadoPor = patch.aprovado_por;
+  if (patch.recorrencia !== undefined) body.recorrencia = patch.recorrencia;
+
+  const response = await fetch(`${BACKEND_URL}/reservations/${id}`, {
+    method: "PUT",
+    headers: getHeaders(),
+    body: JSON.stringify(body),
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    throw new Error(errorText || "Falha ao atualizar reserva.");
+  }
+
+  const data = await response.json();
+  const rooms = await listSalas();
+  const room = rooms.find((r) => r.id === String(data.roomsId));
+
+  return {
+    id: String(data.id),
+    sala_id: String(data.roomsId),
+    unidade_id: room ? room.unidade_id : "",
+    profissional_id: String(data.userId),
+    data: data.data,
+    hora_inicio: data.horaInicio.slice(0, 5),
+    hora_fim: data.horaFim.slice(0, 5),
+    status: data.statusString || "pendente",
+    criado_em: new Date().toISOString(),
+    observacoes: data.description || "",
+    motivo_negacao: data.motivoNegacao || "",
+    aprovado_por: data.aprovadoPor || "",
+    recorrencia: data.recorrencia || "unica",
+  };
 }
 
 export async function setStatusReserva(
@@ -358,8 +449,11 @@ export async function setStatusReserva(
 }
 
 export async function deleteReserva(id: string): Promise<void> {
-  await delay();
-  const db = readDB();
-  db.reservas = db.reservas.filter((r) => r.id !== id);
-  writeDB(db);
+  const response = await fetch(`${BACKEND_URL}/reservations/${id}`, {
+    method: "DELETE",
+    headers: getHeaders(),
+  });
+  if (!response.ok) {
+    throw new Error("Falha ao excluir reserva.");
+  }
 }

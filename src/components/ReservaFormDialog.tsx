@@ -54,7 +54,12 @@ export function ReservaFormDialog({
   const unidadesDisponiveis = useMemo(
     () =>
       unidades.filter(
-        (u) => u.status === "ativa" && (isAdmin || (user?.unidades ?? []).includes(u.id)),
+        (u) =>
+          u.status === "ativa" &&
+          (isAdmin ||
+            !user?.unidades ||
+            user.unidades.length === 0 ||
+            user.unidades.includes(u.id)),
       ),
     [unidades, isAdmin, user],
   );
@@ -67,6 +72,7 @@ export function ReservaFormDialog({
   const [profissionalId, setProfissionalId] = useState("");
   const [observacoes, setObservacoes] = useState("");
   const [recorrencia, setRecorrencia] = useState<"unica" | "semanal">("unica");
+  const [selectedPhotoIndex, setSelectedPhotoIndex] = useState<number | null>(null);
 
   useEffect(() => {
     if (!open) return;
@@ -87,7 +93,8 @@ export function ReservaFormDialog({
   }, [open, reserva, preset, unidadesDisponiveis, isAdmin, user]);
 
   const salasDaUnidade = salas.filter((s) => s.unidade_id === unidadeId && s.status === "ativa");
-  const profissionais = usuarios.filter((u) => u.papel === "PSICOLOGO" && u.status === "ativo");
+  const profissionais = usuarios.filter((u) => u.status === "ativo");
+  const selectedRoom = salas.find((x) => x.id === salaId);
 
   const horarioInvalido = toMinutes(fim) <= toMinutes(inicio);
   const conflitos =
@@ -210,7 +217,7 @@ export function ReservaFormDialog({
                               src={foto}
                               alt={`Foto ${index + 1}`}
                               className="w-full h-full object-cover cursor-pointer hover:scale-105 transition-transform"
-                              onClick={() => window.open(foto, "_blank")}
+                              onClick={() => setSelectedPhotoIndex(index)}
                             />
                           </div>
                         ))}
@@ -330,6 +337,51 @@ export function ReservaFormDialog({
           </Button>
         </DialogFooter>
       </DialogContent>
+      {selectedPhotoIndex !== null &&
+      selectedRoom &&
+      selectedRoom.fotos &&
+      selectedRoom.fotos.length > 0 ? (
+        <Dialog open={selectedPhotoIndex !== null} onOpenChange={() => setSelectedPhotoIndex(null)}>
+          <DialogContent className="sm:max-w-xl p-3 flex flex-col items-center justify-center bg-background/95 border-none shadow-2xl">
+            <div className="relative w-full aspect-video rounded-lg overflow-hidden bg-black flex items-center justify-center">
+              <img
+                src={selectedRoom.fotos[selectedPhotoIndex]}
+                alt={`Foto ${selectedPhotoIndex + 1}`}
+                className="max-w-full max-h-full object-contain"
+              />
+              {selectedRoom.fotos.length > 1 ? (
+                <>
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setSelectedPhotoIndex((prev) =>
+                        prev! === 0 ? selectedRoom.fotos.length - 1 : prev! - 1,
+                      );
+                    }}
+                    className="absolute left-2 top-1/2 -translate-y-1/2 bg-black/60 text-white rounded-full p-2 text-sm hover:bg-black/80 font-bold"
+                  >
+                    ◀
+                  </button>
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setSelectedPhotoIndex((prev) =>
+                        prev! === selectedRoom.fotos.length - 1 ? 0 : prev! + 1,
+                      );
+                    }}
+                    className="absolute right-2 top-1/2 -translate-y-1/2 bg-black/60 text-white rounded-full p-2 text-sm hover:bg-black/80 font-bold"
+                  >
+                    ▶
+                  </button>
+                </>
+              ) : null}
+            </div>
+            <div className="mt-2 text-xs text-muted-foreground">
+              Foto {selectedPhotoIndex + 1} de {selectedRoom.fotos.length}
+            </div>
+          </DialogContent>
+        </Dialog>
+      ) : null}
     </Dialog>
   );
 }

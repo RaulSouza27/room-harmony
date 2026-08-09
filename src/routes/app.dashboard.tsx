@@ -166,7 +166,11 @@ function DashboardPage() {
                 />
                 <Metric
                   label="Unidades liberadas"
-                  value={(user?.unidades ?? []).length}
+                  value={
+                    user?.unidades && user.unidades.length > 0
+                      ? user.unidades.length
+                      : unidades.filter((u) => u.status === "ativa").length
+                  }
                   hint="Onde você pode reservar"
                   icon={DoorOpen}
                 />
