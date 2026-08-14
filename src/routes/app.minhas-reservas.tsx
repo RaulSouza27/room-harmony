@@ -14,13 +14,13 @@ export const Route = createFileRoute("/app/minhas-reservas")({
   ssr: false,
   head: () => ({
     meta: [
-      { title: "Minhas reservas — Salas Psi" },
+      { title: "Minhas reservas — Clínica Escuta" },
       {
         name: "description",
         content:
           "Histórico das suas reservas de sala com status, cancelamento e motivo de negação.",
       },
-      { property: "og:title", content: "Minhas reservas — Salas Psi" },
+      { property: "og:title", content: "Minhas reservas — Clínica Escuta" },
       {
         property: "og:description",
         content: "Acompanhe pendentes, aprovadas, negadas e canceladas.",

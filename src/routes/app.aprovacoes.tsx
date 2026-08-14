@@ -12,12 +12,12 @@ export const Route = createFileRoute("/app/aprovacoes")({
   ssr: false,
   head: () => ({
     meta: [
-      { title: "Aprovações pendentes — Salas Psi" },
+      { title: "Aprovações pendentes — Clínica Escuta" },
       {
         name: "description",
         content: "Fila de solicitações de reserva aguardando aprovação do administrador.",
       },
-      { property: "og:title", content: "Aprovações pendentes — Salas Psi" },
+      { property: "og:title", content: "Aprovações pendentes — Clínica Escuta" },
       {
         property: "og:description",
         content: "Aprove ou negue solicitações com alerta de conflito.",

@@ -10,12 +10,12 @@ export const Route = createFileRoute("/app/solicitar")({
   ssr: false,
   head: () => ({
     meta: [
-      { title: "Solicitar reserva de sala — Salas Psi" },
+      { title: "Solicitar reserva de sala — Clínica Escuta" },
       {
         name: "description",
         content: "Escolha unidade, sala, data e horário para solicitar o uso de uma sala.",
       },
-      { property: "og:title", content: "Solicitar reserva de sala — Salas Psi" },
+      { property: "og:title", content: "Solicitar reserva de sala — Clínica Escuta" },
       {
         property: "og:description",
         content: "Solicitação com validação imediata de conflito de horário.",

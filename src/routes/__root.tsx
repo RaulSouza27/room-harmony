@@ -79,13 +79,13 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "Salas Psi — Gestão de Salas" },
+      { title: "Clínica Escuta — Gestão de Salas" },
       {
         name: "description",
         content:
           "Sistema de gestão de salas para clínicas de psicologia: disponibilidade, reservas e aprovações.",
       },
-      { property: "og:title", content: "Salas Psi — Gestão de Salas" },
+      { property: "og:title", content: "Clínica Escuta — Gestão de Salas" },
       {
         property: "og:description",
         content: "Solicite, aprove e acompanhe reservas de salas em múltiplas unidades.",

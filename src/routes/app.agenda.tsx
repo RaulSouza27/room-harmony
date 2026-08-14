@@ -35,13 +35,13 @@ export const Route = createFileRoute("/app/agenda")({
   ssr: false,
   head: () => ({
     meta: [
-      { title: "Disponibilidade de salas — Salas Psi" },
+      { title: "Disponibilidade de salas — Clínica Escuta" },
       {
         name: "description",
         content:
           "Grade de disponibilidade das salas por unidade e horário: livre, pendente ou ocupado.",
       },
-      { property: "og:title", content: "Disponibilidade de salas — Salas Psi" },
+      { property: "og:title", content: "Disponibilidade de salas — Clínica Escuta" },
       {
         property: "og:description",
         content: "Consulte livre, pendente e ocupado em todas as unidades.",

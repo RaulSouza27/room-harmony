@@ -101,7 +101,7 @@ export function AppShell({
         <Armchair className="size-5" />
       </div>
       <div className="min-w-0">
-        <p className="truncate text-sm font-semibold text-sidebar-foreground">Salas Psi</p>
+        <p className="truncate text-sm font-semibold text-sidebar-foreground">Clínica Escuta</p>
         <p className="truncate text-xs text-muted-foreground">Gestão de salas</p>
       </div>
     </div>
