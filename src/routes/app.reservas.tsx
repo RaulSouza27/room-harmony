@@ -27,12 +27,12 @@ export const Route = createFileRoute("/app/reservas")({
   ssr: false,
   head: () => ({
     meta: [
-      { title: "Todas as reservas — Salas Psi" },
+      { title: "Todas as reservas — Clínica Escuta" },
       {
         name: "description",
         content: "Gestão completa das reservas: filtros por unidade, sala, profissional e período.",
       },
-      { property: "og:title", content: "Todas as reservas — Salas Psi" },
+      { property: "og:title", content: "Todas as reservas — Clínica Escuta" },
       {
         property: "og:description",
         content: "Edite, cancele ou exclua reservas de qualquer profissional.",

@@ -10,9 +10,9 @@ export const Route = createFileRoute("/app/perfil")({
   ssr: false,
   head: () => ({
     meta: [
-      { title: "Meu perfil — Salas Psi" },
+      { title: "Meu perfil — Clínica Escuta" },
       { name: "description", content: "Visualizar dados do seu perfil na clínica." },
-      { property: "og:title", content: "Meu perfil — Salas Psi" },
+      { property: "og:title", content: "Meu perfil — Clínica Escuta" },
       { property: "og:description", content: "Dados pessoais e unidades vinculadas." },
     ],
   }),
