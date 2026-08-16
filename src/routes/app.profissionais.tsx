@@ -5,7 +5,6 @@ import { ConfirmDialog } from "@/components/ReservaActions";
 import { EmptyState, ErrorState, LoadingState } from "@/components/common";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Checkbox } from "@/components/ui/checkbox";
 import {
   Dialog,
   DialogContent,
@@ -23,19 +22,19 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { useSaveUsuario, useUnidades, useUsuarios } from "@/hooks/useApi";
+import { useSaveUsuario, useUsuarios } from "@/hooks/useApi";
 import type { Role, User } from "@/types";
 
 export const Route = createFileRoute("/app/profissionais")({
   ssr: false,
   head: () => ({
     meta: [
-      { title: "Profissionais — Clínica Serena" },
+      { title: "Profissionais — Clínica Escuta" },
       {
         name: "description",
-        content: "Cadastro de psicólogos e administradores, unidades de acesso e status.",
+        content: "Cadastro de psicólogos e administradores e status.",
       },
-      { property: "og:title", content: "Profissionais — Clínica Serena" },
+      { property: "og:title", content: "Profissionais — Clínica Escuta" },
       { property: "og:description", content: "Crie, edite e ative/inative profissionais." },
     ],
   }),
@@ -44,7 +43,6 @@ export const Route = createFileRoute("/app/profissionais")({
 
 function ProfissionaisPage() {
   const usuariosQ = useUsuarios();
-  const { data: unidades } = useUnidades();
   const salvar = useSaveUsuario();
   const [editando, setEditando] = useState<User | null>(null);
   const [open, setOpen] = useState(false);
@@ -96,17 +94,7 @@ function ProfissionaisPage() {
                       {u.status === "ativo" ? "Ativo" : "Inativo"}
                     </Badge>
                   </div>
-                  <p className="mt-1 text-sm text-muted-foreground">
-                    {u.email} · {u.telefone}
-                    {u.especialidade ? ` · ${u.especialidade}` : ""}
-                  </p>
-                  <div className="mt-2 flex flex-wrap gap-1.5">
-                    {u.unidades.map((id) => (
-                      <Badge key={id} variant="outline" className="text-xs">
-                        {unidades?.find((x) => x.id === id)?.nome ?? id}
-                      </Badge>
-                    ))}
-                  </div>
+                  <p className="mt-1 text-sm text-muted-foreground">{u.email}</p>
                 </div>
                 <div className="flex flex-wrap gap-2">
                   <Button
@@ -129,12 +117,7 @@ function ProfissionaisPage() {
         </ul>
       )}
 
-      <ProfissionalDialog
-        open={open}
-        onOpenChange={setOpen}
-        usuario={editando}
-        unidades={unidades ?? []}
-      />
+      <ProfissionalDialog open={open} onOpenChange={setOpen} usuario={editando} />
 
       <ConfirmDialog
         open={!!alvoStatus}
@@ -161,36 +144,30 @@ function ProfissionalDialog({
   open,
   onOpenChange,
   usuario,
-  unidades,
 }: {
   open: boolean;
   onOpenChange: (v: boolean) => void;
   usuario: User | null;
-  unidades: { id: string; nome: string }[];
 }) {
   const salvar = useSaveUsuario();
   const [nome, setNome] = useState("");
   const [email, setEmail] = useState("");
-  const [telefone, setTelefone] = useState("");
-  const [especialidade, setEspecialidade] = useState("");
   const [papel, setPapel] = useState<Role>("PSICOLOGO");
-  const [vinculos, setVinculos] = useState<string[]>([]);
+  const [status, setStatus] = useState<"ativo" | "inativo">("ativo");
 
   useEffect(() => {
     if (!open) return;
     setNome(usuario?.nome ?? "");
     setEmail(usuario?.email ?? "");
-    setTelefone(usuario?.telefone ?? "");
-    setEspecialidade(usuario?.especialidade ?? "");
     setPapel(usuario?.papel ?? "PSICOLOGO");
-    setVinculos(usuario?.unidades ?? []);
+    setStatus(usuario?.status ?? "ativo");
   }, [open, usuario]);
 
   const valido = nome.trim().length > 2 && /\S+@\S+\.\S+/.test(email);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-lg">
+      <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-md">
         <DialogHeader>
           <DialogTitle>{usuario ? "Editar profissional" : "Novo profissional"}</DialogTitle>
           <DialogDescription>
@@ -200,69 +177,46 @@ function ProfissionalDialog({
         <div className="space-y-4">
           <div className="space-y-2">
             <Label htmlFor="nome">Nome completo</Label>
-            <Input id="nome" value={nome} onChange={(e) => setNome(e.target.value)} maxLength={100} />
-          </div>
-          <div className="grid gap-4 sm:grid-cols-2">
-            <div className="space-y-2">
-              <Label htmlFor="email">E-mail</Label>
-              <Input
-                id="email"
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                maxLength={255}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="tel">Telefone</Label>
-              <Input
-                id="tel"
-                value={telefone}
-                onChange={(e) => setTelefone(e.target.value)}
-                maxLength={20}
-              />
-            </div>
-          </div>
-          <div className="grid gap-4 sm:grid-cols-2">
-            <div className="space-y-2">
-              <Label>Papel</Label>
-              <Select value={papel} onValueChange={(v) => setPapel(v as Role)}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="PSICOLOGO">Psicólogo(a)</SelectItem>
-                  <SelectItem value="ADMINISTRADOR">Administrador</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="esp">Especialidade</Label>
-              <Input
-                id="esp"
-                value={especialidade}
-                onChange={(e) => setEspecialidade(e.target.value)}
-                maxLength={80}
-              />
-            </div>
+            <Input
+              id="nome"
+              value={nome}
+              onChange={(e) => setNome(e.target.value)}
+              maxLength={100}
+            />
           </div>
           <div className="space-y-2">
-            <Label>Unidades de acesso</Label>
-            <div className="space-y-2 rounded-lg border border-border p-3">
-              {unidades.map((u) => (
-                <label key={u.id} className="flex items-center gap-2 text-sm">
-                  <Checkbox
-                    checked={vinculos.includes(u.id)}
-                    onCheckedChange={(c) =>
-                      setVinculos((prev) =>
-                        c ? [...prev, u.id] : prev.filter((id) => id !== u.id),
-                      )
-                    }
-                  />
-                  {u.nome}
-                </label>
-              ))}
-            </div>
+            <Label htmlFor="email">E-mail</Label>
+            <Input
+              id="email"
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              maxLength={255}
+            />
+          </div>
+          <div className="space-y-2">
+            <Label>Papel</Label>
+            <Select value={papel} onValueChange={(v) => setPapel(v as Role)}>
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="PSICOLOGO">Psicólogo(a)</SelectItem>
+                <SelectItem value="ADMINISTRADOR">Administrador</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="space-y-2">
+            <Label>Status</Label>
+            <Select value={status} onValueChange={(v) => setStatus(v as "ativo" | "inativo")}>
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="ativo">Ativo</SelectItem>
+                <SelectItem value="inativo">Inativo</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
         </div>
         <DialogFooter>
@@ -276,10 +230,8 @@ function ProfissionalDialog({
                 ...(usuario ? { id: usuario.id } : {}),
                 nome: nome.trim(),
                 email: email.trim(),
-                telefone: telefone.trim(),
-                especialidade: especialidade.trim() || undefined,
                 papel,
-                unidades: vinculos,
+                status,
               });
               onOpenChange(false);
             }}

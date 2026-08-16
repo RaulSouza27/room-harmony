@@ -35,13 +35,13 @@ export const Route = createFileRoute("/app/agenda")({
   ssr: false,
   head: () => ({
     meta: [
-      { title: "Disponibilidade de salas — Clínica Serena" },
+      { title: "Disponibilidade de salas — Clínica Escuta" },
       {
         name: "description",
         content:
           "Grade de disponibilidade das salas por unidade e horário: livre, pendente ou ocupado.",
       },
-      { property: "og:title", content: "Disponibilidade de salas — Clínica Serena" },
+      { property: "og:title", content: "Disponibilidade de salas — Clínica Escuta" },
       {
         property: "og:description",
         content: "Consulte livre, pendente e ocupado em todas as unidades.",
@@ -64,6 +64,9 @@ function AgendaPage() {
   const [formOpen, setFormOpen] = useState(false);
   const [detalhe, setDetalhe] = useState<Reserva | null>(null);
   const [editando, setEditando] = useState<Reserva | null>(null);
+  const [alvoVisualizacaoComprovante, setAlvoVisualizacaoComprovante] = useState<string | null>(
+    null,
+  );
 
   const unidades = unidadesQ.data ?? [];
   const salas = salasQ.data ?? [];
@@ -71,7 +74,11 @@ function AgendaPage() {
   const usuarios = usuariosQ.data ?? [];
 
   const unidadesVisiveis = useMemo(
-    () => unidades.filter((u) => isAdmin || (user?.unidades ?? []).includes(u.id)),
+    () =>
+      unidades.filter(
+        (u) =>
+          isAdmin || !user?.unidades || user.unidades.length === 0 || user.unidades.includes(u.id),
+      ),
     [unidades, isAdmin, user],
   );
 
@@ -217,6 +224,23 @@ function AgendaPage() {
                   </div>
                 ) : null}
               </dl>
+              {detalhe.comprovante && detalhe.comprovante !== "empty" ? (
+                <div className="mt-3 border-t border-border pt-3 space-y-1">
+                  <dt className="text-xs font-semibold text-muted-foreground font-medium">
+                    Comprovante de pagamento:
+                  </dt>
+                  <div className="relative aspect-video rounded overflow-hidden bg-black flex items-center justify-center h-40 border border-border">
+                    <img
+                      src={detalhe.comprovante}
+                      alt="Comprovante de pagamento"
+                      className="max-w-full max-h-full object-contain cursor-pointer hover:opacity-90 transition-opacity"
+                      onClick={() => {
+                        setAlvoVisualizacaoComprovante(detalhe.comprovante!);
+                      }}
+                    />
+                  </div>
+                </div>
+              ) : null}
 
               {isAdmin ? (
                 <div className="flex flex-wrap items-center gap-2 border-t border-border pt-4">
@@ -249,6 +273,26 @@ function AgendaPage() {
           ) : null}
         </DialogContent>
       </Dialog>
+
+      {alvoVisualizacaoComprovante ? (
+        <Dialog
+          open={!!alvoVisualizacaoComprovante}
+          onOpenChange={() => setAlvoVisualizacaoComprovante(null)}
+        >
+          <DialogContent className="sm:max-w-xl p-3 flex flex-col items-center justify-center bg-background/95 border-none shadow-2xl">
+            <div className="relative w-full aspect-video rounded-lg overflow-hidden bg-black flex items-center justify-center">
+              <img
+                src={alvoVisualizacaoComprovante}
+                alt="Comprovante de pagamento"
+                className="max-w-full max-h-full object-contain"
+              />
+            </div>
+            <div className="mt-2 text-xs text-muted-foreground font-medium">
+              Comprovante de Pagamento Anexado
+            </div>
+          </DialogContent>
+        </Dialog>
+      ) : null}
     </AppShell>
   );
 }

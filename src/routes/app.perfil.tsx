@@ -1,24 +1,18 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useState } from "react";
-import { toast } from "sonner";
 import { AppShell } from "@/components/AppShell";
 import { SectionCard } from "@/components/common";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { useAuth } from "@/contexts/AuthContext";
 import { useUnidades } from "@/hooks/useApi";
-import * as api from "@/services/api";
 
 export const Route = createFileRoute("/app/perfil")({
   ssr: false,
   head: () => ({
     meta: [
-      { title: "Meu perfil — Clínica Serena" },
-      { name: "description", content: "Atualize telefone e foto do seu perfil na clínica." },
-      { property: "og:title", content: "Meu perfil — Clínica Serena" },
+      { title: "Meu perfil — Clínica Escuta" },
+      { name: "description", content: "Visualizar dados do seu perfil na clínica." },
+      { property: "og:title", content: "Meu perfil — Clínica Escuta" },
       { property: "og:description", content: "Dados pessoais e unidades vinculadas." },
     ],
   }),
@@ -26,78 +20,35 @@ export const Route = createFileRoute("/app/perfil")({
 });
 
 function PerfilPage() {
-  const { user, refresh, isAdmin } = useAuth();
+  const { user, isAdmin } = useAuth();
   const { data: unidades } = useUnidades();
-  const [telefone, setTelefone] = useState(user?.telefone ?? "");
-  const [foto, setFoto] = useState(user?.foto ?? "");
-  const [salvando, setSalvando] = useState(false);
-
-  async function salvar() {
-    if (!user) return;
-    if (telefone.trim().length < 8) {
-      toast.error("Informe um telefone válido.");
-      return;
-    }
-    setSalvando(true);
-    try {
-      await api.saveUsuario({ id: user.id, telefone: telefone.trim(), foto: foto.trim() });
-      await refresh();
-      toast.success("Perfil atualizado.");
-    } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Erro ao salvar.");
-    } finally {
-      setSalvando(false);
-    }
-  }
 
   return (
     <AppShell title="Meu perfil" description="Dados pessoais e vínculos">
-      <div className="grid gap-6 lg:grid-cols-3">
-        <div className="lg:col-span-2">
-          <SectionCard title="Dados editáveis" description="Telefone e foto de perfil">
-            <div className="space-y-4">
-              <div className="flex items-center gap-4">
-                <Avatar className="size-14">
-                  {foto ? <AvatarImage src={foto} alt={user?.nome ?? ""} /> : null}
-                  <AvatarFallback>
-                    {user?.nome
-                      .split(" ")
-                      .map((n) => n[0])
-                      .slice(0, 2)
-                      .join("")}
-                  </AvatarFallback>
-                </Avatar>
-                <div className="flex-1 space-y-2">
-                  <Label htmlFor="foto">URL da foto</Label>
-                  <Input
-                    id="foto"
-                    value={foto}
-                    onChange={(e) => setFoto(e.target.value)}
-                    placeholder="https://..."
-                    maxLength={500}
-                  />
-                </div>
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="telefone">Telefone</Label>
-                <Input
-                  id="telefone"
-                  value={telefone}
-                  onChange={(e) => setTelefone(e.target.value)}
-                  maxLength={20}
-                />
-              </div>
-              <Button onClick={salvar} disabled={salvando}>
-                Salvar alterações
-              </Button>
-            </div>
-          </SectionCard>
-        </div>
-
+      <div className="max-w-xl">
         <SectionCard title="Informações do cadastro" description="Somente o administrador altera">
+          <div className="flex flex-col items-center gap-4 border-b border-border pb-6 mb-6">
+            <Avatar className="size-20">
+              {user?.foto ? <AvatarImage src={user.foto} alt={user?.nome ?? ""} /> : null}
+              <AvatarFallback className="text-xl">
+                {user?.nome
+                  .split(" ")
+                  .map((n) => n[0])
+                  .slice(0, 2)
+                  .join("")}
+              </AvatarFallback>
+            </Avatar>
+            <div className="text-center">
+              <h2 className="text-lg font-semibold text-card-foreground">{user?.nome}</h2>
+              <p className="text-xs text-muted-foreground">
+                {isAdmin ? "Administrador" : "Psicólogo(a)"}
+              </p>
+            </div>
+          </div>
+
           <dl className="space-y-3 text-sm">
             <div>
-              <dt className="text-xs text-muted-foreground">Nome</dt>
+              <dt className="text-xs text-muted-foreground">Nome completo</dt>
               <dd className="font-medium text-card-foreground">{user?.nome}</dd>
             </div>
             <div>
@@ -105,8 +56,12 @@ function PerfilPage() {
               <dd className="text-card-foreground">{user?.email}</dd>
             </div>
             <div>
-              <dt className="text-xs text-muted-foreground">Papel</dt>
-              <dd>{isAdmin ? "Administrador" : "Psicólogo(a)"}</dd>
+              <dt className="text-xs text-muted-foreground">Telefone</dt>
+              <dd className="text-card-foreground">{user?.telefone || "—"}</dd>
+            </div>
+            <div>
+              <dt className="text-xs text-muted-foreground">Papel / Acesso</dt>
+              <dd className="text-card-foreground">{isAdmin ? "Administrador" : "Psicólogo(a)"}</dd>
             </div>
             {user?.especialidade ? (
               <div>

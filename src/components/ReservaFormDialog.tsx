@@ -54,7 +54,12 @@ export function ReservaFormDialog({
   const unidadesDisponiveis = useMemo(
     () =>
       unidades.filter(
-        (u) => u.status === "ativa" && (isAdmin || (user?.unidades ?? []).includes(u.id)),
+        (u) =>
+          u.status === "ativa" &&
+          (isAdmin ||
+            !user?.unidades ||
+            user.unidades.length === 0 ||
+            user.unidades.includes(u.id)),
       ),
     [unidades, isAdmin, user],
   );
@@ -67,6 +72,8 @@ export function ReservaFormDialog({
   const [profissionalId, setProfissionalId] = useState("");
   const [observacoes, setObservacoes] = useState("");
   const [recorrencia, setRecorrencia] = useState<"unica" | "semanal">("unica");
+  const [comprovante, setComprovante] = useState("");
+  const [selectedPhotoIndex, setSelectedPhotoIndex] = useState<number | null>(null);
 
   useEffect(() => {
     if (!open) return;
@@ -84,10 +91,12 @@ export function ReservaFormDialog({
     setProfissionalId(reserva?.profissional_id ?? (isAdmin ? "" : (user?.id ?? "")));
     setObservacoes(reserva?.observacoes ?? "");
     setRecorrencia(reserva?.recorrencia ?? "unica");
+    setComprovante(reserva?.comprovante ?? "");
   }, [open, reserva, preset, unidadesDisponiveis, isAdmin, user]);
 
   const salasDaUnidade = salas.filter((s) => s.unidade_id === unidadeId && s.status === "ativa");
-  const profissionais = usuarios.filter((u) => u.papel === "PSICOLOGO" && u.status === "ativo");
+  const profissionais = usuarios.filter((u) => u.status === "ativo");
+  const selectedRoom = salas.find((x) => x.id === salaId);
 
   const horarioInvalido = toMinutes(fim) <= toMinutes(inicio);
   const conflitos =
@@ -117,6 +126,7 @@ export function ReservaFormDialog({
           profissional_id: profissionalId,
           observacoes,
           recorrencia,
+          comprovante,
         },
       });
     } else {
@@ -130,6 +140,7 @@ export function ReservaFormDialog({
         observacoes,
         recorrencia,
         status: isAdmin ? "aprovada" : "pendente",
+        comprovante,
       });
     }
     onOpenChange(false);
@@ -181,13 +192,50 @@ export function ReservaFormDialog({
                 <SelectContent>
                   {salasDaUnidade.map((s) => (
                     <SelectItem key={s.id} value={s.id}>
-                      {s.nome} · {s.capacidade} lugares
+                      {s.nome}
                     </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
             </div>
           </div>
+
+          {salas.find((s) => s.id === salaId) ? (
+            <div className="rounded-lg border border-border p-3 bg-muted/10 space-y-2">
+              <p className="text-xs font-semibold text-foreground">Imagens e detalhes da sala:</p>
+              {(() => {
+                const s = salas.find((x) => x.id === salaId)!;
+                return (
+                  <>
+                    {s.descricao ? (
+                      <p className="text-xs text-muted-foreground leading-relaxed">{s.descricao}</p>
+                    ) : null}
+                    {s.fotos && s.fotos.length > 0 ? (
+                      <div className="grid grid-cols-4 gap-2 mt-1">
+                        {s.fotos.map((foto, index) => (
+                          <div
+                            key={index}
+                            className="aspect-square rounded border border-border overflow-hidden bg-muted"
+                          >
+                            <img
+                              src={foto}
+                              alt={`Foto ${index + 1}`}
+                              className="w-full h-full object-cover cursor-pointer hover:scale-105 transition-transform"
+                              onClick={() => setSelectedPhotoIndex(index)}
+                            />
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <p className="text-[10px] text-muted-foreground/60 italic">
+                        Nenhuma foto cadastrada para esta sala.
+                      </p>
+                    )}
+                  </>
+                );
+              })()}
+            </div>
+          ) : null}
 
           {isAdmin ? (
             <div className="space-y-2">
@@ -268,6 +316,49 @@ export function ReservaFormDialog({
             />
           </div>
 
+          <div className="space-y-2">
+            <Label>Comprovante de Pagamento</Label>
+            {comprovante ? (
+              <div className="relative border border-border rounded-lg p-2 bg-muted/10">
+                <div className="relative aspect-video rounded overflow-hidden bg-black flex items-center justify-center h-40">
+                  <img
+                    src={comprovante}
+                    alt="Comprovante"
+                    className="max-w-full max-h-full object-contain"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setComprovante("")}
+                    className="absolute top-1 right-1 bg-destructive text-destructive-foreground hover:bg-destructive/90 rounded-full p-1 text-[10px]"
+                  >
+                    ✕
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <label className="flex flex-col items-center justify-center cursor-pointer border border-dashed border-border rounded-lg p-4 h-24 bg-muted/20 hover:bg-muted/30 transition-colors">
+                <span className="text-sm font-medium text-foreground">Anexar Comprovante</span>
+                <span className="text-xs text-muted-foreground mt-1">Upload de imagem</span>
+                <input
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={async (e) => {
+                    const file = e.target.files?.[0];
+                    if (file) {
+                      try {
+                        const base64 = await fileToBase64Helper(file);
+                        setComprovante(base64);
+                      } catch (err) {
+                        console.error(err);
+                      }
+                    }
+                  }}
+                />
+              </label>
+            )}
+          </div>
+
           {horarioInvalido ? (
             <p className="rounded-md border border-destructive/30 bg-destructive/5 px-3 py-2 text-sm text-destructive">
               O horário final deve ser depois do horário inicial.
@@ -293,6 +384,60 @@ export function ReservaFormDialog({
           </Button>
         </DialogFooter>
       </DialogContent>
+      {selectedPhotoIndex !== null &&
+      selectedRoom &&
+      selectedRoom.fotos &&
+      selectedRoom.fotos.length > 0 ? (
+        <Dialog open={selectedPhotoIndex !== null} onOpenChange={() => setSelectedPhotoIndex(null)}>
+          <DialogContent className="sm:max-w-xl p-3 flex flex-col items-center justify-center bg-background/95 border-none shadow-2xl">
+            <div className="relative w-full aspect-video rounded-lg overflow-hidden bg-black flex items-center justify-center">
+              <img
+                src={selectedRoom.fotos[selectedPhotoIndex]}
+                alt={`Foto ${selectedPhotoIndex + 1}`}
+                className="max-w-full max-h-full object-contain"
+              />
+              {selectedRoom.fotos.length > 1 ? (
+                <>
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setSelectedPhotoIndex((prev) =>
+                        prev! === 0 ? selectedRoom.fotos.length - 1 : prev! - 1,
+                      );
+                    }}
+                    className="absolute left-2 top-1/2 -translate-y-1/2 bg-black/60 text-white rounded-full p-2 text-sm hover:bg-black/80 font-bold"
+                  >
+                    ◀
+                  </button>
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setSelectedPhotoIndex((prev) =>
+                        prev! === selectedRoom.fotos.length - 1 ? 0 : prev! + 1,
+                      );
+                    }}
+                    className="absolute right-2 top-1/2 -translate-y-1/2 bg-black/60 text-white rounded-full p-2 text-sm hover:bg-black/80 font-bold"
+                  >
+                    ▶
+                  </button>
+                </>
+              ) : null}
+            </div>
+            <div className="mt-2 text-xs text-muted-foreground">
+              Foto {selectedPhotoIndex + 1} de {selectedRoom.fotos.length}
+            </div>
+          </DialogContent>
+        </Dialog>
+      ) : null}
     </Dialog>
   );
+}
+
+function fileToBase64Helper(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.readAsDataURL(file);
+    reader.onload = () => resolve(reader.result as string);
+    reader.onerror = (error) => reject(error);
+  });
 }

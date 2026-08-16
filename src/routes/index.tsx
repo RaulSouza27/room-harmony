@@ -1,5 +1,5 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { Loader2, Stethoscope } from "lucide-react";
+import { Armchair, Loader2 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -10,16 +10,16 @@ export const Route = createFileRoute("/")({
   ssr: false,
   head: () => ({
     meta: [
-      { title: "Entrar — Clínica Serena Gestão de Salas" },
+      { title: "Entrar — Clínica Escuta Gestão de Salas" },
       {
         name: "description",
         content:
-          "Acesse o sistema de gestão de salas da Clínica Serena para consultar disponibilidade e solicitar reservas.",
+          "Acesse o sistema de gestão de salas da Clínica Escuta para consultar disponibilidade e solicitar reservas.",
       },
-      { property: "og:title", content: "Entrar — Clínica Serena Gestão de Salas" },
+      { property: "og:title", content: "Entrar — Clínica Escuta Gestão de Salas" },
       {
         property: "og:description",
-        content: "Login para psicólogos e administradores da Clínica Serena.",
+        content: "Login para psicólogos e administradores da Clínica Escuta.",
       },
     ],
   }),
@@ -57,9 +57,9 @@ function LoginPage() {
       <div className="hidden flex-col justify-between bg-sidebar p-12 lg:flex">
         <div className="flex items-center gap-2.5">
           <div className="flex size-10 items-center justify-center rounded-xl bg-primary/10 text-primary">
-            <Stethoscope className="size-5" />
+            <Armchair className="size-5" />
           </div>
-          <p className="text-sm font-semibold">Clínica Serena</p>
+          <p className="text-sm font-semibold">Clínica Escuta</p>
         </div>
         <div className="max-w-md">
           <h2 className="text-3xl font-semibold leading-tight text-foreground">
@@ -79,9 +79,9 @@ function LoginPage() {
         <div className="w-full max-w-sm">
           <div className="mb-8 flex items-center gap-2.5 lg:hidden">
             <div className="flex size-10 items-center justify-center rounded-xl bg-primary/10 text-primary">
-              <Stethoscope className="size-5" />
+              <Armchair className="size-5" />
             </div>
-            <p className="text-sm font-semibold">Clínica Serena</p>
+            <p className="text-sm font-semibold">Clínica Escuta</p>
           </div>
 
           <h1 className="text-2xl font-semibold text-foreground">Entrar</h1>
@@ -124,12 +124,6 @@ function LoginPage() {
               Entrar
             </Button>
           </form>
-
-          <div className="mt-8 rounded-lg border border-border bg-card p-4 text-xs text-muted-foreground">
-            <p className="font-medium text-card-foreground">Acessos de demonstração</p>
-            <p className="mt-2">Administrador: admin@clinica.com / admin123</p>
-            <p>Psicólogo: rafael@clinica.com / psi123</p>
-          </div>
         </div>
       </div>
     </div>

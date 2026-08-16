@@ -1,7 +1,13 @@
 import { Link, createFileRoute } from "@tanstack/react-router";
 import { CalendarClock, CalendarPlus, ClipboardList, DoorOpen, Percent } from "lucide-react";
 import { AppShell } from "@/components/AppShell";
-import { EmptyState, ErrorState, LoadingState, SectionCard, StatusBadge } from "@/components/common";
+import {
+  EmptyState,
+  ErrorState,
+  LoadingState,
+  SectionCard,
+  StatusBadge,
+} from "@/components/common";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/contexts/AuthContext";
 import { useReservas, useSalas, useUnidades, useUsuarios } from "@/hooks/useApi";
@@ -12,12 +18,12 @@ export const Route = createFileRoute("/app/dashboard")({
   ssr: false,
   head: () => ({
     meta: [
-      { title: "Dashboard — Clínica Serena Gestão de Salas" },
+      { title: "Dashboard — Clínica Escuta Gestão de Salas" },
       {
         name: "description",
         content: "Resumo das reservas, pendências e ocupação das salas da clínica.",
       },
-      { property: "og:title", content: "Dashboard — Clínica Serena" },
+      { property: "og:title", content: "Dashboard — Clínica Escuta" },
       { property: "og:description", content: "Resumo de reservas e ocupação das salas." },
     ],
   }),
@@ -160,7 +166,11 @@ function DashboardPage() {
                 />
                 <Metric
                   label="Unidades liberadas"
-                  value={(user?.unidades ?? []).length}
+                  value={
+                    user?.unidades && user.unidades.length > 0
+                      ? user.unidades.length
+                      : unidades.filter((u) => u.status === "ativa").length
+                  }
                   hint="Onde você pode reservar"
                   icon={DoorOpen}
                 />

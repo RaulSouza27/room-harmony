@@ -114,9 +114,7 @@ export function AvailabilityGrid({
                         )}
                       >
                         {indisponivel
-                          ? sala.status === "manutencao"
-                            ? "Manutenção"
-                            : "Inativa"
+                          ? "Inativa"
                           : reserva
                             ? nomeProf(reserva.profissional_id).split(" ")[0]
                             : "Livre"}
@@ -140,7 +138,7 @@ export function AvailabilityGrid({
             </div>
             {sala.status !== "ativa" ? (
               <p className="rounded-md bg-border/40 px-3 py-2 text-xs text-muted-foreground">
-                {sala.status === "manutencao" ? "Sala em manutenção" : "Sala inativa"}
+                Sala inativa
               </p>
             ) : (
               <div className="grid grid-cols-3 gap-1.5">

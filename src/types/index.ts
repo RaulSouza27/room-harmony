@@ -21,15 +21,15 @@ export interface Unidade {
   status: "ativa" | "inativa";
 }
 
-export type SalaStatus = "ativa" | "manutencao" | "inativa";
+export type SalaStatus = "ativa" | "inativa";
 
 export interface Sala {
   id: string;
   nome: string;
   unidade_id: string;
-  capacidade: number;
-  recursos: string[];
+  descricao: string;
   status: SalaStatus;
+  fotos: string[];
 }
 
 export type ReservaStatus = "pendente" | "aprovada" | "negada" | "cancelada";
@@ -49,6 +49,7 @@ export interface Reserva {
   motivo_negacao?: string | undefined;
   aprovado_por?: string | undefined;
   recorrencia: Recorrencia;
+  comprovante?: string;
 }
 
 export interface NovaReserva {
@@ -61,4 +62,5 @@ export interface NovaReserva {
   observacoes?: string | undefined;
   recorrencia?: Recorrencia | undefined;
   status?: ReservaStatus | undefined;
+  comprovante?: string;
 }

@@ -28,12 +28,12 @@ export const Route = createFileRoute("/app/unidades")({
   ssr: false,
   head: () => ({
     meta: [
-      { title: "Unidades — Clínica Serena" },
+      { title: "Unidades — Clínica Escuta" },
       {
         name: "description",
         content: "Cadastro das unidades da clínica: endereço, status e salas vinculadas.",
       },
-      { property: "og:title", content: "Unidades — Clínica Serena" },
+      { property: "og:title", content: "Unidades — Clínica Escuta" },
       { property: "og:description", content: "Gerencie as unidades onde as salas estão alocadas." },
     ],
   }),
@@ -165,7 +165,12 @@ function UnidadeDialog({
         <div className="space-y-4">
           <div className="space-y-2">
             <Label htmlFor="nome">Nome</Label>
-            <Input id="nome" value={nome} onChange={(e) => setNome(e.target.value)} maxLength={80} />
+            <Input
+              id="nome"
+              value={nome}
+              onChange={(e) => setNome(e.target.value)}
+              maxLength={80}
+            />
           </div>
           <div className="space-y-2">
             <Label htmlFor="end">Endereço</Label>
