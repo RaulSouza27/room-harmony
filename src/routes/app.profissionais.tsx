@@ -29,12 +29,12 @@ export const Route = createFileRoute("/app/profissionais")({
   ssr: false,
   head: () => ({
     meta: [
-      { title: "Profissionais — Salas Psi" },
+      { title: "Profissionais — Clínica Escuta" },
       {
         name: "description",
         content: "Cadastro de psicólogos e administradores e status.",
       },
-      { property: "og:title", content: "Profissionais — Salas Psi" },
+      { property: "og:title", content: "Profissionais — Clínica Escuta" },
       { property: "og:description", content: "Crie, edite e ative/inative profissionais." },
     ],
   }),

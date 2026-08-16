@@ -28,12 +28,12 @@ export const Route = createFileRoute("/app/salas")({
   ssr: false,
   head: () => ({
     meta: [
-      { title: "Salas — Salas Psi" },
+      { title: "Salas — Clínica Escuta" },
       {
         name: "description",
         content: "Cadastro de salas por unidade e status operacional.",
       },
-      { property: "og:title", content: "Salas — Salas Psi" },
+      { property: "og:title", content: "Salas — Clínica Escuta" },
       { property: "og:description", content: "Crie e edite salas e disponibilidade." },
     ],
   }),
