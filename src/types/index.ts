@@ -1,6 +1,11 @@
 export type Role = "PSICOLOGO" | "ADMINISTRADOR";
 export type UserStatus = "ativo" | "inativo";
 
+export interface Profession {
+  id: number;
+  profission: string;
+}
+
 export interface User {
   id: string;
   nome: string;
@@ -12,6 +17,7 @@ export interface User {
   especialidade?: string | undefined;
   foto?: string | undefined;
   unidades: string[];
+  professionId?: number | null;
 }
 
 export interface Unidade {

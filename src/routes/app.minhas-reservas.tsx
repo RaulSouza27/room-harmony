@@ -1,7 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
 import { AppShell } from "@/components/AppShell";
-import { CancelarReservaButton } from "@/components/ReservaActions";
 import { EmptyState, ErrorState, LoadingState, StatusBadge } from "@/components/common";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -9,6 +8,8 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useReservas, useSalas, useUnidades } from "@/hooks/useApi";
 import { formatarData, hojeISO } from "@/lib/format";
 import type { ReservaStatus } from "@/types";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { AlertCircle } from "lucide-react";
 
 export const Route = createFileRoute("/app/minhas-reservas")({
   ssr: false,
@@ -58,6 +59,14 @@ function MinhasReservasPage() {
   return (
     <AppShell title="Minhas reservas" description="Histórico e status das suas solicitações">
       <div className="space-y-5">
+        <Alert className="bg-amber-500/10 border-amber-500/30 text-amber-600 dark:text-amber-400">
+          <AlertCircle className="h-4 w-4 text-amber-600 dark:text-amber-400" />
+          <AlertTitle className="font-semibold text-amber-700 dark:text-amber-300">Aviso importante</AlertTitle>
+          <AlertDescription className="text-amber-600/90 dark:text-amber-400/90">
+            O cancelamento de reservas pelo sistema só pode ser solicitado com, no mínimo, 24 horas de antecedência da data da reserva.
+          </AlertDescription>
+        </Alert>
+
         <Tabs value={filtro} onValueChange={(v) => setFiltro(v as ReservaStatus)}>
           <TabsList className="flex-wrap">
             {filtros.map((f) => (
@@ -82,7 +91,6 @@ function MinhasReservasPage() {
             {lista.map((r) => {
               const sala = salas.find((s) => s.id === r.sala_id);
               const unidade = unidades.find((u) => u.id === r.unidade_id);
-              const futura = r.data >= hojeISO();
               return (
                 <li key={r.id} className="rounded-xl border border-border bg-card p-4 shadow-soft">
                   <div className="flex flex-wrap items-start justify-between gap-3">
@@ -118,9 +126,6 @@ function MinhasReservasPage() {
                     </div>
                     <div className="flex items-center gap-2">
                       <StatusBadge status={r.status} />
-                      {futura && (r.status === "pendente" || r.status === "aprovada") ? (
-                        <CancelarReservaButton reserva={r} />
-                      ) : null}
                     </div>
                   </div>
                 </li>

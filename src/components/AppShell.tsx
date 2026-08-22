@@ -12,6 +12,7 @@ import {
   UserRound,
   Users,
   Armchair,
+  Briefcase,
 } from "lucide-react";
 import { useState, type ReactNode } from "react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -54,6 +55,7 @@ export function AppShell({
         { to: "/app/aprovacoes", label: "Aprovações", icon: ClipboardList, badge: pendentes },
         { to: "/app/reservas", label: "Todas as reservas", icon: CalendarCheck },
         { to: "/app/profissionais", label: "Profissionais", icon: Users },
+        { to: "/app/profissoes", label: "Profissões", icon: Briefcase },
         { to: "/app/salas", label: "Salas", icon: DoorOpen },
         { to: "/app/unidades", label: "Unidades", icon: Building2 },
         { to: "/app/perfil", label: "Meu perfil", icon: UserRound },

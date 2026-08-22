@@ -18,6 +18,7 @@ import { Route as AppDashboardRouteImport } from './routes/app.dashboard'
 import { Route as AppMinhasReservasRouteImport } from './routes/app.minhas-reservas'
 import { Route as AppPerfilRouteImport } from './routes/app.perfil'
 import { Route as AppProfissionaisRouteImport } from './routes/app.profissionais'
+import { Route as AppProfissoesRouteImport } from './routes/app.profissoes'
 import { Route as AppReservasRouteImport } from './routes/app.reservas'
 import { Route as AppSalasRouteImport } from './routes/app.salas'
 import { Route as AppSolicitarRouteImport } from './routes/app.solicitar'
@@ -68,6 +69,11 @@ const AppProfissionaisRoute = AppProfissionaisRouteImport.update({
   path: '/profissionais',
   getParentRoute: () => AppRoute,
 } as any)
+const AppProfissoesRoute = AppProfissoesRouteImport.update({
+  id: '/profissoes',
+  path: '/profissoes',
+  getParentRoute: () => AppRoute,
+} as any)
 const AppReservasRoute = AppReservasRouteImport.update({
   id: '/reservas',
   path: '/reservas',
@@ -98,6 +104,7 @@ export interface FileRoutesByFullPath {
   '/app/minhas-reservas': typeof AppMinhasReservasRoute
   '/app/perfil': typeof AppPerfilRoute
   '/app/profissionais': typeof AppProfissionaisRoute
+  '/app/profissoes': typeof AppProfissoesRoute
   '/app/reservas': typeof AppReservasRoute
   '/app/salas': typeof AppSalasRoute
   '/app/solicitar': typeof AppSolicitarRoute
@@ -112,6 +119,7 @@ export interface FileRoutesByTo {
   '/app/minhas-reservas': typeof AppMinhasReservasRoute
   '/app/perfil': typeof AppPerfilRoute
   '/app/profissionais': typeof AppProfissionaisRoute
+  '/app/profissoes': typeof AppProfissoesRoute
   '/app/reservas': typeof AppReservasRoute
   '/app/salas': typeof AppSalasRoute
   '/app/solicitar': typeof AppSolicitarRoute
@@ -128,6 +136,7 @@ export interface FileRoutesById {
   '/app/minhas-reservas': typeof AppMinhasReservasRoute
   '/app/perfil': typeof AppPerfilRoute
   '/app/profissionais': typeof AppProfissionaisRoute
+  '/app/profissoes': typeof AppProfissoesRoute
   '/app/reservas': typeof AppReservasRoute
   '/app/salas': typeof AppSalasRoute
   '/app/solicitar': typeof AppSolicitarRoute
@@ -145,6 +154,7 @@ export interface FileRouteTypes {
     | '/app/minhas-reservas'
     | '/app/perfil'
     | '/app/profissionais'
+    | '/app/profissoes'
     | '/app/reservas'
     | '/app/salas'
     | '/app/solicitar'
@@ -159,6 +169,7 @@ export interface FileRouteTypes {
     | '/app/minhas-reservas'
     | '/app/perfil'
     | '/app/profissionais'
+    | '/app/profissoes'
     | '/app/reservas'
     | '/app/salas'
     | '/app/solicitar'
@@ -174,6 +185,7 @@ export interface FileRouteTypes {
     | '/app/minhas-reservas'
     | '/app/perfil'
     | '/app/profissionais'
+    | '/app/profissoes'
     | '/app/reservas'
     | '/app/salas'
     | '/app/solicitar'
@@ -251,6 +263,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppProfissionaisRouteImport
       parentRoute: typeof AppRoute
     }
+    '/app/profissoes': {
+      id: '/app/profissoes'
+      path: '/profissoes'
+      fullPath: '/app/profissoes'
+      preLoaderRoute: typeof AppProfissoesRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/app/reservas': {
       id: '/app/reservas'
       path: '/reservas'
@@ -289,6 +308,7 @@ interface AppRouteChildren {
   AppMinhasReservasRoute: typeof AppMinhasReservasRoute
   AppPerfilRoute: typeof AppPerfilRoute
   AppProfissionaisRoute: typeof AppProfissionaisRoute
+  AppProfissoesRoute: typeof AppProfissoesRoute
   AppReservasRoute: typeof AppReservasRoute
   AppSalasRoute: typeof AppSalasRoute
   AppSolicitarRoute: typeof AppSolicitarRoute
@@ -303,6 +323,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppMinhasReservasRoute: AppMinhasReservasRoute,
   AppPerfilRoute: AppPerfilRoute,
   AppProfissionaisRoute: AppProfissionaisRoute,
+  AppProfissoesRoute: AppProfissoesRoute,
   AppReservasRoute: AppReservasRoute,
   AppSalasRoute: AppSalasRoute,
   AppSolicitarRoute: AppSolicitarRoute,

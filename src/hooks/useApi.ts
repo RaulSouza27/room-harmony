@@ -8,12 +8,14 @@ export const keys = {
   salas: ["salas"] as const,
   usuarios: ["usuarios"] as const,
   reservas: ["reservas"] as const,
+  profissoes: ["profissoes"] as const,
 };
 
 export const useUnidades = () => useQuery({ queryKey: keys.unidades, queryFn: api.listUnidades });
 export const useSalas = () => useQuery({ queryKey: keys.salas, queryFn: api.listSalas });
 export const useUsuarios = () => useQuery({ queryKey: keys.usuarios, queryFn: api.listUsuarios });
 export const useReservas = () => useQuery({ queryKey: keys.reservas, queryFn: api.listReservas });
+export const useProfessions = () => useQuery({ queryKey: keys.profissoes, queryFn: api.listProfessions });
 
 function useInvalidate(key: readonly unknown[]) {
   const qc = useQueryClient();
@@ -113,6 +115,30 @@ export function useDeleteReserva() {
     onSuccess: () => {
       invalidate();
       toast.success("Reserva excluída.");
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+}
+
+export function useSaveProfession() {
+  const invalidate = useInvalidate(keys.profissoes);
+  return useMutation({
+    mutationFn: (input: { id?: number; profission: string }) => api.saveProfession(input),
+    onSuccess: () => {
+      invalidate();
+      toast.success("Profissão salva com sucesso.");
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+}
+
+export function useDeleteProfession() {
+  const invalidate = useInvalidate(keys.profissoes);
+  return useMutation({
+    mutationFn: (id: number) => api.deleteProfession(id),
+    onSuccess: () => {
+      invalidate();
+      toast.success("Profissão removida.");
     },
     onError: (e: Error) => toast.error(e.message),
   });
