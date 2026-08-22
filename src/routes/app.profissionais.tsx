@@ -22,7 +22,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { useSaveUsuario, useUsuarios } from "@/hooks/useApi";
+import { useSaveUsuario, useUsuarios, useProfessions } from "@/hooks/useApi";
 import type { Role, User } from "@/types";
 
 export const Route = createFileRoute("/app/profissionais")({
@@ -43,12 +43,14 @@ export const Route = createFileRoute("/app/profissionais")({
 
 function ProfissionaisPage() {
   const usuariosQ = useUsuarios();
+  const profissoesQ = useProfessions();
   const salvar = useSaveUsuario();
   const [editando, setEditando] = useState<User | null>(null);
   const [open, setOpen] = useState(false);
   const [alvoStatus, setAlvoStatus] = useState<User | null>(null);
 
   const usuarios = usuariosQ.data ?? [];
+  const profissoes = profissoesQ.data ?? [];
 
   return (
     <AppShell
@@ -83,6 +85,11 @@ function ProfissionaisPage() {
                     <Badge variant="secondary">
                       {u.papel === "ADMINISTRADOR" ? "Administrador" : "Psicólogo(a)"}
                     </Badge>
+                    {u.professionId ? (
+                      <Badge variant="outline" className="border-primary/30 text-primary">
+                        {profissoes.find((p) => p.id === u.professionId)?.profission ?? "Profissão"}
+                      </Badge>
+                    ) : null}
                     <Badge
                       variant="outline"
                       className={
@@ -150,10 +157,12 @@ function ProfissionalDialog({
   usuario: User | null;
 }) {
   const salvar = useSaveUsuario();
+  const profissoesQ = useProfessions();
   const [nome, setNome] = useState("");
   const [email, setEmail] = useState("");
   const [papel, setPapel] = useState<Role>("PSICOLOGO");
   const [status, setStatus] = useState<"ativo" | "inativo">("ativo");
+  const [professionId, setProfessionId] = useState<string>("0");
 
   useEffect(() => {
     if (!open) return;
@@ -161,6 +170,7 @@ function ProfissionalDialog({
     setEmail(usuario?.email ?? "");
     setPapel(usuario?.papel ?? "PSICOLOGO");
     setStatus(usuario?.status ?? "ativo");
+    setProfessionId(usuario?.professionId ? String(usuario.professionId) : "0");
   }, [open, usuario]);
 
   const valido = nome.trim().length > 2 && /\S+@\S+\.\S+/.test(email);
@@ -206,6 +216,24 @@ function ProfissionalDialog({
               </SelectContent>
             </Select>
           </div>
+          {papel === "PSICOLOGO" && (
+            <div className="space-y-2">
+              <Label>Profissão</Label>
+              <Select value={professionId} onValueChange={setProfessionId}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Selecione uma profissão" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="0">Nenhuma</SelectItem>
+                  {(profissoesQ.data ?? []).map((p) => (
+                    <SelectItem key={p.id} value={String(p.id)}>
+                      {p.profission}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
           <div className="space-y-2">
             <Label>Status</Label>
             <Select value={status} onValueChange={(v) => setStatus(v as "ativo" | "inativo")}>
@@ -232,6 +260,7 @@ function ProfissionalDialog({
                 email: email.trim(),
                 papel,
                 status,
+                professionId: papel === "PSICOLOGO" && professionId !== "0" ? Number(professionId) : null,
               });
               onOpenChange(false);
             }}

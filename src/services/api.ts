@@ -1,6 +1,6 @@
 import { BACKEND_URL } from "@/config/api";
 import { overlaps, readDB, uid, writeDB } from "./db";
-import type { NovaReserva, Reserva, ReservaStatus, Sala, Unidade, User } from "@/types";
+import type { NovaReserva, Profession, Reserva, ReservaStatus, Sala, Unidade, User } from "@/types";
 
 /**
  * Camada de serviço mockada. As assinaturas imitam uma API REST
@@ -245,6 +245,7 @@ export async function listUsuarios(): Promise<User[]> {
     especialidade: item.specialty || "",
     foto: item.photo || "",
     unidades: item.units || [],
+    professionId: item.professionId,
   }));
 }
 
@@ -263,6 +264,7 @@ export async function saveUsuario(input: Partial<User> & { id?: string }): Promi
     specialty: input.especialidade,
     photo: input.foto,
     units: input.unidades,
+    professionId: input.professionId,
   };
 
   const response = await fetch(url, {
@@ -288,6 +290,7 @@ export async function saveUsuario(input: Partial<User> & { id?: string }): Promi
     especialidade: data.specialty || "",
     foto: data.photo || "",
     unidades: data.units || [],
+    professionId: data.professionId,
   };
 }
 
@@ -459,5 +462,64 @@ export async function deleteReserva(id: string): Promise<void> {
   });
   if (!response.ok) {
     throw new Error("Falha ao excluir reserva.");
+  }
+}
+
+/* ----------------------------- Profissões --------------------------- */
+export async function listProfessions(): Promise<Profession[]> {
+  const response = await fetch(`${BACKEND_URL}/profissions/readAll`, {
+    headers: getHeaders(),
+  });
+  if (!response.ok) {
+    throw new Error("Falha ao carregar profissões.");
+  }
+  const data = await response.json();
+  return data.map((item: any) => ({
+    id: item.id,
+    profission: item.profission,
+  }));
+}
+
+export async function saveProfession(input: { id?: number; profission: string }): Promise<Profession> {
+  const url = input.id ? `${BACKEND_URL}/profissions/${input.id}` : `${BACKEND_URL}/profissions`;
+  const method = input.id ? "PUT" : "POST";
+
+  const response = await fetch(url, {
+    method,
+    headers: getHeaders(),
+    body: JSON.stringify({
+      id: input.id,
+      profission: input.profission,
+    }),
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    throw new Error(errorText || "Falha ao salvar profissão.");
+  }
+
+  // Se for PUT (update), o backend retorna status 200 OK sem corpo (ResponseEntity.ok().build())
+  // Se for POST (save), retorna a entidade criada
+  if (method === "PUT") {
+    return {
+      id: input.id!,
+      profission: input.profission,
+    };
+  }
+
+  const data = await response.json();
+  return {
+    id: data.id,
+    profission: data.profission,
+  };
+}
+
+export async function deleteProfession(id: number): Promise<void> {
+  const response = await fetch(`${BACKEND_URL}/profissions/${id}`, {
+    method: "DELETE",
+    headers: getHeaders(),
+  });
+  if (!response.ok) {
+    throw new Error("Falha ao excluir profissão.");
   }
 }

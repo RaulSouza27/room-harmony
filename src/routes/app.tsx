@@ -9,6 +9,7 @@ const ADMIN_ONLY = [
   "/app/profissionais",
   "/app/salas",
   "/app/unidades",
+  "/app/profissoes",
 ];
 const PSI_ONLY = ["/app/solicitar", "/app/minhas-reservas"];
 
