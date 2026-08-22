@@ -63,7 +63,7 @@ function MinhasReservasPage() {
           <AlertCircle className="h-4 w-4 text-amber-600 dark:text-amber-400" />
           <AlertTitle className="font-semibold text-amber-700 dark:text-amber-300">Aviso importante</AlertTitle>
           <AlertDescription className="text-amber-600/90 dark:text-amber-400/90">
-            Não é possível solicitar o cancelamento de reservas pelo sistema. Caso precise efetuar um cancelamento, entre em contato direto com a administração da clínica.
+            O cancelamento de reservas pelo sistema só pode ser solicitado com, no mínimo, 24 horas de antecedência da data da reserva.
           </AlertDescription>
         </Alert>
 
