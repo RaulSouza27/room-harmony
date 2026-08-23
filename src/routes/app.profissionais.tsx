@@ -22,7 +22,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { useSaveUsuario, useUsuarios, useProfessions } from "@/hooks/useApi";
+import { useSaveUsuario, useUsuarios, useProfessions, useResetPassword } from "@/hooks/useApi";
 import type { Role, User } from "@/types";
 
 export const Route = createFileRoute("/app/profissionais")({
@@ -45,9 +45,11 @@ function ProfissionaisPage() {
   const usuariosQ = useUsuarios();
   const profissoesQ = useProfessions();
   const salvar = useSaveUsuario();
+  const resetarSenha = useResetPassword();
   const [editando, setEditando] = useState<User | null>(null);
   const [open, setOpen] = useState(false);
   const [alvoStatus, setAlvoStatus] = useState<User | null>(null);
+  const [alvoReset, setAlvoReset] = useState<User | null>(null);
 
   const usuarios = usuariosQ.data ?? [];
   const profissoes = profissoesQ.data ?? [];
@@ -114,6 +116,14 @@ function ProfissionaisPage() {
                   >
                     Editar
                   </Button>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="text-destructive border-destructive/20 hover:bg-destructive/10 hover:text-destructive"
+                    onClick={() => setAlvoReset(u)}
+                  >
+                    Resetar Senha
+                  </Button>
                   <Button size="sm" variant="ghost" onClick={() => setAlvoStatus(u)}>
                     {u.status === "ativo" ? "Inativar" : "Ativar"}
                   </Button>
@@ -142,6 +152,25 @@ function ProfissionaisPage() {
             status: alvoStatus.status === "ativo" ? "inativo" : "ativo",
           })
         }
+      />
+
+      <ConfirmDialog
+        open={!!alvoReset}
+        onOpenChange={(v) => !v && setAlvoReset(null)}
+        title="Resetar senha?"
+        description={
+          alvoReset
+            ? `TEM CERTEZA que quer resetar a senha desse profissional (${alvoReset.nome})?`
+            : ""
+        }
+        confirmLabel="Resetar"
+        destructive
+        onConfirm={() => {
+          if (alvoReset) {
+            resetarSenha.mutate(alvoReset.id);
+            setAlvoReset(null);
+          }
+        }}
       />
     </AppShell>
   );

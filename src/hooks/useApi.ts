@@ -83,6 +83,18 @@ export function useSaveUsuario() {
   });
 }
 
+export function useResetPassword() {
+  const invalidate = useInvalidate(keys.usuarios);
+  return useMutation({
+    mutationFn: (id: string) => api.resetPassword(id),
+    onSuccess: () => {
+      invalidate();
+      toast.success("Senha resetada com sucesso para 'psi123'.");
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+}
+
 export function useCreateReserva() {
   const invalidate = useInvalidate(keys.reservas);
   return useMutation({

@@ -294,6 +294,18 @@ export async function saveUsuario(input: Partial<User> & { id?: string }): Promi
   };
 }
 
+export async function resetPassword(id: string): Promise<void> {
+  const response = await fetch(`${BACKEND_URL}/users/${id}/reset-password`, {
+    method: "POST",
+    headers: getHeaders(),
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    throw new Error(errorText || "Falha ao resetar senha.");
+  }
+}
+
 /* ------------------------------ Reservas ---------------------------- */
 export async function listReservas(): Promise<Reserva[]> {
   const rooms = await listSalas();
