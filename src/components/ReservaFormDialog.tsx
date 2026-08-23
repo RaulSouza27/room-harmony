@@ -22,7 +22,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useCreateReserva, useUpdateReserva } from "@/hooks/useApi";
 import { findConflitos } from "@/services/api";
 import { HORARIOS, toMinutes } from "@/services/db";
-import type { Reserva, Sala, Unidade, User } from "@/types";
+import type { Reserva, Sala, Unidade, User, Recorrencia } from "@/types";
 
 interface Props {
   open: boolean;
@@ -71,7 +71,7 @@ export function ReservaFormDialog({
   const [fim, setFim] = useState("09:00");
   const [profissionalId, setProfissionalId] = useState("");
   const [observacoes, setObservacoes] = useState("");
-  const [recorrencia, setRecorrencia] = useState<"unica" | "semanal">("unica");
+  const [recorrencia, setRecorrencia] = useState<Recorrencia>("unica");
   const [comprovante, setComprovante] = useState("");
   const [selectedPhotoIndex, setSelectedPhotoIndex] = useState<number | null>(null);
 
@@ -90,9 +90,20 @@ export function ReservaFormDialog({
     );
     setProfissionalId(reserva?.profissional_id ?? (isAdmin ? "" : (user?.id ?? "")));
     setObservacoes(reserva?.observacoes ?? "");
-    setRecorrencia(reserva?.recorrencia ?? "unica");
+    
+    // Map legacy 'semanal' to 'semanal_mensal'
+    const rec = (reserva?.recorrencia === "semanal") ? "semanal_mensal" : (reserva?.recorrencia ?? "unica");
+    setRecorrencia(rec as Recorrencia);
     setComprovante(reserva?.comprovante ?? "");
   }, [open, reserva, preset, unidadesDisponiveis, isAdmin, user]);
+
+  // Enforce automatic reservation duration set: 1h for avulsa, 4h for shift (turno)
+  useEffect(() => {
+    const startHour = Number(inicio.slice(0, 2));
+    const duration = (recorrencia === "semanal_anual") ? 4 : 1;
+    const endHour = startHour + duration;
+    setFim(`${String(endHour).padStart(2, "0")}:00`);
+  }, [inicio, recorrencia]);
 
   const salasDaUnidade = salas.filter((s) => s.unidade_id === unidadeId && s.status === "ativa");
   const profissionais = usuarios.filter((u) => u.status === "ativo");
@@ -110,8 +121,29 @@ export function ReservaFormDialog({
         })
       : [];
 
+  const dayOfWeek = useMemo(() => {
+    if (!data) return -1;
+    const dateObj = new Date(data + "T00:00:00");
+    return dateObj.getDay(); // 0 = Sunday, 1 = Monday, ..., 6 = Saturday
+  }, [data]);
+
+  const maxHour = dayOfWeek === 6 ? 19 : 22;
+
+  const foraDoHorario = useMemo(() => {
+    if (dayOfWeek === 0) return true; // Sunday is closed
+    const startHour = Number(inicio.slice(0, 2));
+    const endHour = Number(fim.slice(0, 2));
+    if (startHour < 7 || endHour > maxHour) return true;
+    return false;
+  }, [dayOfWeek, inicio, fim, maxHour]);
+
   const podeSalvar =
-    !!unidadeId && !!salaId && !!profissionalId && !horarioInvalido && conflitos.length === 0;
+    !!unidadeId &&
+    !!salaId &&
+    !!profissionalId &&
+    !horarioInvalido &&
+    !foraDoHorario &&
+    conflitos.length === 0;
 
   async function handleSubmit() {
     if (reserva) {
@@ -277,7 +309,7 @@ export function ReservaFormDialog({
             </div>
             <div className="space-y-2">
               <Label>Fim</Label>
-              <Select value={fim} onValueChange={setFim}>
+              <Select value={fim} onValueChange={setFim} disabled>
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
@@ -294,13 +326,14 @@ export function ReservaFormDialog({
 
           <div className="space-y-2">
             <Label>Recorrência</Label>
-            <Select value={recorrencia} onValueChange={(v) => setRecorrencia(v as "unica")}>
+            <Select value={recorrencia} onValueChange={(v) => setRecorrencia(v as Recorrencia)}>
               <SelectTrigger>
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="unica">Única</SelectItem>
-                <SelectItem value="semanal">Semanal</SelectItem>
+                <SelectItem value="unica">Hora avulsa (1h)</SelectItem>
+                <SelectItem value="semanal_mensal">Hora avulsa fixa (semanal até fim do mês)</SelectItem>
+                <SelectItem value="semanal_anual">Turno (4h - semanal até fim do ano)</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -359,6 +392,15 @@ export function ReservaFormDialog({
             )}
           </div>
 
+          {dayOfWeek === 0 ? (
+            <p className="rounded-md border border-destructive/30 bg-destructive/5 px-3 py-2 text-sm text-destructive">
+              A clínica fica fechada aos domingos.
+            </p>
+          ) : foraDoHorario ? (
+            <p className="rounded-md border border-destructive/30 bg-destructive/5 px-3 py-2 text-sm text-destructive">
+              Horário de funcionamento: segunda a sexta (7h às 22h) e sábado (7h às 19h).
+            </p>
+          ) : null}
           {horarioInvalido ? (
             <p className="rounded-md border border-destructive/30 bg-destructive/5 px-3 py-2 text-sm text-destructive">
               O horário final deve ser depois do horário inicial.

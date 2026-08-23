@@ -15,3 +15,9 @@ export function formatarDataLonga(iso: string) {
 export function hojeISO() {
   return new Date().toISOString().slice(0, 10);
 }
+
+export function formatRecorrencia(rec: string) {
+  if (rec === "semanal_anual" || rec === "turno") return "Turno (4h)";
+  if (rec === "semanal_mensal" || rec === "semanal") return "Hora avulsa fixa";
+  return "Hora avulsa";
+}
