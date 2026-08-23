@@ -6,7 +6,7 @@ import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useAuth } from "@/contexts/AuthContext";
 import { useReservas, useSalas, useUnidades } from "@/hooks/useApi";
-import { formatarData, hojeISO } from "@/lib/format";
+import { formatarData, hojeISO, formatRecorrencia } from "@/lib/format";
 import type { ReservaStatus } from "@/types";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { AlertCircle } from "lucide-react";
@@ -103,7 +103,7 @@ function MinhasReservasPage() {
                       </p>
                       <p className="mt-0.5 text-sm text-muted-foreground">
                         {formatarData(r.data)} · {r.hora_inicio}–{r.hora_fim} ·{" "}
-                        <span className="capitalize">{r.recorrencia}</span>
+                        <span>{formatRecorrencia(r.recorrencia)}</span>
                       </p>
                       {r.observacoes ? (
                         <p className="mt-2 text-xs text-muted-foreground">{r.observacoes}</p>

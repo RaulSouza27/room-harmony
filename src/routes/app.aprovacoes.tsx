@@ -5,7 +5,7 @@ import { AprovacaoActions } from "@/components/ReservaActions";
 import { EmptyState, ErrorState, LoadingState } from "@/components/common";
 import { Badge } from "@/components/ui/badge";
 import { useReservas, useSalas, useUnidades, useUsuarios } from "@/hooks/useApi";
-import { formatarData } from "@/lib/format";
+import { formatarData, formatRecorrencia } from "@/lib/format";
 import { findConflitos } from "@/services/api";
 
 export const Route = createFileRoute("/app/aprovacoes")({
@@ -80,7 +80,7 @@ function AprovacoesPage() {
                     </p>
                     <p className="text-sm text-muted-foreground">
                       {formatarData(r.data)} · {r.hora_inicio}–{r.hora_fim} ·{" "}
-                      <span className="capitalize">{r.recorrencia}</span>
+                      <span>{formatRecorrencia(r.recorrencia)}</span>
                     </p>
                     {r.observacoes ? (
                       <p className="mt-2 text-xs text-muted-foreground">{r.observacoes}</p>

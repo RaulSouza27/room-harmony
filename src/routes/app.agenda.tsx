@@ -28,7 +28,7 @@ import {
 } from "@/components/ui/select";
 import { useAuth } from "@/contexts/AuthContext";
 import { useReservas, useSalas, useUnidades, useUsuarios } from "@/hooks/useApi";
-import { formatarDataLonga, hojeISO } from "@/lib/format";
+import { formatarDataLonga, hojeISO, formatRecorrencia } from "@/lib/format";
 import type { Reserva } from "@/types";
 
 export const Route = createFileRoute("/app/agenda")({
@@ -214,8 +214,8 @@ function AgendaPage() {
                   <dd className="text-right font-medium">{nomeProf(detalhe.profissional_id)}</dd>
                 </div>
                 <div className="flex justify-between gap-4">
-                  <dt className="text-muted-foreground">Recorrência</dt>
-                  <dd className="text-right capitalize">{detalhe.recorrencia}</dd>
+                  <dt className="text-muted-foreground">Tipo de Reserva</dt>
+                  <dd className="text-right">{formatRecorrencia(detalhe.recorrencia)}</dd>
                 </div>
                 {detalhe.observacoes ? (
                   <div className="flex justify-between gap-4">

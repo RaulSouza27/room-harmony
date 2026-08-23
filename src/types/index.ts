@@ -39,7 +39,7 @@ export interface Sala {
 }
 
 export type ReservaStatus = "pendente" | "aprovada" | "negada" | "cancelada";
-export type Recorrencia = "unica" | "semanal";
+export type Recorrencia = "unica" | "semanal_mensal" | "semanal_anual" | "semanal";
 
 export interface Reserva {
   id: string;
