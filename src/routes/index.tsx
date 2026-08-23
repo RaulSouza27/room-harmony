@@ -57,7 +57,7 @@ function LoginPage() {
       <div className="hidden flex-col justify-between bg-sidebar p-12 lg:flex">
         <div className="flex items-center gap-2.5">
           <div className="flex size-10 items-center justify-center rounded-xl overflow-hidden">
-            <img src="/favicon.ico" alt="Logo" className="size-8 object-contain" />
+            <img src="/logo.PNG" alt="Logo" className="size-8 object-contain" />
           </div>
           <p className="text-sm font-semibold">Clínica Escuta</p>
         </div>
@@ -79,7 +79,7 @@ function LoginPage() {
         <div className="w-full max-w-sm">
           <div className="mb-8 flex items-center gap-2.5 lg:hidden">
             <div className="flex size-10 items-center justify-center rounded-xl overflow-hidden">
-              <img src="/favicon.ico" alt="Logo" className="size-8 object-contain" />
+              <img src="/logo.PNG" alt="Logo" className="size-8 object-contain" />
             </div>
             <p className="text-sm font-semibold">Clínica Escuta</p>
           </div>

@@ -155,3 +155,14 @@ export function useDeleteProfession() {
     onError: (e: Error) => toast.error(e.message),
   });
 }
+
+export function useCompleteTour() {
+  const invalidate = useInvalidate(keys.usuarios);
+  return useMutation({
+    mutationFn: (id: string) => api.completeTour(id),
+    onSuccess: () => {
+      invalidate();
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+}

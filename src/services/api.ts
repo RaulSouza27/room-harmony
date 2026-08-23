@@ -69,6 +69,7 @@ export async function login(email: string, senha: string): Promise<User> {
     status: "ativo",
     telefone: "",
     unidades: [],
+    mustCompleteTour: data.mustCompleteTour || false,
   };
 
   const db = readDB();
@@ -246,6 +247,7 @@ export async function listUsuarios(): Promise<User[]> {
     foto: item.photo || "",
     unidades: item.units || [],
     professionId: item.professionId,
+    mustCompleteTour: item.mustCompleteTour || false,
   }));
 }
 
@@ -291,6 +293,7 @@ export async function saveUsuario(input: Partial<User> & { id?: string }): Promi
     foto: data.photo || "",
     unidades: data.units || [],
     professionId: data.professionId,
+    mustCompleteTour: data.mustCompleteTour || false,
   };
 }
 
@@ -533,5 +536,25 @@ export async function deleteProfession(id: number): Promise<void> {
   });
   if (!response.ok) {
     throw new Error("Falha ao excluir profissão.");
+  }
+}
+
+export async function completeTour(id: string): Promise<void> {
+  const response = await fetch(`${BACKEND_URL}/users/${id}/completed-tour`, {
+    method: "PUT",
+    headers: getHeaders(),
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    throw new Error(errorText || "Falha ao concluir o tour.");
+  }
+
+  // Update in local DB as well so frontend cache stays in sync
+  const db = readDB();
+  const index = db.users.findIndex((u) => u.id === id);
+  if (index > -1) {
+    db.users[index].mustCompleteTour = false;
+    writeDB(db);
   }
 }

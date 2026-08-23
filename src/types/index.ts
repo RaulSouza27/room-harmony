@@ -18,6 +18,7 @@ export interface User {
   foto?: string | undefined;
   unidades: string[];
   professionId?: number | null;
+  mustCompleteTour?: boolean;
 }
 
 export interface Unidade {
