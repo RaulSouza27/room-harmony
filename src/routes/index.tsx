@@ -1,5 +1,5 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { Armchair, Loader2 } from "lucide-react";
+import { Loader2 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -56,8 +56,8 @@ function LoginPage() {
     <div className="grid min-h-screen lg:grid-cols-2">
       <div className="hidden flex-col justify-between bg-sidebar p-12 lg:flex">
         <div className="flex items-center gap-2.5">
-          <div className="flex size-10 items-center justify-center rounded-xl bg-primary/10 text-primary">
-            <Armchair className="size-5" />
+          <div className="flex size-10 items-center justify-center rounded-xl overflow-hidden">
+            <img src="/favicon.ico" alt="Logo" className="size-8 object-contain" />
           </div>
           <p className="text-sm font-semibold">Clínica Escuta</p>
         </div>
@@ -78,8 +78,8 @@ function LoginPage() {
       <div className="flex items-center justify-center p-6">
         <div className="w-full max-w-sm">
           <div className="mb-8 flex items-center gap-2.5 lg:hidden">
-            <div className="flex size-10 items-center justify-center rounded-xl bg-primary/10 text-primary">
-              <Armchair className="size-5" />
+            <div className="flex size-10 items-center justify-center rounded-xl overflow-hidden">
+              <img src="/favicon.ico" alt="Logo" className="size-8 object-contain" />
             </div>
             <p className="text-sm font-semibold">Clínica Escuta</p>
           </div>

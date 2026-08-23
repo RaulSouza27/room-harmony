@@ -11,7 +11,6 @@ import {
   Menu,
   UserRound,
   Users,
-  Armchair,
   Briefcase,
 } from "lucide-react";
 import { useState, type ReactNode } from "react";
@@ -99,8 +98,8 @@ export function AppShell({
 
   const brand = (
     <div className="flex items-center gap-2.5 border-b border-sidebar-border px-4 py-4">
-      <div className="flex size-9 items-center justify-center rounded-lg bg-primary/10 text-primary">
-        <Armchair className="size-5" />
+      <div className="flex size-9 items-center justify-center rounded-lg overflow-hidden">
+        <img src="/favicon.ico" alt="Logo" className="size-7 object-contain" />
       </div>
       <div className="min-w-0">
         <p className="truncate text-sm font-semibold text-sidebar-foreground">Clínica Escuta</p>
