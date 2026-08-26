@@ -29,6 +29,21 @@ function AppLayout() {
       navigate({ to: "/", replace: true });
       return;
     }
+
+    // Force redirection to password reset if firstLogin is true
+    if (user.firstLogin) {
+      if (pathname !== "/app/reset-first-password") {
+        navigate({ to: "/app/reset-first-password", replace: true });
+      }
+      return;
+    }
+
+    // If firstLogin is false, user shouldn't access the reset-first-password route
+    if (pathname === "/app/reset-first-password") {
+      navigate({ to: "/app/dashboard", replace: true });
+      return;
+    }
+
     const blocked = isAdmin
       ? PSI_ONLY.includes(pathname)
       : ADMIN_ONLY.some((p) => pathname.startsWith(p));
