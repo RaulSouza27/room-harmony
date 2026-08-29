@@ -330,8 +330,7 @@ function TourOverlay() {
             title: "Seu Perfil Profissional",
             description: "Cadastro pessoal e segurança de acesso à plataforma.",
             actions: [
-              "Veja em quais unidades e com qual especialidade você está vinculado.",
-              "Atualize sua senha de acesso pessoal para maior privacidade."
+              "Veja seus dados de cadastro pessoal nesta tela."
             ]
           }
         ];
