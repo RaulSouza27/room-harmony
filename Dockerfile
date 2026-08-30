@@ -9,7 +9,7 @@ RUN apk add --no-cache libc6-compat
 COPY package.json package-lock.json* ./
 
 # Instala dependências de forma otimizada
-RUN npm ci
+RUN npm ci || npm install --no-audit --no-fund
 
 # Copia o código da aplicação
 COPY . .
