@@ -21,7 +21,7 @@ const WARNING_TIMEOUT = (INACTIVITY_MINUTES - 1) * 60 * 1000;
 function isTokenExpired(token: string): boolean {
   try {
     const parts = token.split(".");
-    if (parts.length !== 3) return true;
+    if (parts.length !== 3 || !parts[1]) return true;
     const payload = JSON.parse(
       window.atob(parts[1].replace(/-/g, "+").replace(/_/g, "/"))
     );
@@ -86,27 +86,51 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setIsWarning(false);
   }, []);
 
-  // Initial session check
-  useEffect(() => {
-    const id = window.localStorage.getItem(STORAGE_KEY);
-    const token = window.localStorage.getItem("clinica-salas-jwt");
+function getRoleFromToken(token: string): Role | null {
+  try {
+    const parts = token.split(".");
+    if (parts.length !== 3 || !parts[1]) return null;
+    const payload = JSON.parse(
+      window.atob(parts[1].replace(/-/g, "+").replace(/_/g, "/"))
+    );
+    if (payload.access_level === "admin") return "ADMINISTRADOR";
+    if (payload.access_level === "psi") return "PSICOLOGO";
+    return null;
+  } catch (e) {
+    return null;
+  }
+}
 
-    if (token && isTokenExpired(token)) {
-      window.localStorage.removeItem(STORAGE_KEY);
-      window.localStorage.removeItem("clinica-salas-jwt");
-      setLoading(false);
-      return;
-    }
+// Initial session check
+useEffect(() => {
+  const id = window.localStorage.getItem(STORAGE_KEY);
+  const token = window.localStorage.getItem("clinica-salas-jwt");
 
-    if (!id) {
-      setLoading(false);
-      return;
-    }
-    api
-      .getUser(id)
-      .then((u) => setUser(u ?? null))
-      .finally(() => setLoading(false));
-  }, []);
+  if (token && isTokenExpired(token)) {
+    window.localStorage.removeItem(STORAGE_KEY);
+    window.localStorage.removeItem("clinica-salas-jwt");
+    setLoading(false);
+    return;
+  }
+
+  if (!id) {
+    setLoading(false);
+    return;
+  }
+  api
+    .getUser(id)
+    .then((u) => {
+      if (u && token) {
+        // Valida e força a role de segurança vinda diretamente do JWT
+        const roleFromToken = getRoleFromToken(token);
+        if (roleFromToken) {
+          u.papel = roleFromToken;
+        }
+      }
+      setUser(u ?? null);
+    })
+    .finally(() => setLoading(false));
+}, []);
 
   // API 401 Unauthorized listener
   useEffect(() => {

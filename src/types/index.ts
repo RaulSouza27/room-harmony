@@ -19,6 +19,7 @@ export interface User {
   unidades: string[];
   professionId?: number | null;
   mustCompleteTour?: boolean;
+  firstLogin?: boolean;
 }
 
 export interface Unidade {

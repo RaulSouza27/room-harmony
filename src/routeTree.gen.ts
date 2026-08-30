@@ -20,6 +20,7 @@ import { Route as AppPerfilRouteImport } from './routes/app.perfil'
 import { Route as AppProfissionaisRouteImport } from './routes/app.profissionais'
 import { Route as AppProfissoesRouteImport } from './routes/app.profissoes'
 import { Route as AppReservasRouteImport } from './routes/app.reservas'
+import { Route as AppResetFirstPasswordRouteImport } from './routes/app.reset-first-password'
 import { Route as AppSalasRouteImport } from './routes/app.salas'
 import { Route as AppSolicitarRouteImport } from './routes/app.solicitar'
 import { Route as AppUnidadesRouteImport } from './routes/app.unidades'
@@ -79,6 +80,11 @@ const AppReservasRoute = AppReservasRouteImport.update({
   path: '/reservas',
   getParentRoute: () => AppRoute,
 } as any)
+const AppResetFirstPasswordRoute = AppResetFirstPasswordRouteImport.update({
+  id: '/reset-first-password',
+  path: '/reset-first-password',
+  getParentRoute: () => AppRoute,
+} as any)
 const AppSalasRoute = AppSalasRouteImport.update({
   id: '/salas',
   path: '/salas',
@@ -106,6 +112,7 @@ export interface FileRoutesByFullPath {
   '/app/profissionais': typeof AppProfissionaisRoute
   '/app/profissoes': typeof AppProfissoesRoute
   '/app/reservas': typeof AppReservasRoute
+  '/app/reset-first-password': typeof AppResetFirstPasswordRoute
   '/app/salas': typeof AppSalasRoute
   '/app/solicitar': typeof AppSolicitarRoute
   '/app/unidades': typeof AppUnidadesRoute
@@ -121,6 +128,7 @@ export interface FileRoutesByTo {
   '/app/profissionais': typeof AppProfissionaisRoute
   '/app/profissoes': typeof AppProfissoesRoute
   '/app/reservas': typeof AppReservasRoute
+  '/app/reset-first-password': typeof AppResetFirstPasswordRoute
   '/app/salas': typeof AppSalasRoute
   '/app/solicitar': typeof AppSolicitarRoute
   '/app/unidades': typeof AppUnidadesRoute
@@ -138,6 +146,7 @@ export interface FileRoutesById {
   '/app/profissionais': typeof AppProfissionaisRoute
   '/app/profissoes': typeof AppProfissoesRoute
   '/app/reservas': typeof AppReservasRoute
+  '/app/reset-first-password': typeof AppResetFirstPasswordRoute
   '/app/salas': typeof AppSalasRoute
   '/app/solicitar': typeof AppSolicitarRoute
   '/app/unidades': typeof AppUnidadesRoute
@@ -156,6 +165,7 @@ export interface FileRouteTypes {
     | '/app/profissionais'
     | '/app/profissoes'
     | '/app/reservas'
+    | '/app/reset-first-password'
     | '/app/salas'
     | '/app/solicitar'
     | '/app/unidades'
@@ -171,6 +181,7 @@ export interface FileRouteTypes {
     | '/app/profissionais'
     | '/app/profissoes'
     | '/app/reservas'
+    | '/app/reset-first-password'
     | '/app/salas'
     | '/app/solicitar'
     | '/app/unidades'
@@ -187,6 +198,7 @@ export interface FileRouteTypes {
     | '/app/profissionais'
     | '/app/profissoes'
     | '/app/reservas'
+    | '/app/reset-first-password'
     | '/app/salas'
     | '/app/solicitar'
     | '/app/unidades'
@@ -277,6 +289,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppReservasRouteImport
       parentRoute: typeof AppRoute
     }
+    '/app/reset-first-password': {
+      id: '/app/reset-first-password'
+      path: '/reset-first-password'
+      fullPath: '/app/reset-first-password'
+      preLoaderRoute: typeof AppResetFirstPasswordRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/app/salas': {
       id: '/app/salas'
       path: '/salas'
@@ -310,6 +329,7 @@ interface AppRouteChildren {
   AppProfissionaisRoute: typeof AppProfissionaisRoute
   AppProfissoesRoute: typeof AppProfissoesRoute
   AppReservasRoute: typeof AppReservasRoute
+  AppResetFirstPasswordRoute: typeof AppResetFirstPasswordRoute
   AppSalasRoute: typeof AppSalasRoute
   AppSolicitarRoute: typeof AppSolicitarRoute
   AppUnidadesRoute: typeof AppUnidadesRoute
@@ -325,6 +345,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppProfissionaisRoute: AppProfissionaisRoute,
   AppProfissoesRoute: AppProfissoesRoute,
   AppReservasRoute: AppReservasRoute,
+  AppResetFirstPasswordRoute: AppResetFirstPasswordRoute,
   AppSalasRoute: AppSalasRoute,
   AppSolicitarRoute: AppSolicitarRoute,
   AppUnidadesRoute: AppUnidadesRoute,

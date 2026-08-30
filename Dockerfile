@@ -9,10 +9,16 @@ RUN apk add --no-cache libc6-compat
 COPY package.json package-lock.json* ./
 
 # Instala dependências de forma otimizada
-RUN npm ci
+RUN npm ci || npm install --no-audit --no-fund
 
 # Copia o código da aplicação
 COPY . .
+
+# Argumentos de build para as variáveis de ambiente do Vite
+ARG VITE_API_URL
+ARG VITE_SHOW_WATERMARK
+ENV VITE_API_URL=$VITE_API_URL
+ENV VITE_SHOW_WATERMARK=$VITE_SHOW_WATERMARK
 
 # Instrui o Vite/Nitro a gerar a build de servidor Node.js
 ENV NITRO_PRESET=node-server

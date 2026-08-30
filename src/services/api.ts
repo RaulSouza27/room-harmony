@@ -70,6 +70,7 @@ export async function login(email: string, senha: string): Promise<User> {
     telefone: "",
     unidades: [],
     mustCompleteTour: data.mustCompleteTour || false,
+    firstLogin: data.firstLogin || false,
   };
 
   const db = readDB();
@@ -248,6 +249,7 @@ export async function listUsuarios(): Promise<User[]> {
     unidades: item.units || [],
     professionId: item.professionId,
     mustCompleteTour: item.mustCompleteTour || false,
+    firstLogin: item.firstLogin !== undefined ? item.firstLogin : (item.isFirstLogin || false),
   }));
 }
 
@@ -294,6 +296,7 @@ export async function saveUsuario(input: Partial<User> & { id?: string }): Promi
     unidades: data.units || [],
     professionId: data.professionId,
     mustCompleteTour: data.mustCompleteTour || false,
+    firstLogin: data.firstLogin !== undefined ? data.firstLogin : (data.isFirstLogin || false),
   };
 }
 
@@ -306,6 +309,28 @@ export async function resetPassword(id: string): Promise<void> {
   if (!response.ok) {
     const errorText = await response.text();
     throw new Error(errorText || "Falha ao resetar senha.");
+  }
+}
+
+export async function changePasswordFirstLogin(id: string, newPassword: string): Promise<void> {
+  const response = await fetch(`${BACKEND_URL}/users/${id}/first-login`, {
+    method: "PUT",
+    headers: getHeaders(),
+    body: JSON.stringify({ password: newPassword }),
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    throw new Error(errorText || "Falha ao redefinir a senha no primeiro login.");
+  }
+
+  // Update in local DB as well so frontend cache/mock stays in sync
+  const db = readDB();
+  const index = db.users.findIndex((u) => u.id === id);
+  if (index > -1) {
+    db.users[index].senha = newPassword;
+    db.users[index].firstLogin = false;
+    writeDB(db);
   }
 }
 
