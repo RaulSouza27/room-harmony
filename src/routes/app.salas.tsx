@@ -48,7 +48,7 @@ const statusLabel: Record<SalaStatus, string> = {
 function SalasPage() {
   const salasQ = useSalas();
   const { data: unidades } = useUnidades();
-  const excluir = useDeleteSala();
+  // const excluir = useDeleteSala();
   const [open, setOpen] = useState(false);
   const [editando, setEditando] = useState<Sala | null>(null);
   const [alvo, setAlvo] = useState<Sala | null>(null);
@@ -141,14 +141,6 @@ function SalasPage() {
                 >
                   Editar
                 </Button>
-                <Button
-                  size="sm"
-                  variant="ghost"
-                  className="text-destructive"
-                  onClick={() => setAlvo(s)}
-                >
-                  Excluir
-                </Button>
               </div>
             </li>
           ))}
@@ -157,7 +149,7 @@ function SalasPage() {
 
       <SalaDialog open={open} onOpenChange={setOpen} sala={editando} unidades={unidades ?? []} />
 
-      <ConfirmDialog
+      {/* <ConfirmDialog
         open={!!alvo}
         onOpenChange={(v) => !v && setAlvo(null)}
         title="Excluir esta sala?"
@@ -165,7 +157,7 @@ function SalasPage() {
         confirmLabel="Excluir"
         destructive
         onConfirm={() => alvo && excluir.mutate(alvo.id)}
-      />
+       >*/}
 
       {alvoVisualizacao !== null && alvoVisualizacao.fotos && alvoVisualizacao.fotos.length > 0 ? (
         <Dialog open={alvoVisualizacao !== null} onOpenChange={() => setAlvoVisualizacao(null)}>

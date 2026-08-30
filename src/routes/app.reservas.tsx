@@ -5,6 +5,7 @@ import {
   AprovacaoActions,
   CancelarReservaButton,
   ExcluirReservaButton,
+  ConfirmDialog,
 } from "@/components/ReservaActions";
 import { ReservaFormDialog } from "@/components/ReservaFormDialog";
 import { EmptyState, ErrorState, LoadingState, StatusBadge } from "@/components/common";
@@ -12,6 +13,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   Select,
   SelectContent,
@@ -19,7 +21,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { useReservas, useSalas, useUnidades, useUsuarios } from "@/hooks/useApi";
+import { useReservas, useSalas, useUnidades, useUsuarios, useDeleteReservasBatch } from "@/hooks/useApi";
 import { formatarData } from "@/lib/format";
 import type { Reserva } from "@/types";
 
@@ -59,6 +61,9 @@ function ReservasPage() {
   const [alvoVisualizacaoComprovante, setAlvoVisualizacaoComprovante] = useState<string | null>(
     null,
   );
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  const [confirmBatchDelete, setConfirmBatchDelete] = useState(false);
+  const excluirLote = useDeleteReservasBatch();
 
   const reservas = reservasQ.data ?? [];
   const salas = salasQ.data ?? [];
@@ -74,14 +79,32 @@ function ReservasPage() {
     .filter((r) => !ate || r.data <= ate)
     .sort((a, b) => (b.data + b.hora_inicio).localeCompare(a.data + a.hora_inicio));
 
+  const handleBatchDelete = async () => {
+    await excluirLote.mutateAsync(selectedIds);
+    setSelectedIds([]);
+    setConfirmBatchDelete(false);
+  };
+
   return (
     <AppShell
       title="Todas as reservas"
       description={`${lista.length} registro(s)`}
       actions={
-        <Button size="sm" onClick={() => setCriar(true)}>
-          Nova reserva
-        </Button>
+        <div className="flex gap-2">
+          {selectedIds.length > 0 && (
+            <Button
+              size="sm"
+              variant="destructive"
+              onClick={() => setConfirmBatchDelete(true)}
+              disabled={excluirLote.isPending}
+            >
+              Excluir {selectedIds.length} selecionada(s)
+            </Button>
+          )}
+          <Button size="sm" onClick={() => setCriar(true)}>
+            Nova reserva
+          </Button>
+        </div>
       }
     >
       <div className="space-y-5">
@@ -176,50 +199,101 @@ function ReservasPage() {
         ) : lista.length === 0 ? (
           <EmptyState title="Nenhuma reserva encontrada" description="Ajuste os filtros acima." />
         ) : (
-          <ul className="space-y-3">
-            {lista.map((r) => (
-              <li key={r.id} className="rounded-xl border border-border bg-card p-4 shadow-soft">
-                <div className="flex flex-wrap items-start justify-between gap-4">
-                  <div className="min-w-0">
-                    <div className="flex flex-wrap items-center gap-2">
-                      <p className="text-sm font-semibold text-card-foreground">
-                        {usuarios.find((u) => u.id === r.profissional_id)?.nome ?? "—"}
-                      </p>
-                      <StatusBadge status={r.status} />
+          <div className="space-y-3">
+            <div className="flex items-center gap-2 px-4 py-3 bg-muted/30 border border-border rounded-xl text-sm justify-between shadow-soft">
+              <div className="flex items-center gap-2">
+                <Checkbox
+                  id="select-all"
+                  checked={selectedIds.length === lista.length && lista.length > 0}
+                  onCheckedChange={(checked) => {
+                    if (checked) {
+                      setSelectedIds(lista.map((r) => r.id));
+                    } else {
+                      setSelectedIds([]);
+                    }
+                  }}
+                />
+                <Label htmlFor="select-all" className="cursor-pointer font-medium text-foreground select-none">
+                  Selecionar todas as {lista.length} reservas filtradas
+                </Label>
+              </div>
+              {selectedIds.length > 0 && (
+                <button
+                  type="button"
+                  onClick={() => setSelectedIds([])}
+                  className="text-xs text-primary hover:underline font-semibold"
+                >
+                  Limpar seleção
+                </button>
+              )}
+            </div>
+
+            <ul className="space-y-3">
+              {lista.map((r) => {
+                const isSelected = selectedIds.includes(r.id);
+                return (
+                  <li
+                    key={r.id}
+                    className={`rounded-xl border p-4 shadow-soft transition-colors flex gap-4 items-start ${
+                      isSelected
+                        ? "border-primary/45 bg-primary/5"
+                        : "border-border bg-card"
+                    }`}
+                  >
+                    <Checkbox
+                      className="mt-1"
+                      checked={isSelected}
+                      onCheckedChange={(checked) => {
+                        setSelectedIds((prev) =>
+                          checked ? [...prev, r.id] : prev.filter((id) => id !== r.id),
+                        );
+                      }}
+                    />
+                    <div className="flex-1 min-w-0">
+                      <div className="flex flex-wrap items-start justify-between gap-4">
+                        <div className="min-w-0">
+                          <div className="flex flex-wrap items-center gap-2">
+                            <p className="text-sm font-semibold text-card-foreground">
+                              {usuarios.find((u) => u.id === r.profissional_id)?.nome ?? "—"}
+                            </p>
+                            <StatusBadge status={r.status} />
+                          </div>
+                          <p className="mt-1 text-sm text-muted-foreground">
+                            {salas.find((s) => s.id === r.sala_id)?.nome ?? "—"} ·{" "}
+                            {unidades.find((u) => u.id === r.unidade_id)?.nome ?? "—"} ·{" "}
+                            {formatarData(r.data)} · {r.hora_inicio}–{r.hora_fim}
+                          </p>
+                          {r.motivo_negacao ? (
+                            <p className="mt-1 text-xs text-destructive">Negada: {r.motivo_negacao}</p>
+                          ) : null}
+                          {r.comprovante && r.comprovante !== "empty" ? (
+                            <span
+                              className="text-xs text-primary underline cursor-pointer inline-flex items-center gap-1 mt-1 block"
+                              onClick={() => {
+                                setAlvoVisualizacaoComprovante(r.comprovante!);
+                              }}
+                            >
+                              📄 Ver comprovante de pagamento
+                            </span>
+                          ) : null}
+                        </div>
+                        <div className="flex flex-wrap items-center gap-2">
+                          {r.status === "pendente" ? (
+                            <AprovacaoActions reserva={r} reservas={reservas} compact />
+                          ) : null}
+                          <Button size="sm" variant="outline" onClick={() => setEditando(r)}>
+                            Editar
+                          </Button>
+                          {r.status !== "cancelada" ? <CancelarReservaButton reserva={r} /> : null}
+                          <ExcluirReservaButton reserva={r} />
+                        </div>
+                      </div>
                     </div>
-                    <p className="mt-1 text-sm text-muted-foreground">
-                      {salas.find((s) => s.id === r.sala_id)?.nome ?? "—"} ·{" "}
-                      {unidades.find((u) => u.id === r.unidade_id)?.nome ?? "—"} ·{" "}
-                      {formatarData(r.data)} · {r.hora_inicio}–{r.hora_fim}
-                    </p>
-                    {r.motivo_negacao ? (
-                      <p className="mt-1 text-xs text-destructive">Negada: {r.motivo_negacao}</p>
-                    ) : null}
-                    {r.comprovante && r.comprovante !== "empty" ? (
-                      <span
-                        className="text-xs text-primary underline cursor-pointer inline-flex items-center gap-1 mt-1 block"
-                        onClick={() => {
-                          setAlvoVisualizacaoComprovante(r.comprovante!);
-                        }}
-                      >
-                        📄 Ver comprovante de pagamento
-                      </span>
-                    ) : null}
-                  </div>
-                  <div className="flex flex-wrap items-center gap-2">
-                    {r.status === "pendente" ? (
-                      <AprovacaoActions reserva={r} reservas={reservas} compact />
-                    ) : null}
-                    <Button size="sm" variant="outline" onClick={() => setEditando(r)}>
-                      Editar
-                    </Button>
-                    {r.status !== "cancelada" ? <CancelarReservaButton reserva={r} /> : null}
-                    <ExcluirReservaButton reserva={r} />
-                  </div>
-                </div>
-              </li>
-            ))}
-          </ul>
+                  </li>
+                );
+              })}
+            </ul>
+          </div>
         )}
       </div>
 
@@ -262,6 +336,15 @@ function ReservasPage() {
           </DialogContent>
         </Dialog>
       ) : null}
+      <ConfirmDialog
+        open={confirmBatchDelete}
+        onOpenChange={setConfirmBatchDelete}
+        title={`Excluir ${selectedIds.length} reserva(s) definitivamente?`}
+        description="Esta ação removerá todas as reservas selecionadas e não poderá ser desfeita."
+        confirmLabel="Excluir"
+        destructive
+        onConfirm={handleBatchDelete}
+      />
     </AppShell>
   );
 }

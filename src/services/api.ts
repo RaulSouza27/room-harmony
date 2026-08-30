@@ -505,6 +505,18 @@ export async function deleteReserva(id: string): Promise<void> {
   }
 }
 
+export async function deleteReservasBatch(ids: string[]): Promise<void> {
+  const response = await fetch(`${BACKEND_URL}/reservations/delete-batch`, {
+    method: "POST",
+    headers: getHeaders(),
+    body: JSON.stringify(ids.map(Number)),
+  });
+  if (!response.ok) {
+    const errorText = await response.text();
+    throw new Error(errorText || "Falha ao excluir reservas em lote.");
+  }
+}
+
 /* ----------------------------- Profissões --------------------------- */
 export async function listProfessions(): Promise<Profession[]> {
   const response = await fetch(`${BACKEND_URL}/profissions/readAll`, {
