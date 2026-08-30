@@ -137,13 +137,16 @@ export function ReservaFormDialog({
     return false;
   }, [dayOfWeek, inicio, fim, maxHour]);
 
+  const comprovanteFaltando = !isAdmin && (!comprovante || comprovante.trim() === "" || comprovante === "empty");
+
   const podeSalvar =
     !!unidadeId &&
     !!salaId &&
     !!profissionalId &&
     !horarioInvalido &&
     !foraDoHorario &&
-    conflitos.length === 0;
+    conflitos.length === 0 &&
+    !comprovanteFaltando;
 
   async function handleSubmit() {
     if (reserva) {
@@ -350,7 +353,22 @@ export function ReservaFormDialog({
           </div>
 
           <div className="space-y-2">
-            <Label>Comprovante de Pagamento</Label>
+            <div className="flex items-center justify-between">
+              <Label className="flex items-center gap-1">
+                Comprovante de Pagamento
+                {!isAdmin && <span className="text-destructive font-bold">*</span>}
+              </Label>
+              {!isAdmin && (
+                <span className="text-[11px] font-medium text-amber-600 dark:text-amber-400">
+                  Obrigatório para psicólogos
+                </span>
+              )}
+            </div>
+
+            <p className="text-xs text-amber-700 bg-amber-50 dark:text-amber-300 dark:bg-amber-950/40 p-2.5 rounded-lg border border-amber-200/50 dark:border-amber-900/50">
+              ⚠️ A reserva só é feita mediante a apresentação do comprovante de pagamento.
+            </p>
+
             {comprovante ? (
               <div className="relative border border-border rounded-lg p-2 bg-muted/10">
                 <div className="relative aspect-video rounded overflow-hidden bg-black flex items-center justify-center h-40">
@@ -369,26 +387,33 @@ export function ReservaFormDialog({
                 </div>
               </div>
             ) : (
-              <label className="flex flex-col items-center justify-center cursor-pointer border border-dashed border-border rounded-lg p-4 h-24 bg-muted/20 hover:bg-muted/30 transition-colors">
-                <span className="text-sm font-medium text-foreground">Anexar Comprovante</span>
-                <span className="text-xs text-muted-foreground mt-1">Upload de imagem</span>
-                <input
-                  type="file"
-                  accept="image/*"
-                  className="hidden"
-                  onChange={async (e) => {
-                    const file = e.target.files?.[0];
-                    if (file) {
-                      try {
-                        const base64 = await fileToBase64Helper(file);
-                        setComprovante(base64);
-                      } catch (err) {
-                        console.error(err);
+              <div className="space-y-2">
+                <label className="flex flex-col items-center justify-center cursor-pointer border border-dashed border-border rounded-lg p-4 h-24 bg-muted/20 hover:bg-muted/30 transition-colors">
+                  <span className="text-sm font-medium text-foreground">Anexar Comprovante</span>
+                  <span className="text-xs text-muted-foreground mt-1">Upload de imagem</span>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    onChange={async (e) => {
+                      const file = e.target.files?.[0];
+                      if (file) {
+                        try {
+                          const base64 = await fileToBase64Helper(file);
+                          setComprovante(base64);
+                        } catch (err) {
+                          console.error(err);
+                        }
                       }
-                    }
-                  }}
-                />
-              </label>
+                    }}
+                  />
+                </label>
+                {comprovanteFaltando && (
+                  <p className="text-xs font-semibold text-destructive animate-pulse">
+                    * Campo obrigatório: Por favor, anexe o comprovante de pagamento.
+                  </p>
+                )}
+              </div>
             )}
           </div>
 

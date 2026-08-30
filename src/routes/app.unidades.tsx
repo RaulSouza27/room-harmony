@@ -106,14 +106,6 @@ function UnidadesPage() {
                 >
                   Editar
                 </Button>
-                <Button
-                  size="sm"
-                  variant="ghost"
-                  className="text-destructive"
-                  onClick={() => setAlvo(u)}
-                >
-                  Excluir
-                </Button>
               </div>
             </li>
           ))}
@@ -122,15 +114,7 @@ function UnidadesPage() {
 
       <UnidadeDialog open={open} onOpenChange={setOpen} unidade={editando} />
 
-      <ConfirmDialog
-        open={!!alvo}
-        onOpenChange={(v) => !v && setAlvo(null)}
-        title="Excluir esta unidade?"
-        description="Só é possível excluir unidades sem salas vinculadas."
-        confirmLabel="Excluir"
-        destructive
-        onConfirm={() => alvo && excluir.mutate(alvo.id)}
-      />
+
     </AppShell>
   );
 }

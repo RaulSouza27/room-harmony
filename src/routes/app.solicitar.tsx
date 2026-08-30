@@ -51,6 +51,7 @@ function SolicitarPage() {
             <li>• Você só visualiza salas das unidades às quais tem acesso.</li>
             <li>• Horários com solicitação pendente já aparecem bloqueados na grade.</li>
             <li>• Conflitos são detectados antes do envio.</li>
+            <li className="text-amber-600 dark:text-amber-400 font-semibold">• Atenção: A reserva só é feita mediante a apresentação do comprovante de pagamento.</li>
           </ul>
         </SectionCard>
       )}
