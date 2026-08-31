@@ -67,10 +67,15 @@ export async function login(email: string, senha: string): Promise<User> {
     senha: "",
     papel,
     status: "ativo",
-    telefone: "",
+    telefone: data.phone || "",
+    foto: data.photo || "",
     unidades: [],
     mustCompleteTour: data.mustCompleteTour || false,
     firstLogin: data.firstLogin || false,
+    cpf: data.cpf || "",
+    endereco: data.address || "",
+    cep: data.cep || "",
+    boardNumber: data.boardNumber || "",
   };
 
   const db = readDB();
@@ -250,6 +255,10 @@ export async function listUsuarios(): Promise<User[]> {
     professionId: item.professionId,
     mustCompleteTour: item.mustCompleteTour || false,
     firstLogin: item.firstLogin !== undefined ? item.firstLogin : (item.isFirstLogin || false),
+    cpf: item.cpf || "",
+    endereco: item.address || "",
+    cep: item.cep || "",
+    boardNumber: item.boardNumber || "",
   }));
 }
 
@@ -269,6 +278,10 @@ export async function saveUsuario(input: Partial<User> & { id?: string }): Promi
     photo: input.foto,
     units: input.unidades,
     professionId: input.professionId,
+    cpf: input.cpf,
+    address: input.endereco,
+    cep: input.cep,
+    boardNumber: input.boardNumber,
   };
 
   const response = await fetch(url, {
@@ -297,6 +310,10 @@ export async function saveUsuario(input: Partial<User> & { id?: string }): Promi
     professionId: data.professionId,
     mustCompleteTour: data.mustCompleteTour || false,
     firstLogin: data.firstLogin !== undefined ? data.firstLogin : (data.isFirstLogin || false),
+    cpf: data.cpf || "",
+    endereco: data.address || "",
+    cep: data.cep || "",
+    boardNumber: data.boardNumber || "",
   };
 }
 
@@ -309,6 +326,19 @@ export async function resetPassword(id: string): Promise<void> {
   if (!response.ok) {
     const errorText = await response.text();
     throw new Error(errorText || "Falha ao resetar senha.");
+  }
+}
+
+export async function changePassword(id: string, password: string): Promise<void> {
+  const response = await fetch(`${BACKEND_URL}/users/${id}/first-login`, {
+    method: "PUT",
+    headers: getHeaders(),
+    body: JSON.stringify({ password }),
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    throw new Error(errorText || "Falha ao alterar senha.");
   }
 }
 
