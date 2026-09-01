@@ -358,11 +358,6 @@ export function ReservaFormDialog({
                 Comprovante de Pagamento
                 {!isAdmin && <span className="text-destructive font-bold">*</span>}
               </Label>
-              {!isAdmin && (
-                <span className="text-[11px] font-medium text-amber-600 dark:text-amber-400">
-                  Obrigatório para psicólogos
-                </span>
-              )}
             </div>
 
             <p className="text-xs text-amber-700 bg-amber-50 dark:text-amber-300 dark:bg-amber-950/40 p-2.5 rounded-lg border border-amber-200/50 dark:border-amber-900/50">
