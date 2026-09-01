@@ -95,6 +95,17 @@ export function useResetPassword() {
   });
 }
 
+export function useChangePassword() {
+  return useMutation({
+    mutationFn: ({ id, password }: { id: string; password: string }) =>
+      api.changePassword(id, password),
+    onSuccess: () => {
+      toast.success("Senha alterada com sucesso.");
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+}
+
 export function useCreateReserva() {
   const invalidate = useInvalidate(keys.reservas);
   return useMutation({

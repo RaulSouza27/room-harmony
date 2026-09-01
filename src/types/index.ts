@@ -19,6 +19,10 @@ export interface User {
   unidades: string[];
   professionId?: number | null;
   mustCompleteTour?: boolean;
+  cpf: string;
+  endereco: string;
+  cep: string;
+  boardNumber: string;
   firstLogin?: boolean;
 }
 
