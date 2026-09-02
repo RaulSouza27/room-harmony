@@ -25,6 +25,8 @@ import {
 import { useSaveUsuario, useUsuarios, useProfessions, useResetPassword } from "@/hooks/useApi";
 import type { Role, User } from "@/types";
 
+import { BulkUserImportDialog } from "@/components/BulkUserImportDialog";
+
 export const Route = createFileRoute("/app/profissionais")({
   ssr: false,
   head: () => ({
@@ -48,6 +50,7 @@ function ProfissionaisPage() {
   const resetarSenha = useResetPassword();
   const [editando, setEditando] = useState<User | null>(null);
   const [open, setOpen] = useState(false);
+  const [bulkImportOpen, setBulkImportOpen] = useState(false);
   const [alvoStatus, setAlvoStatus] = useState<User | null>(null);
   const [alvoReset, setAlvoReset] = useState<User | null>(null);
 
@@ -59,15 +62,24 @@ function ProfissionaisPage() {
       title="Profissionais"
       description={`${usuarios.length} usuário(s) cadastrado(s)`}
       actions={
-        <Button
-          size="sm"
-          onClick={() => {
-            setEditando(null);
-            setOpen(true);
-          }}
-        >
-          Novo profissional
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() => setBulkImportOpen(true)}
+          >
+            Cadastro em massa
+          </Button>
+          <Button
+            size="sm"
+            onClick={() => {
+              setEditando(null);
+              setOpen(true);
+            }}
+          >
+            Novo profissional
+          </Button>
+        </div>
       }
     >
       {usuariosQ.isLoading ? (
@@ -142,6 +154,8 @@ function ProfissionaisPage() {
       )}
 
       <ProfissionalDialog open={open} onOpenChange={setOpen} usuario={editando} />
+
+      <BulkUserImportDialog open={bulkImportOpen} onOpenChange={setBulkImportOpen} />
 
       <ConfirmDialog
         open={!!alvoStatus}

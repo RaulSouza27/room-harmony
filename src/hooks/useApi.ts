@@ -83,6 +83,57 @@ export function useSaveUsuario() {
   });
 }
 
+export function useBulkSaveUsuarios() {
+  const invalidate = useInvalidate(keys.usuarios);
+  return useMutation({
+    mutationFn: async ({
+      users,
+      onProgress,
+    }: {
+      users: Partial<User>[];
+      onProgress?: (
+        current: number,
+        total: number,
+        results: { successCount: number; failCount: number; errors: Array<{ email: string; error: string }> }
+      ) => void;
+    }) => {
+      let successCount = 0;
+      let failCount = 0;
+      const errors: Array<{ email: string; error: string }> = [];
+
+      for (let i = 0; i < users.length; i++) {
+        const u = users[i];
+        try {
+          await api.saveUsuario(u);
+          successCount++;
+        } catch (err: any) {
+          failCount++;
+          errors.push({
+            email: u.email || `Item ${i + 1}`,
+            error: err?.message || "Erro desconhecido ao cadastrar",
+          });
+        }
+        if (onProgress) {
+          onProgress(i + 1, users.length, { successCount, failCount, errors });
+        }
+      }
+
+      return { successCount, failCount, errors, total: users.length };
+    },
+    onSuccess: (data) => {
+      invalidate();
+      if (data.failCount === 0) {
+        toast.success(`${data.successCount} profissional(is) cadastrado(s) com sucesso!`);
+      } else {
+        toast.warning(
+          `${data.successCount} profissional(is) cadastrado(s) com sucesso e ${data.failCount} falha(s).`
+        );
+      }
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+}
+
 export function useResetPassword() {
   const invalidate = useInvalidate(keys.usuarios);
   return useMutation({
