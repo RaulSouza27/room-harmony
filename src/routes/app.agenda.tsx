@@ -266,6 +266,7 @@ function AgendaPage() {
             reservas={reservasDoDia}
             usuarios={usuarios}
             onSlotClick={handleSlot}
+            data={data}
           />
         ) : modoVisao === "mensal" ? (
           <MonthlyCalendarView

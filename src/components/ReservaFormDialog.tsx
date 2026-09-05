@@ -127,15 +127,33 @@ export function ReservaFormDialog({
     return dateObj.getDay(); // 0 = Sunday, 1 = Monday, ..., 6 = Saturday
   }, [data]);
 
-  const maxHour = dayOfWeek === 6 ? 19 : 22;
+  const unidadeObj = useMemo(() => unidades.find((u) => u.id === unidadeId), [unidades, unidadeId]);
+
+  const daySchedule = useMemo(() => {
+    if (!unidadeObj?.business_hours || dayOfWeek < 0) return null;
+    return unidadeObj.business_hours[String(dayOfWeek)] ?? null;
+  }, [unidadeObj, dayOfWeek]);
 
   const foraDoHorario = useMemo(() => {
-    if (dayOfWeek === 0) return true; // Sunday is closed
-    const startHour = Number(inicio.slice(0, 2));
-    const endHour = Number(fim.slice(0, 2));
-    if (startHour < 7 || endHour > maxHour) return true;
-    return false;
-  }, [dayOfWeek, inicio, fim, maxHour]);
+    if (!daySchedule || !daySchedule.ativo || !daySchedule.abertura || !daySchedule.fechamento) {
+      return true;
+    }
+    const startMin = toMinutes(inicio);
+    const endMin = toMinutes(fim);
+    const abertMin = toMinutes(daySchedule.abertura);
+    const fechMin = toMinutes(daySchedule.fechamento);
+    return startMin < abertMin || endMin > fechMin;
+  }, [daySchedule, inicio, fim]);
+
+  const horariosInicioDisponiveis = useMemo(() => {
+    if (!daySchedule || !daySchedule.ativo || !daySchedule.abertura || !daySchedule.fechamento) return HORARIOS;
+    const abertMin = toMinutes(daySchedule.abertura);
+    const fechMin = toMinutes(daySchedule.fechamento);
+    return HORARIOS.filter((h) => {
+      const hMin = toMinutes(h);
+      return hMin >= abertMin && hMin < fechMin;
+    });
+  }, [daySchedule]);
 
   const comprovanteFaltando = !isAdmin && (!comprovante || comprovante.trim() === "" || comprovante === "empty");
 
@@ -302,7 +320,7 @@ export function ReservaFormDialog({
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  {HORARIOS.map((h) => (
+                  {horariosInicioDisponiveis.map((h) => (
                     <SelectItem key={h} value={h}>
                       {h}
                     </SelectItem>
@@ -412,13 +430,11 @@ export function ReservaFormDialog({
             )}
           </div>
 
-          {dayOfWeek === 0 ? (
+          {foraDoHorario ? (
             <p className="rounded-md border border-destructive/30 bg-destructive/5 px-3 py-2 text-sm text-destructive">
-              A clínica fica fechada aos domingos.
-            </p>
-          ) : foraDoHorario ? (
-            <p className="rounded-md border border-destructive/30 bg-destructive/5 px-3 py-2 text-sm text-destructive">
-              Horário de funcionamento: segunda a sexta (7h às 22h) e sábado (7h às 19h).
+              {!daySchedule || !daySchedule.ativo
+                ? "A unidade selecionada está fechada neste dia da semana."
+                : `A unidade funciona apenas das ${daySchedule.abertura} às ${daySchedule.fechamento} neste dia.`}
             </p>
           ) : null}
           {horarioInvalido ? (

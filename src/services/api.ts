@@ -1,6 +1,16 @@
 import { BACKEND_URL } from "@/config/api";
 import { overlaps, readDB, uid, writeDB } from "./db";
-import type { NovaReserva, Profession, Reserva, ReservaStatus, Sala, Unidade, User } from "@/types";
+import type { BusinessHours, NovaReserva, Profession, Reserva, ReservaStatus, Sala, Unidade, User } from "@/types";
+
+export const defaultBusinessHours = (): BusinessHours => ({
+  "0": { ativo: false, abertura: null, fechamento: null },
+  "1": { ativo: true, abertura: "08:00", fechamento: "18:00" },
+  "2": { ativo: true, abertura: "08:00", fechamento: "18:00" },
+  "3": { ativo: true, abertura: "08:00", fechamento: "18:00" },
+  "4": { ativo: true, abertura: "08:00", fechamento: "18:00" },
+  "5": { ativo: true, abertura: "08:00", fechamento: "18:00" },
+  "6": { ativo: true, abertura: "08:00", fechamento: "12:00" },
+});
 
 /**
  * Camada de serviço mockada. As assinaturas imitam uma API REST
@@ -113,6 +123,7 @@ export async function listUnidades(): Promise<Unidade[]> {
     nome: item.name,
     endereco: item.address,
     status: item.status ? "ativa" : "inativa",
+    business_hours: item.businessHours || defaultBusinessHours(),
   }));
 }
 
@@ -121,6 +132,7 @@ export async function saveUnidade(input: Omit<Unidade, "id"> & { id?: string }):
     name: input.nome,
     address: input.endereco,
     status: input.status === "ativa",
+    businessHours: input.business_hours || defaultBusinessHours(),
   };
 
   const url = input.id ? `${BACKEND_URL}/units/${input.id}` : `${BACKEND_URL}/units`;
@@ -143,6 +155,7 @@ export async function saveUnidade(input: Omit<Unidade, "id"> & { id?: string }):
     nome: data.name,
     endereco: data.address,
     status: data.status ? "ativa" : "inativa",
+    business_hours: data.businessHours || input.business_hours || defaultBusinessHours(),
   };
 }
 

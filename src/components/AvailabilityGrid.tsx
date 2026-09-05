@@ -14,6 +14,7 @@ interface Props {
   usuarios: User[];
   onSlotClick?: (slot: SlotInfo) => void;
   emptyLabel?: string;
+  data?: string;
 }
 
 function reservaNoSlot(reservas: Reserva[], salaId: string, hora: string) {
@@ -40,9 +41,22 @@ export function AvailabilityGrid({
   usuarios,
   onSlotClick,
   emptyLabel = "Nenhuma sala encontrada para os filtros escolhidos.",
+  data,
 }: Props) {
   const nomeUnidade = (id: string) => unidades.find((u) => u.id === id)?.nome ?? "—";
   const nomeProf = (id: string) => usuarios.find((u) => u.id === id)?.nome ?? "Profissional";
+
+  const isSlotForaDoHorario = (sala: Sala, hora: string) => {
+    if (!data) return false;
+    const dateObj = new Date(data + "T00:00:00");
+    const dayOfWeek = dateObj.getDay();
+    const unidade = unidades.find((u) => u.id === sala.unidade_id);
+    if (!unidade?.business_hours) return false;
+    const bh = unidade.business_hours[String(dayOfWeek)];
+    if (!bh || !bh.ativo || !bh.abertura || !bh.fechamento) return true;
+    const hMin = toMinutes(hora);
+    return hMin < toMinutes(bh.abertura) || hMin >= toMinutes(bh.fechamento);
+  };
 
   if (!salas.length) {
     return (
@@ -84,7 +98,8 @@ export function AvailabilityGrid({
                   {hora}
                 </th>
                 {salas.map((sala) => {
-                  const indisponivel = sala.status !== "ativa";
+                  const foraDoHorario = isSlotForaDoHorario(sala, hora);
+                  const indisponivel = sala.status !== "ativa" || foraDoHorario;
                   const reserva = indisponivel ? undefined : reservaNoSlot(reservas, sala.id, hora);
                   const key = indisponivel
                     ? "indisponivel"
@@ -113,11 +128,13 @@ export function AvailabilityGrid({
                           slotStyles[key],
                         )}
                       >
-                        {indisponivel
+                        {sala.status !== "ativa"
                           ? "Inativa"
-                          : reserva
-                            ? nomeProf(reserva.profissional_id).split(" ")[0]
-                            : "Livre"}
+                          : foraDoHorario
+                            ? "Fechado"
+                            : reserva
+                              ? nomeProf(reserva.profissional_id).split(" ")[0]
+                              : "Livre"}
                       </button>
                     </td>
                   );
@@ -143,16 +160,20 @@ export function AvailabilityGrid({
             ) : (
               <div className="grid grid-cols-3 gap-1.5">
                 {HORARIOS.map((hora) => {
-                  const reserva = reservaNoSlot(reservas, sala.id, hora);
-                  const key = reserva
-                    ? reserva.status === "pendente"
-                      ? "pendente"
-                      : "aprovada"
-                    : "livre";
+                  const foraDoHorario = isSlotForaDoHorario(sala, hora);
+                  const reserva = foraDoHorario ? undefined : reservaNoSlot(reservas, sala.id, hora);
+                  const key = foraDoHorario
+                    ? "indisponivel"
+                    : reserva
+                      ? reserva.status === "pendente"
+                        ? "pendente"
+                        : "aprovada"
+                      : "livre";
                   return (
                     <button
                       key={hora}
                       type="button"
+                      disabled={foraDoHorario}
                       onClick={() =>
                         onSlotClick?.(
                           reserva
@@ -161,11 +182,11 @@ export function AvailabilityGrid({
                         )
                       }
                       className={cn(
-                        "rounded-md px-1 py-2 text-[11px] font-medium transition-colors",
+                        "rounded-md px-1 py-2 text-[11px] font-medium transition-colors disabled:cursor-not-allowed",
                         slotStyles[key],
                       )}
                     >
-                      {hora}
+                      {foraDoHorario ? `${hora} (Fechado)` : hora}
                     </button>
                   );
                 })}
@@ -183,7 +204,7 @@ function Legend() {
     ["Livre", "bg-success/25"],
     ["Pendente", "bg-warning/40"],
     ["Ocupado", "bg-muted"],
-    ["Indisponível", "bg-border/60"],
+    ["Indisponível / Fechado", "bg-border/60"],
   ];
   return (
     <div className="flex flex-wrap items-center gap-4 text-xs text-muted-foreground">

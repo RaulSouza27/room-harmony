@@ -26,11 +26,20 @@ export interface User {
   firstLogin?: boolean;
 }
 
+export interface HorarioDia {
+  ativo: boolean;
+  abertura: string | null;
+  fechamento: string | null;
+}
+
+export type BusinessHours = Record<string, HorarioDia>;
+
 export interface Unidade {
   id: string;
   nome: string;
   endereco: string;
   status: "ativa" | "inativa";
+  business_hours?: BusinessHours;
 }
 
 export type SalaStatus = "ativa" | "inativa";
