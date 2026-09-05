@@ -1,7 +1,8 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
+import { ChevronLeft, ChevronRight, Download, Eye, Images } from "lucide-react";
 import { AppShell } from "@/components/AppShell";
-import { ConfirmDialog } from "@/components/ReservaActions";
+import { handleDownloadReceipt } from "@/components/ReceiptViewerDialog";
 import { EmptyState, ErrorState, LoadingState } from "@/components/common";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -57,6 +58,23 @@ function SalasPage() {
 
   const salas = salasQ.data ?? [];
 
+  useEffect(() => {
+    if (!alvoVisualizacao || !alvoVisualizacao.fotos?.length) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "ArrowLeft") {
+        setPhotoIndexVisualizacao((prev) =>
+          prev === 0 ? alvoVisualizacao.fotos.length - 1 : prev - 1,
+        );
+      } else if (e.key === "ArrowRight") {
+        setPhotoIndexVisualizacao((prev) =>
+          prev === alvoVisualizacao.fotos.length - 1 ? 0 : prev + 1,
+        );
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [alvoVisualizacao]);
+
   return (
     <AppShell
       title="Salas"
@@ -89,7 +107,7 @@ function SalasPage() {
               <div>
                 {s.fotos && s.fotos.length > 0 ? (
                   <div
-                    className="w-full h-40 bg-muted overflow-hidden cursor-pointer animate-fade-in"
+                    className="relative w-full h-44 bg-muted overflow-hidden cursor-pointer group select-none"
                     onClick={() => {
                       setAlvoVisualizacao(s);
                       setPhotoIndexVisualizacao(0);
@@ -98,10 +116,23 @@ function SalasPage() {
                     <img
                       src={s.fotos[0]}
                       alt={s.nome}
-                      className="w-full h-full object-cover transition-transform hover:scale-105 duration-300"
+                      className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
                     />
+                    <div className="absolute inset-0 bg-black/30 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-1.5 text-white text-xs font-medium backdrop-blur-[1px]">
+                      <Eye className="size-4" />
+                      <span>Ver {s.fotos.length} {s.fotos.length === 1 ? "foto" : "fotos"}</span>
+                    </div>
+                    <div className="absolute top-2.5 right-2.5 bg-black/60 backdrop-blur-md text-white text-[11px] font-medium px-2.5 py-0.5 rounded-full flex items-center gap-1 shadow-sm">
+                      <Images className="size-3" />
+                      {s.fotos.length}
+                    </div>
                   </div>
-                ) : null}
+                ) : (
+                  <div className="w-full h-36 bg-muted/30 flex flex-col items-center justify-center text-muted-foreground border-b border-border/60">
+                    <Images className="size-6 mb-1 opacity-40" />
+                    <span className="text-xs">Sem fotos cadastradas</span>
+                  </div>
+                )}
                 <div className="p-4">
                   <div className="flex items-start justify-between gap-2">
                     <div className="min-w-0 flex-1">
@@ -161,43 +192,90 @@ function SalasPage() {
 
       {alvoVisualizacao !== null && alvoVisualizacao.fotos && alvoVisualizacao.fotos.length > 0 ? (
         <Dialog open={alvoVisualizacao !== null} onOpenChange={() => setAlvoVisualizacao(null)}>
-          <DialogContent className="sm:max-w-xl p-3 flex flex-col items-center justify-center bg-background/95 border-none shadow-2xl">
-            <div className="relative w-full aspect-video rounded-lg overflow-hidden bg-black flex items-center justify-center">
+          <DialogContent className="sm:max-w-3xl p-4 flex flex-col items-center justify-center bg-background border border-border shadow-2xl rounded-xl">
+            <div className="w-full flex items-center justify-between border-b pb-3 mb-2">
+              <div>
+                <h3 className="text-base font-semibold text-foreground flex items-center gap-2">
+                  <Images className="size-4 text-primary" />
+                  {alvoVisualizacao.nome}
+                </h3>
+                <p className="text-xs text-muted-foreground">
+                  Foto {photoIndexVisualizacao + 1} de {alvoVisualizacao.fotos.length}
+                </p>
+              </div>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() =>
+                  handleDownloadReceipt(
+                    alvoVisualizacao.fotos[photoIndexVisualizacao],
+                    `sala-${alvoVisualizacao.nome.replace(/\s+/g, "-").toLowerCase()}-foto-${photoIndexVisualizacao + 1}.png`,
+                  )
+                }
+                className="gap-1.5 text-xs font-medium"
+              >
+                <Download className="size-3.5" />
+                Baixar foto
+              </Button>
+            </div>
+
+            <div className="relative w-full aspect-video rounded-lg overflow-hidden bg-black/90 flex items-center justify-center min-h-[340px]">
               <img
+                key={photoIndexVisualizacao}
                 src={alvoVisualizacao.fotos[photoIndexVisualizacao]}
                 alt={`Foto ${photoIndexVisualizacao + 1}`}
-                className="max-w-full max-h-full object-contain animate-fade-in"
+                className="max-w-full max-h-[65vh] object-contain animate-fade-in"
               />
               {alvoVisualizacao.fotos.length > 1 ? (
                 <>
                   <button
+                    type="button"
                     onClick={(e) => {
                       e.stopPropagation();
                       setPhotoIndexVisualizacao((prev) =>
                         prev === 0 ? alvoVisualizacao.fotos.length - 1 : prev - 1,
                       );
                     }}
-                    className="absolute left-2 top-1/2 -translate-y-1/2 bg-black/60 text-white rounded-full p-2 text-sm hover:bg-black/80 font-bold transition-transform active:scale-95"
+                    className="absolute left-3 top-1/2 -translate-y-1/2 bg-black/70 hover:bg-black text-white rounded-full p-2.5 shadow-md transition-all hover:scale-110 active:scale-95"
+                    title="Foto anterior"
                   >
-                    ◀
+                    <ChevronLeft className="size-5" />
                   </button>
                   <button
+                    type="button"
                     onClick={(e) => {
                       e.stopPropagation();
                       setPhotoIndexVisualizacao((prev) =>
                         prev === alvoVisualizacao.fotos.length - 1 ? 0 : prev + 1,
                       );
                     }}
-                    className="absolute right-2 top-1/2 -translate-y-1/2 bg-black/60 text-white rounded-full p-2 text-sm hover:bg-black/80 font-bold transition-transform active:scale-95"
+                    className="absolute right-3 top-1/2 -translate-y-1/2 bg-black/70 hover:bg-black text-white rounded-full p-2.5 shadow-md transition-all hover:scale-110 active:scale-95"
+                    title="Próxima foto"
                   >
-                    ▶
+                    <ChevronRight className="size-5" />
                   </button>
                 </>
               ) : null}
             </div>
-            <div className="mt-2 text-xs text-muted-foreground font-medium">
-              Foto {photoIndexVisualizacao + 1} de {alvoVisualizacao.fotos.length}
-            </div>
+
+            {alvoVisualizacao.fotos.length > 1 ? (
+              <div className="mt-3 w-full flex items-center justify-center gap-2 overflow-x-auto py-1">
+                {alvoVisualizacao.fotos.map((foto, idx) => (
+                  <button
+                    key={idx}
+                    type="button"
+                    onClick={() => setPhotoIndexVisualizacao(idx)}
+                    className={`relative w-16 h-12 rounded-md overflow-hidden border-2 transition-all cursor-pointer ${
+                      idx === photoIndexVisualizacao
+                        ? "border-primary scale-105 shadow-sm ring-2 ring-primary/20"
+                        : "border-transparent opacity-60 hover:opacity-100"
+                    }`}
+                  >
+                    <img src={foto} alt={`Miniatura ${idx + 1}`} className="w-full h-full object-cover" />
+                  </button>
+                ))}
+              </div>
+            ) : null}
           </DialogContent>
         </Dialog>
       ) : null}

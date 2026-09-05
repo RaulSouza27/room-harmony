@@ -11,6 +11,7 @@ import {
   ExcluirReservaButton,
 } from "@/components/ReservaActions";
 import { ReservaFormDialog } from "@/components/ReservaFormDialog";
+import { ReceiptViewerDialog } from "@/components/ReceiptViewerDialog";
 import { ErrorState, LoadingState, StatusBadge } from "@/components/common";
 import { Button } from "@/components/ui/button";
 import {
@@ -406,25 +407,11 @@ function AgendaPage() {
         </DialogContent>
       </Dialog>
 
-      {alvoVisualizacaoComprovante ? (
-        <Dialog
-          open={!!alvoVisualizacaoComprovante}
-          onOpenChange={() => setAlvoVisualizacaoComprovante(null)}
-        >
-          <DialogContent className="sm:max-w-xl p-3 flex flex-col items-center justify-center bg-background/95 border-none shadow-2xl">
-            <div className="relative w-full aspect-video rounded-lg overflow-hidden bg-black flex items-center justify-center">
-              <img
-                src={alvoVisualizacaoComprovante}
-                alt="Comprovante de pagamento"
-                className="max-w-full max-h-full object-contain"
-              />
-            </div>
-            <div className="mt-2 text-xs text-muted-foreground font-medium">
-              Comprovante de Pagamento Anexado
-            </div>
-          </DialogContent>
-        </Dialog>
-      ) : null}
+      <ReceiptViewerDialog
+        open={!!alvoVisualizacaoComprovante}
+        onOpenChange={(v) => !v && setAlvoVisualizacaoComprovante(null)}
+        receiptUrl={alvoVisualizacaoComprovante}
+      />
     </AppShell>
   );
 }

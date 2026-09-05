@@ -2,14 +2,14 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
 import { AppShell } from "@/components/AppShell";
 import { EmptyState, ErrorState, LoadingState, StatusBadge } from "@/components/common";
-import { Dialog, DialogContent } from "@/components/ui/dialog";
+import { ReceiptViewerDialog } from "@/components/ReceiptViewerDialog";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useAuth } from "@/contexts/AuthContext";
 import { useReservas, useSalas, useUnidades } from "@/hooks/useApi";
 import { formatarData, hojeISO, formatRecorrencia } from "@/lib/format";
 import type { ReservaStatus } from "@/types";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { AlertCircle } from "lucide-react";
+import { AlertCircle, FileText } from "lucide-react";
 
 export const Route = createFileRoute("/app/minhas-reservas")({
   ssr: false,
@@ -114,14 +114,14 @@ function MinhasReservasPage() {
                         </p>
                       ) : null}
                       {r.comprovante && r.comprovante !== "empty" ? (
-                        <span
-                          className="text-xs text-primary underline cursor-pointer inline-flex items-center gap-1 mt-2 block"
-                          onClick={() => {
-                            setAlvoVisualizacaoComprovante(r.comprovante!);
-                          }}
+                        <button
+                          type="button"
+                          onClick={() => setAlvoVisualizacaoComprovante(r.comprovante!)}
+                          className="inline-flex items-center gap-1.5 text-xs text-primary font-medium hover:underline bg-primary/5 hover:bg-primary/10 border border-primary/20 px-2.5 py-1 rounded-md mt-2 transition-colors"
                         >
-                          📄 Ver comprovante de pagamento
-                        </span>
+                          <FileText className="size-3.5" />
+                          Ver comprovante de pagamento
+                        </button>
                       ) : null}
                     </div>
                     <div className="flex items-center gap-2">
@@ -135,25 +135,11 @@ function MinhasReservasPage() {
         )}
       </div>
 
-      {alvoVisualizacaoComprovante ? (
-        <Dialog
-          open={!!alvoVisualizacaoComprovante}
-          onOpenChange={() => setAlvoVisualizacaoComprovante(null)}
-        >
-          <DialogContent className="sm:max-w-xl p-3 flex flex-col items-center justify-center bg-background/95 border-none shadow-2xl">
-            <div className="relative w-full aspect-video rounded-lg overflow-hidden bg-black flex items-center justify-center">
-              <img
-                src={alvoVisualizacaoComprovante}
-                alt="Comprovante de pagamento"
-                className="max-w-full max-h-full object-contain animate-fade-in"
-              />
-            </div>
-            <div className="mt-2 text-xs text-muted-foreground font-medium">
-              Comprovante de Pagamento Anexado
-            </div>
-          </DialogContent>
-        </Dialog>
-      ) : null}
+      <ReceiptViewerDialog
+        open={!!alvoVisualizacaoComprovante}
+        onOpenChange={(v) => !v && setAlvoVisualizacaoComprovante(null)}
+        receiptUrl={alvoVisualizacaoComprovante}
+      />
     </AppShell>
   );
 }

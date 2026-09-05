@@ -186,17 +186,22 @@ function DashboardPage() {
                 ) : (
                   <ul className="divide-y divide-border">
                     {pendentes.slice(0, 5).map((r) => (
-                      <li key={r.id} className="flex items-center justify-between gap-3 py-3">
-                        <div className="min-w-0">
-                          <p className="truncate text-sm font-medium text-card-foreground">
-                            {nomeProf(r.profissional_id)}
-                          </p>
-                          <p className="truncate text-xs text-muted-foreground">
-                            {nomeSala(r.sala_id)} · {nomeUnidade(r.unidade_id)} ·{" "}
-                            {formatarData(r.data)} {r.hora_inicio}–{r.hora_fim}
-                          </p>
-                        </div>
-                        <StatusBadge status={r.status} />
+                      <li key={r.id}>
+                        <Link
+                          to="/app/aprovacoes"
+                          className="flex items-center justify-between gap-3 py-3 px-2 -mx-2 rounded-lg hover:bg-muted/60 transition-colors group cursor-pointer"
+                        >
+                          <div className="min-w-0">
+                            <p className="truncate text-sm font-medium text-card-foreground group-hover:text-primary transition-colors">
+                              {nomeProf(r.profissional_id)}
+                            </p>
+                            <p className="truncate text-xs text-muted-foreground">
+                              {nomeSala(r.sala_id)} · {nomeUnidade(r.unidade_id)} ·{" "}
+                              {formatarData(r.data)} {r.hora_inicio}–{r.hora_fim}
+                            </p>
+                          </div>
+                          <StatusBadge status={r.status} />
+                        </Link>
                       </li>
                     ))}
                   </ul>
