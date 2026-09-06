@@ -60,11 +60,6 @@ type ModoVisao = "diario" | "mensal" | "anual";
 
 function AgendaPage() {
   const { user, isAdmin } = useAuth();
-  const unidadesQ = useUnidades();
-  const salasQ = useSalas();
-  const reservasQ = useReservas();
-  const usuariosQ = useUsuarios();
-
   const [modoVisao, setModoVisao] = useState<ModoVisao>("diario");
   const [unidadeFiltro, setUnidadeFiltro] = useState("todas");
   const [data, setData] = useState(hojeISO());
@@ -72,6 +67,36 @@ function AgendaPage() {
   const hojeDate = new Date();
   const [ano, setAno] = useState(hojeDate.getFullYear());
   const [mes, setMes] = useState(hojeDate.getMonth() + 1); // 1..12
+
+  const dateFilters = useMemo(() => {
+    if (modoVisao === "diario") {
+      return {
+        startDate: data,
+        endDate: data,
+        unitId: unidadeFiltro !== "todas" ? unidadeFiltro : undefined,
+      };
+    }
+    if (modoVisao === "mensal") {
+      const start = `${ano}-${String(mes).padStart(2, "0")}-01`;
+      const lastDay = new Date(ano, mes, 0).getDate();
+      const end = `${ano}-${String(mes).padStart(2, "0")}-${String(lastDay).padStart(2, "0")}`;
+      return {
+        startDate: start,
+        endDate: end,
+        unitId: unidadeFiltro !== "todas" ? unidadeFiltro : undefined,
+      };
+    }
+    return {
+      startDate: `${ano}-01-01`,
+      endDate: `${ano}-12-31`,
+      unitId: unidadeFiltro !== "todas" ? unidadeFiltro : undefined,
+    };
+  }, [modoVisao, data, ano, mes, unidadeFiltro]);
+
+  const unidadesQ = useUnidades();
+  const salasQ = useSalas();
+  const reservasQ = useReservas(dateFilters);
+  const usuariosQ = useUsuarios();
 
   const [preset, setPreset] = useState<SlotInfo | null>(null);
   const [formOpen, setFormOpen] = useState(false);

@@ -378,10 +378,30 @@ export async function changePasswordFirstLogin(id: string, newPassword: string):
 }
 
 /* ------------------------------ Reservas ---------------------------- */
-export async function listReservas(): Promise<Reserva[]> {
-  const rooms = await listSalas();
+export interface ReservaFilters {
+  startDate?: string | undefined;
+  endDate?: string | undefined;
+  userId?: string | undefined;
+  roomId?: string | undefined;
+  unitId?: string | undefined;
+  status?: string | undefined;
+  includeReceipt?: boolean | undefined;
+}
 
-  const response = await fetch(`${BACKEND_URL}/reservations/readAll`, {
+export async function listReservas(filters?: ReservaFilters): Promise<Reserva[]> {
+  const params = new URLSearchParams();
+  if (filters?.startDate) params.append("startDate", filters.startDate);
+  if (filters?.endDate) params.append("endDate", filters.endDate);
+  if (filters?.userId) params.append("userId", filters.userId);
+  if (filters?.roomId) params.append("roomId", filters.roomId);
+  if (filters?.unitId) params.append("unitId", filters.unitId);
+  if (filters?.status) params.append("status", filters.status);
+  if (filters?.includeReceipt) params.append("includeReceipt", "true");
+
+  const queryString = params.toString();
+  const url = `${BACKEND_URL}/reservations/readAll${queryString ? `?${queryString}` : ""}`;
+
+  const response = await fetch(url, {
     headers: getHeaders(),
   });
   if (!response.ok) {
@@ -389,11 +409,10 @@ export async function listReservas(): Promise<Reserva[]> {
   }
   const data = await response.json();
   return data.map((item: any) => {
-    const room = rooms.find((r) => r.id === String(item.roomsId));
     return {
       id: String(item.id),
       sala_id: String(item.roomsId),
-      unidade_id: room ? room.unidade_id : "",
+      unidade_id: item.unitId ? String(item.unitId) : "",
       profissional_id: String(item.userId),
       data: item.data,
       hora_inicio: item.horaInicio.slice(0, 5),
@@ -407,6 +426,17 @@ export async function listReservas(): Promise<Reserva[]> {
       comprovante: item.depositImage || "",
     };
   });
+}
+
+export async function getReservaReceipt(id: string): Promise<string> {
+  const response = await fetch(`${BACKEND_URL}/reservations/${id}/receipt`, {
+    headers: getHeaders(),
+  });
+  if (!response.ok) {
+    throw new Error("Falha ao carregar comprovante.");
+  }
+  const data = await response.json();
+  return data.depositImage || "";
 }
 
 /** Conflitos que ocupam o horário (aprovadas e pendentes). */

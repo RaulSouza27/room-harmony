@@ -20,7 +20,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { useAuth } from "@/contexts/AuthContext";
-import { useReservas, useCompleteTour } from "@/hooks/useApi";
+import { useReservasPendentesCount, useCompleteTour } from "@/hooks/useApi";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 
@@ -46,8 +46,7 @@ export function AppShell({
   const navigate = useNavigate();
   const [openMobile, setOpenMobile] = useState(false);
   const pathname = useRouterState({ select: (s) => s.location.pathname });
-  const { data: reservas } = useReservas();
-  const pendentes = (reservas ?? []).filter((r) => r.status === "pendente").length;
+  const pendentes = useReservasPendentesCount();
 
   const items: NavItem[] = isAdmin
     ? [

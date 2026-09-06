@@ -41,7 +41,7 @@ const filtros: Array<{ value: "todas" | ReservaStatus; label: string }> = [
 
 function MinhasReservasPage() {
   const { user } = useAuth();
-  const reservasQ = useReservas();
+  const reservasQ = useReservas(user?.id ? { userId: user.id } : undefined);
   const salasQ = useSalas();
   const unidadesQ = useUnidades();
   const [filtro, setFiltro] = useState<"todas" | ReservaStatus>("todas");
@@ -116,7 +116,7 @@ function MinhasReservasPage() {
                       {r.comprovante && r.comprovante !== "empty" ? (
                         <button
                           type="button"
-                          onClick={() => setAlvoVisualizacaoComprovante(r.comprovante!)}
+                          onClick={() => setAlvoVisualizacaoComprovante(r.id)}
                           className="inline-flex items-center gap-1.5 text-xs text-primary font-medium hover:underline bg-primary/5 hover:bg-primary/10 border border-primary/20 px-2.5 py-1 rounded-md mt-2 transition-colors"
                         >
                           <FileText className="size-3.5" />
@@ -138,7 +138,7 @@ function MinhasReservasPage() {
       <ReceiptViewerDialog
         open={!!alvoVisualizacaoComprovante}
         onOpenChange={(v) => !v && setAlvoVisualizacaoComprovante(null)}
-        receiptUrl={alvoVisualizacaoComprovante}
+        reservaId={alvoVisualizacaoComprovante}
       />
     </AppShell>
   );

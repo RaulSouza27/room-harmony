@@ -7,15 +7,58 @@ export const keys = {
   unidades: ["unidades"] as const,
   salas: ["salas"] as const,
   usuarios: ["usuarios"] as const,
-  reservas: ["reservas"] as const,
+  reservas: (filters?: api.ReservaFilters) => ["reservas", filters ?? {}] as const,
   profissoes: ["profissoes"] as const,
+  reservaReceipt: (id: string) => ["reservaReceipt", id] as const,
 };
 
-export const useUnidades = () => useQuery({ queryKey: keys.unidades, queryFn: api.listUnidades });
-export const useSalas = () => useQuery({ queryKey: keys.salas, queryFn: api.listSalas });
-export const useUsuarios = () => useQuery({ queryKey: keys.usuarios, queryFn: api.listUsuarios });
-export const useReservas = () => useQuery({ queryKey: keys.reservas, queryFn: api.listReservas });
-export const useProfessions = () => useQuery({ queryKey: keys.profissoes, queryFn: api.listProfessions });
+export const useUnidades = () =>
+  useQuery({
+    queryKey: keys.unidades,
+    queryFn: api.listUnidades,
+    staleTime: 1000 * 60 * 15,
+  });
+
+export const useSalas = () =>
+  useQuery({
+    queryKey: keys.salas,
+    queryFn: api.listSalas,
+    staleTime: 1000 * 60 * 15,
+  });
+
+export const useUsuarios = () =>
+  useQuery({
+    queryKey: keys.usuarios,
+    queryFn: api.listUsuarios,
+    staleTime: 1000 * 60 * 15,
+  });
+
+export const useReservas = (filters?: api.ReservaFilters) =>
+  useQuery({
+    queryKey: keys.reservas(filters),
+    queryFn: () => api.listReservas(filters),
+    staleTime: 1000 * 60,
+  });
+
+export const useProfessions = () =>
+  useQuery({
+    queryKey: keys.profissoes,
+    queryFn: api.listProfessions,
+    staleTime: 1000 * 60 * 15,
+  });
+
+export const useReservaReceipt = (id: string | null) =>
+  useQuery({
+    queryKey: id ? keys.reservaReceipt(id) : ["reservaReceipt", null],
+    queryFn: () => api.getReservaReceipt(id!),
+    enabled: !!id && id !== "empty" && id !== "has_receipt",
+    staleTime: 1000 * 60 * 10,
+  });
+
+export const useReservasPendentesCount = () => {
+  const { data } = useReservas({ status: "pendente" });
+  return data?.length ?? 0;
+};
 
 function useInvalidate(key: readonly unknown[]) {
   const qc = useQueryClient();
@@ -64,7 +107,7 @@ export function useDeleteSala() {
     mutationFn: (id: string) => api.deleteSala(id),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: keys.salas });
-      qc.invalidateQueries({ queryKey: keys.reservas });
+      qc.invalidateQueries({ queryKey: ["reservas"] });
       toast.success("Sala removida.");
     },
     onError: (e: Error) => toast.error(e.message),
@@ -158,7 +201,7 @@ export function useChangePassword() {
 }
 
 export function useCreateReserva() {
-  const invalidate = useInvalidate(keys.reservas);
+  const invalidate = useInvalidate(["reservas"]);
   return useMutation({
     mutationFn: (input: NovaReserva) => api.createReserva(input),
     onSuccess: () => {
@@ -170,7 +213,7 @@ export function useCreateReserva() {
 }
 
 export function useUpdateReserva(successMessage = "Reserva atualizada.") {
-  const invalidate = useInvalidate(keys.reservas);
+  const invalidate = useInvalidate(["reservas"]);
   return useMutation({
     mutationFn: ({ id, patch }: { id: string; patch: Partial<Reserva> }) =>
       api.updateReserva(id, patch),
@@ -183,7 +226,7 @@ export function useUpdateReserva(successMessage = "Reserva atualizada.") {
 }
 
 export function useDeleteReserva() {
-  const invalidate = useInvalidate(keys.reservas);
+  const invalidate = useInvalidate(["reservas"]);
   return useMutation({
     mutationFn: (id: string) => api.deleteReserva(id),
     onSuccess: () => {
@@ -195,7 +238,7 @@ export function useDeleteReserva() {
 }
 
 export function useDeleteReservasBatch() {
-  const invalidate = useInvalidate(keys.reservas);
+  const invalidate = useInvalidate(["reservas"]);
   return useMutation({
     mutationFn: (ids: string[]) => api.deleteReservasBatch(ids),
     onSuccess: () => {

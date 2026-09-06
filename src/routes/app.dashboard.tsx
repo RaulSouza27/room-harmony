@@ -1,3 +1,4 @@
+import { useMemo } from "react";
 import { Link, createFileRoute } from "@tanstack/react-router";
 import { CalendarClock, CalendarPlus, ClipboardList, DoorOpen, Percent } from "lucide-react";
 import { AppShell } from "@/components/AppShell";
@@ -55,7 +56,14 @@ function Metric({
 
 function DashboardPage() {
   const { user, isAdmin } = useAuth();
-  const reservasQ = useReservas();
+  const dashboardFilters = useMemo(() => {
+    if (!isAdmin && user?.id) {
+      return { userId: user.id };
+    }
+    return undefined;
+  }, [isAdmin, user]);
+
+  const reservasQ = useReservas(dashboardFilters);
   const salasQ = useSalas();
   const unidadesQ = useUnidades();
   const usuariosQ = useUsuarios();

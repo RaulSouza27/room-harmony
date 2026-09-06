@@ -40,7 +40,7 @@ function getInitials(name?: string) {
 }
 
 function AprovacoesPage() {
-  const reservasQ = useReservas();
+  const reservasQ = useReservas({ status: "pendente" });
   const salasQ = useSalas();
   const unidadesQ = useUnidades();
   const usuariosQ = useUsuarios();
@@ -136,7 +136,7 @@ function AprovacoesPage() {
                           <div className="mt-2.5">
                             <button
                               type="button"
-                              onClick={() => setAlvoComprovante(r.comprovante!)}
+                              onClick={() => setAlvoComprovante(r.id)}
                               className="inline-flex items-center gap-1.5 text-xs text-primary font-medium hover:underline bg-primary/5 hover:bg-primary/10 border border-primary/20 px-2.5 py-1 rounded-md transition-colors"
                             >
                               <FileText className="size-3.5" />
@@ -168,7 +168,7 @@ function AprovacoesPage() {
       <ReceiptViewerDialog
         open={!!alvoComprovante}
         onOpenChange={(v) => !v && setAlvoComprovante(null)}
-        receiptUrl={alvoComprovante}
+        reservaId={alvoComprovante}
       />
     </AppShell>
   );

@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { FileText } from "lucide-react";
 import { AppShell } from "@/components/AppShell";
 import {
@@ -56,17 +56,28 @@ export const Route = createFileRoute("/app/reservas")({
 });
 
 function ReservasPage() {
-  const reservasQ = useReservas();
-  const salasQ = useSalas();
-  const unidadesQ = useUnidades();
-  const usuariosQ = useUsuarios();
-
   const [unidade, setUnidade] = useState("todas");
   const [sala, setSala] = useState("todas");
   const [profissional, setProfissional] = useState("todos");
   const [status, setStatus] = useState("todos");
   const [de, setDe] = useState("");
   const [ate, setAte] = useState("");
+
+  const filters = useMemo(() => {
+    return {
+      startDate: de || undefined,
+      endDate: ate || undefined,
+      userId: profissional !== "todos" ? profissional : undefined,
+      roomId: sala !== "todas" ? sala : undefined,
+      unitId: unidade !== "todas" ? unidade : undefined,
+      status: status !== "todos" ? status : undefined,
+    };
+  }, [de, ate, profissional, sala, unidade, status]);
+
+  const reservasQ = useReservas(filters);
+  const salasQ = useSalas();
+  const unidadesQ = useUnidades();
+  const usuariosQ = useUsuarios();
   const [criar, setCriar] = useState(false);
   const [editando, setEditando] = useState<Reserva | null>(null);
   const [alvoVisualizacaoComprovante, setAlvoVisualizacaoComprovante] = useState<string | null>(
@@ -308,7 +319,7 @@ function ReservasPage() {
                               {r.comprovante && r.comprovante !== "empty" ? (
                                 <button
                                   type="button"
-                                  onClick={() => setAlvoVisualizacaoComprovante(r.comprovante!)}
+                                  onClick={() => setAlvoVisualizacaoComprovante(r.id)}
                                   className="inline-flex items-center gap-1.5 text-xs text-primary font-medium hover:underline bg-primary/5 hover:bg-primary/10 border border-primary/20 px-2.5 py-1 rounded-md mt-2 transition-colors"
                                 >
                                   <FileText className="size-3.5" />
@@ -361,7 +372,7 @@ function ReservasPage() {
       <ReceiptViewerDialog
         open={!!alvoVisualizacaoComprovante}
         onOpenChange={(v) => !v && setAlvoVisualizacaoComprovante(null)}
-        receiptUrl={alvoVisualizacaoComprovante}
+        reservaId={alvoVisualizacaoComprovante}
       />
       <ConfirmDialog
         open={confirmBatchDelete}
