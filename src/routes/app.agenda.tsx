@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
-import { Calendar, CalendarDays, CalendarRange } from "lucide-react";
+import { Calendar, CalendarDays, CalendarRange, Eye } from "lucide-react";
 import { AppShell } from "@/components/AppShell";
 import { AvailabilityGrid, type SlotInfo } from "@/components/AvailabilityGrid";
 import { MonthlyCalendarView } from "@/components/MonthlyCalendarView";
@@ -12,6 +12,7 @@ import {
 } from "@/components/ReservaActions";
 import { ReservaFormDialog } from "@/components/ReservaFormDialog";
 import { ReceiptViewerDialog } from "@/components/ReceiptViewerDialog";
+import { ReservaDetailDialog } from "@/components/ReservaDetailDialog";
 import { ErrorState, LoadingState, StatusBadge } from "@/components/common";
 import { Button } from "@/components/ui/button";
 import {
@@ -102,6 +103,7 @@ function AgendaPage() {
   const [formOpen, setFormOpen] = useState(false);
   const [detalhe, setDetalhe] = useState<Reserva | null>(null);
   const [editando, setEditando] = useState<Reserva | null>(null);
+  const [detalheCompleto, setDetalheCompleto] = useState<Reserva | null>(null);
   const [alvoVisualizacaoComprovante, setAlvoVisualizacaoComprovante] = useState<string | null>(
     null,
   );
@@ -403,6 +405,18 @@ function AgendaPage() {
 
               {isAdmin ? (
                 <div className="flex flex-wrap items-center gap-2 border-t border-border pt-4">
+                  <Button
+                    size="sm"
+                    variant="secondary"
+                    onClick={() => {
+                      setDetalheCompleto(detalhe);
+                      setDetalhe(null);
+                    }}
+                    className="gap-1.5"
+                  >
+                    <Eye className="size-3.5" />
+                    Ver perfil completo
+                  </Button>
                   {detalhe.status === "pendente" ? (
                     <AprovacaoActions reserva={detalhe} reservas={reservas} compact />
                   ) : null}
@@ -424,7 +438,19 @@ function AgendaPage() {
               ) : detalhe.profissional_id === user?.id &&
                 detalhe.status !== "cancelada" &&
                 detalhe.data >= hojeISO() ? (
-                <div className="border-t border-border pt-4">
+                <div className="border-t border-border pt-4 flex items-center justify-between gap-2">
+                  <Button
+                    size="sm"
+                    variant="secondary"
+                    onClick={() => {
+                      setDetalheCompleto(detalhe);
+                      setDetalhe(null);
+                    }}
+                    className="gap-1.5"
+                  >
+                    <Eye className="size-3.5" />
+                    Detalhes
+                  </Button>
                   <CancelarReservaButton reserva={detalhe} label="Cancelar minha reserva" />
                 </div>
               ) : null}
@@ -437,6 +463,15 @@ function AgendaPage() {
         open={!!alvoVisualizacaoComprovante}
         onOpenChange={(v) => !v && setAlvoVisualizacaoComprovante(null)}
         receiptUrl={alvoVisualizacaoComprovante}
+      />
+
+      <ReservaDetailDialog
+        open={!!detalheCompleto}
+        onOpenChange={(v) => !v && setDetalheCompleto(null)}
+        reserva={detalheCompleto}
+        sala={salas.find((s) => s.id === detalheCompleto?.sala_id)}
+        unidade={unidades.find((u) => u.id === detalheCompleto?.unidade_id)}
+        usuario={usuarios.find((u) => u.id === detalheCompleto?.profissional_id)}
       />
     </AppShell>
   );

@@ -55,6 +55,14 @@ export const useReservaReceipt = (id: string | null) =>
     staleTime: 1000 * 60 * 10,
   });
 
+export const useUsuarioDetail = (id: string | null) =>
+  useQuery({
+    queryKey: id ? ["usuarioDetail", id] : ["usuarioDetail", null],
+    queryFn: () => api.getUsuarioDetail(id!),
+    enabled: !!id,
+    staleTime: 1000 * 60 * 10,
+  });
+
 export const useReservasPendentesCount = () => {
   const { data } = useReservas({ status: "pendente" });
   return data?.length ?? 0;

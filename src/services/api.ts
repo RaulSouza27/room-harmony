@@ -275,6 +275,35 @@ export async function listUsuarios(): Promise<User[]> {
   }));
 }
 
+export async function getUsuarioDetail(id: string): Promise<User> {
+  const response = await fetch(`${BACKEND_URL}/users/${id}`, {
+    headers: getHeaders(),
+  });
+  if (!response.ok) {
+    throw new Error("Falha ao carregar perfil do usuário.");
+  }
+  const item = await response.json();
+  return {
+    id: String(item.id),
+    nome: item.username,
+    email: item.email,
+    senha: "",
+    papel: item.accessLevel === "admin" ? "ADMINISTRADOR" : "PSICOLOGO",
+    status: item.status ? "ativo" : "inativo",
+    telefone: item.phone || "",
+    especialidade: item.specialty || "",
+    foto: item.photo || "",
+    unidades: item.units || [],
+    professionId: item.professionId,
+    mustCompleteTour: item.mustCompleteTour || false,
+    firstLogin: item.firstLogin !== undefined ? item.firstLogin : (item.isFirstLogin || false),
+    cpf: item.cpf || "",
+    endereco: item.address || "",
+    cep: item.cep || "",
+    boardNumber: item.boardNumber || "",
+  };
+}
+
 export async function saveUsuario(input: Partial<User> & { id?: string }): Promise<User> {
   const isUpdate = !!input.id;
   const url = isUpdate ? `${BACKEND_URL}/users/${input.id}` : `${BACKEND_URL}/users`;

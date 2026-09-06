@@ -1,15 +1,17 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
-import { AlertTriangle, FileText } from "lucide-react";
+import { AlertTriangle, Eye, FileText } from "lucide-react";
 import { AppShell } from "@/components/AppShell";
 import { AprovacaoActions } from "@/components/ReservaActions";
 import { EmptyState, ErrorState, LoadingState } from "@/components/common";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { ReceiptViewerDialog } from "@/components/ReceiptViewerDialog";
+import { ReservaDetailDialog } from "@/components/ReservaDetailDialog";
 import { useReservas, useSalas, useUnidades, useUsuarios } from "@/hooks/useApi";
 import { formatarData, formatRecorrencia } from "@/lib/format";
 import { findConflitos } from "@/services/api";
+import type { Reserva } from "@/types";
 
 export const Route = createFileRoute("/app/aprovacoes")({
   ssr: false,
@@ -46,6 +48,7 @@ function AprovacoesPage() {
   const usuariosQ = useUsuarios();
 
   const [alvoComprovante, setAlvoComprovante] = useState<string | null>(null);
+  const [detalheReserva, setDetalheReserva] = useState<Reserva | null>(null);
 
   const reservas = reservasQ.data ?? [];
   const pendentes = reservas
@@ -132,18 +135,27 @@ function AprovacoesPage() {
                           </p>
                         ) : null}
 
-                        {r.comprovante && r.comprovante !== "empty" ? (
-                          <div className="mt-2.5">
+                        <div className="mt-2.5 flex flex-wrap items-center gap-2">
+                          <button
+                            type="button"
+                            onClick={() => setDetalheReserva(r)}
+                            className="inline-flex items-center gap-1.5 text-xs text-primary font-medium hover:underline bg-primary/5 hover:bg-primary/10 border border-primary/20 px-2.5 py-1 rounded-md transition-colors"
+                          >
+                            <Eye className="size-3.5" />
+                            Ver detalhes do profissional & reserva
+                          </button>
+
+                          {r.comprovante && r.comprovante !== "empty" ? (
                             <button
                               type="button"
                               onClick={() => setAlvoComprovante(r.id)}
-                              className="inline-flex items-center gap-1.5 text-xs text-primary font-medium hover:underline bg-primary/5 hover:bg-primary/10 border border-primary/20 px-2.5 py-1 rounded-md transition-colors"
+                              className="inline-flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground font-medium hover:underline bg-muted/30 border border-border px-2.5 py-1 rounded-md transition-colors"
                             >
                               <FileText className="size-3.5" />
-                              Ver comprovante de pagamento
+                              Ver comprovante
                             </button>
-                          </div>
-                        ) : null}
+                          ) : null}
+                        </div>
 
                         {conflitos.length ? (
                           <Badge
@@ -169,6 +181,15 @@ function AprovacoesPage() {
         open={!!alvoComprovante}
         onOpenChange={(v) => !v && setAlvoComprovante(null)}
         reservaId={alvoComprovante}
+      />
+
+      <ReservaDetailDialog
+        open={!!detalheReserva}
+        onOpenChange={(v) => !v && setDetalheReserva(null)}
+        reserva={detalheReserva}
+        sala={salasQ.data?.find((s) => s.id === detalheReserva?.sala_id)}
+        unidade={unidadesQ.data?.find((u) => u.id === detalheReserva?.unidade_id)}
+        usuario={usuariosQ.data?.find((u) => u.id === detalheReserva?.profissional_id)}
       />
     </AppShell>
   );

@@ -69,7 +69,7 @@ export function AppShell({
       ];
 
   const nav = (
-    <nav className={cn("flex flex-1 flex-col gap-1 p-3", user?.mustCompleteTour && "pointer-events-none opacity-50")}>
+    <nav className={cn("flex flex-1 flex-col gap-1 p-3 overflow-y-auto min-h-0", user?.mustCompleteTour && "pointer-events-none opacity-50")}>
       {items.map((item) => {
         const active = pathname === item.to;
         return (
@@ -98,7 +98,7 @@ export function AppShell({
   );
 
   const brand = (
-    <div className="flex items-center gap-2.5 border-b border-sidebar-border px-4 py-4">
+    <div className="flex items-center gap-2.5 border-b border-sidebar-border px-4 py-4 shrink-0">
       <div className="flex size-9 items-center justify-center rounded-lg overflow-hidden">
         <img src="/logo.PNG" alt="Logo" className="size-7 object-contain" />
       </div>
@@ -110,7 +110,7 @@ export function AppShell({
   );
 
   const footer = (
-    <div className="border-t border-sidebar-border p-3">
+    <div className="border-t border-sidebar-border p-3 shrink-0">
       <div className="flex items-center gap-3 rounded-lg px-2 py-2">
         <Avatar className="size-8">
           {user?.foto ? <AvatarImage src={user.foto} alt={user.nome} /> : null}
@@ -144,7 +144,7 @@ export function AppShell({
 
   return (
     <div className="flex min-h-screen w-full bg-background">
-      <aside className="hidden w-64 shrink-0 flex-col border-r border-sidebar-border bg-sidebar md:flex">
+      <aside className="sticky top-0 h-screen hidden w-64 shrink-0 flex-col border-r border-sidebar-border bg-sidebar md:flex">
         {brand}
         {nav}
         {footer}

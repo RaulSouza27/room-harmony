@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
-import { FileText } from "lucide-react";
+import { Eye, FileText } from "lucide-react";
 import { AppShell } from "@/components/AppShell";
 import {
   AprovacaoActions,
@@ -9,6 +9,7 @@ import {
   ConfirmDialog,
 } from "@/components/ReservaActions";
 import { ReservaFormDialog } from "@/components/ReservaFormDialog";
+import { ReservaDetailDialog } from "@/components/ReservaDetailDialog";
 import { EmptyState, ErrorState, LoadingState, StatusBadge } from "@/components/common";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -80,6 +81,7 @@ function ReservasPage() {
   const usuariosQ = useUsuarios();
   const [criar, setCriar] = useState(false);
   const [editando, setEditando] = useState<Reserva | null>(null);
+  const [detalheReserva, setDetalheReserva] = useState<Reserva | null>(null);
   const [alvoVisualizacaoComprovante, setAlvoVisualizacaoComprovante] = useState<string | null>(
     null,
   );
@@ -315,17 +317,27 @@ function ReservasPage() {
                               {r.motivo_negacao ? (
                                 <p className="mt-1 text-xs text-destructive">Negada: {r.motivo_negacao}</p>
                               ) : null}
-
-                              {r.comprovante && r.comprovante !== "empty" ? (
+                              <div className="mt-2.5 flex flex-wrap items-center gap-2">
                                 <button
                                   type="button"
-                                  onClick={() => setAlvoVisualizacaoComprovante(r.id)}
-                                  className="inline-flex items-center gap-1.5 text-xs text-primary font-medium hover:underline bg-primary/5 hover:bg-primary/10 border border-primary/20 px-2.5 py-1 rounded-md mt-2 transition-colors"
+                                  onClick={() => setDetalheReserva(r)}
+                                  className="inline-flex items-center gap-1.5 text-xs text-primary font-medium hover:underline bg-primary/5 hover:bg-primary/10 border border-primary/20 px-2.5 py-1 rounded-md transition-colors"
                                 >
-                                  <FileText className="size-3.5" />
-                                  Ver comprovante de pagamento
+                                  <Eye className="size-3.5" />
+                                  Detalhes
                                 </button>
-                              ) : null}
+
+                                {r.comprovante && r.comprovante !== "empty" ? (
+                                  <button
+                                    type="button"
+                                    onClick={() => setAlvoVisualizacaoComprovante(r.id)}
+                                    className="inline-flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground font-medium hover:underline bg-muted/30 border border-border px-2.5 py-1 rounded-md transition-colors"
+                                  >
+                                    <FileText className="size-3.5" />
+                                    Ver comprovante
+                                  </button>
+                                ) : null}
+                              </div>
                             </div>
                           </div>
                         </div>
@@ -373,6 +385,15 @@ function ReservasPage() {
         open={!!alvoVisualizacaoComprovante}
         onOpenChange={(v) => !v && setAlvoVisualizacaoComprovante(null)}
         reservaId={alvoVisualizacaoComprovante}
+      />
+
+      <ReservaDetailDialog
+        open={!!detalheReserva}
+        onOpenChange={(v) => !v && setDetalheReserva(null)}
+        reserva={detalheReserva}
+        sala={salas.find((s) => s.id === detalheReserva?.sala_id)}
+        unidade={unidades.find((u) => u.id === detalheReserva?.unidade_id)}
+        usuario={usuarios.find((u) => u.id === detalheReserva?.profissional_id)}
       />
       <ConfirmDialog
         open={confirmBatchDelete}
