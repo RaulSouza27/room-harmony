@@ -36,7 +36,13 @@ function LoginPage() {
   const [enviando, setEnviando] = useState(false);
 
   useEffect(() => {
-    if (user) navigate({ to: "/app/dashboard", replace: true });
+    if (user) {
+      if (user.firstLogin) {
+        navigate({ to: "/app/reset-first-password", replace: true });
+      } else {
+        navigate({ to: "/app/dashboard", replace: true });
+      }
+    }
   }, [user, navigate]);
 
   async function handleSubmit(e: React.FormEvent) {
@@ -44,8 +50,12 @@ function LoginPage() {
     setErro(null);
     setEnviando(true);
     try {
-      await signIn(email, senha);
-      navigate({ to: "/app/dashboard", replace: true });
+      const loggedUser = await signIn(email, senha);
+      if (loggedUser.firstLogin) {
+        navigate({ to: "/app/reset-first-password", replace: true });
+      } else {
+        navigate({ to: "/app/dashboard", replace: true });
+      }
     } catch (err) {
       setErro(err instanceof Error ? err.message : "Falha no login.");
     } finally {

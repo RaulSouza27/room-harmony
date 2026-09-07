@@ -145,7 +145,7 @@ function PerfilPage() {
             <div className="text-center">
               <h2 className="text-lg font-semibold text-card-foreground">{user?.nome}</h2>
               <p className="text-xs text-muted-foreground">
-                {isAdmin ? "Administrador" : "Psicólogo(a)"}
+                {isAdmin ? "Administrador" : "Locador(a)"}
               </p>
             </div>
           </div>
@@ -181,7 +181,7 @@ function PerfilPage() {
             </div>
             <div>
               <dt className="text-xs text-muted-foreground">Papel / Acesso</dt>
-              <dd className="text-card-foreground">{isAdmin ? "Administrador" : "Psicólogo(a)"}</dd>
+              <dd className="text-card-foreground">{isAdmin ? "Administrador" : "Locador(a)"}</dd>
             </div>
             {user?.professionId ? (
               <div>

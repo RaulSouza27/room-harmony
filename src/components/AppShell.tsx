@@ -125,7 +125,7 @@ export function AppShell({
         <div className="min-w-0 flex-1">
           <p className="truncate text-sm font-medium text-sidebar-foreground">{user?.nome}</p>
           <p className="truncate text-xs text-muted-foreground">
-            {isAdmin ? "Administrador" : "Psicólogo(a)"}
+            {isAdmin ? "Administrador" : "Locador(a)"}
           </p>
         </div>
       </div>
@@ -178,7 +178,7 @@ export function AppShell({
         <main className="flex-1 p-4 md:p-8">{children}</main>
       </div>
 
-      {user?.mustCompleteTour && <TourOverlay />}
+      {user?.mustCompleteTour && !user?.firstLogin && <TourOverlay />}
     </div>
   );
 }
@@ -192,6 +192,7 @@ interface TourStep {
 
 function TourOverlay() {
   const { user, isAdmin, refresh } = useAuth();
+  if (user?.firstLogin) return null;
   const navigate = useNavigate();
   const { location } = useRouterState();
   const pathname = location.pathname;
@@ -344,10 +345,11 @@ function TourOverlay() {
 
   // Lock navigation to the current step
   useEffect(() => {
+    if (user?.firstLogin) return;
     if (pathname !== currentStep.to) {
       navigate({ to: currentStep.to });
     }
-  }, [pathname, currentStep.to, navigate]);
+  }, [user?.firstLogin, pathname, currentStep.to, navigate]);
 
   const handleNext = async () => {
     if (currentStepIndex < steps.length - 1) {

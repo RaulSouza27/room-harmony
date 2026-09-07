@@ -451,7 +451,7 @@ export function BulkUserImportDialog({
                             {row.boardNumber || "-"}
                           </td>
                           <td className="p-2.5 text-muted-foreground">
-                            {row.papel === "ADMINISTRADOR" ? "Admin" : "Psicólogo(a)"}
+                            {row.papel === "ADMINISTRADOR" ? "Admin" : "Locador(a)"}
                           </td>
                           <td className="p-2.5 text-muted-foreground truncate max-w-[110px]">
                             {row.professionName || "-"}

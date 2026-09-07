@@ -1,4 +1,4 @@
-export type Role = "PSICOLOGO" | "ADMINISTRADOR";
+export type Role = "LOCADOR" | "ADMINISTRADOR";
 export type UserStatus = "ativo" | "inativo";
 
 export interface Profession {

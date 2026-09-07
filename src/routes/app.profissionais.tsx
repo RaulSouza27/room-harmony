@@ -97,7 +97,7 @@ function ProfissionaisPage() {
                   <div className="flex flex-wrap items-center gap-2">
                     <p className="text-sm font-semibold text-card-foreground">{u.nome}</p>
                     <Badge variant="secondary">
-                      {u.papel === "ADMINISTRADOR" ? "Administrador" : "Psicólogo(a)"}
+                      {u.papel === "ADMINISTRADOR" ? "Administrador" : "Locador(a)"}
                     </Badge>
                     {u.professionId ? (
                       <Badge variant="outline" className="border-primary/30 text-primary">
@@ -210,7 +210,7 @@ function ProfissionalDialog({
   const profissoesQ = useProfessions();
   const [nome, setNome] = useState("");
   const [email, setEmail] = useState("");
-  const [papel, setPapel] = useState<Role>("PSICOLOGO");
+  const [papel, setPapel] = useState<Role>("LOCADOR");
   const [status, setStatus] = useState<"ativo" | "inativo">("ativo");
   const [professionId, setProfessionId] = useState<string>("0");
   const [phone, setPhone] = useState("");
@@ -224,7 +224,7 @@ function ProfissionalDialog({
     if (!open) return;
     setNome(usuario?.nome ?? "");
     setEmail(usuario?.email ?? "");
-    setPapel(usuario?.papel ?? "PSICOLOGO");
+    setPapel(usuario?.papel ?? "LOCADOR");
     setStatus(usuario?.status ?? "ativo");
     setProfessionId(usuario?.professionId ? String(usuario.professionId) : "0");
     setPhone(usuario?.telefone ?? "");
@@ -242,7 +242,8 @@ function ProfissionalDialog({
     nome.trim().length > 2 &&
     /\S+@\S+\.\S+/.test(email) &&
     (cleanCpf.length === 0 || cleanCpf.length === 11) &&
-    (cleanCep.length === 0 || cleanCep.length === 8);
+    (cleanCep.length === 0 || cleanCep.length === 8) &&
+    (papel !== "LOCADOR" || professionId !== "0");
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -379,12 +380,12 @@ function ProfissionalDialog({
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="PSICOLOGO">Psicólogo(a)</SelectItem>
+                <SelectItem value="LOCADOR">Locador(a)</SelectItem>
                 <SelectItem value="ADMINISTRADOR">Administrador</SelectItem>
               </SelectContent>
             </Select>
           </div>
-          {papel === "PSICOLOGO" && (
+          {papel === "LOCADOR" && (
             <div className="space-y-2">
               <Label>Profissão</Label>
               <Select value={professionId} onValueChange={setProfessionId}>
@@ -392,7 +393,7 @@ function ProfissionalDialog({
                   <SelectValue placeholder="Selecione uma profissão" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="0">Nenhuma</SelectItem>
+                  <SelectItem value="0">Selecione uma profissão</SelectItem>
                   {(profissoesQ.data ?? []).map((p) => (
                     <SelectItem key={p.id} value={String(p.id)}>
                       {p.profission}
@@ -428,7 +429,7 @@ function ProfissionalDialog({
                 email: email.trim(),
                 papel,
                 status,
-                professionId: papel === "PSICOLOGO" && professionId !== "0" ? Number(professionId) : null,
+                professionId: papel === "LOCADOR" && professionId !== "0" ? Number(professionId) : null,
                 telefone: phone.trim(),
                 cpf: cleanCpf,
                 endereco: endereco.trim(),

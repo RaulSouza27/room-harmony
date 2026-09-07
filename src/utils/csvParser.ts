@@ -165,7 +165,7 @@ export function parseCsvUserImport(
     const endereco = rawData.endereco || "";
 
     const papel: Role =
-      rawPapel.toLowerCase().includes("admin") ? "ADMINISTRADOR" : "PSICOLOGO";
+      rawPapel.toLowerCase().includes("admin") ? "ADMINISTRADOR" : "LOCADOR";
 
     let professionId: number | null = null;
     let professionName = rawProfissao;
@@ -210,7 +210,7 @@ export function parseCsvUserImport(
       errors.push("CEP deve conter exatamente 8 dígitos");
     }
 
-    if (papel === "PSICOLOGO" && rawProfissao && !professionId) {
+    if (papel === "LOCADOR" && rawProfissao && !professionId) {
       warnings.push(`Profissão "${rawProfissao}" não encontrada no sistema`);
     }
 

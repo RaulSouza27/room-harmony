@@ -68,7 +68,7 @@ export async function login(email: string, senha: string): Promise<User> {
     throw new Error(data?.message || "Credenciais ou resposta do servidor incorretas.");
   }
 
-  const papel = data.accessLevel === "admin" ? "ADMINISTRADOR" : "PSICOLOGO";
+  const papel = data.accessLevel === "admin" ? "ADMINISTRADOR" : "LOCADOR";
 
   const user: User = {
     id: data.id ? String(data.id) : data.username || email,
@@ -259,7 +259,7 @@ export async function listUsuarios(): Promise<User[]> {
     nome: item.username,
     email: item.email,
     senha: "",
-    papel: item.accessLevel === "admin" ? "ADMINISTRADOR" : "PSICOLOGO",
+    papel: item.accessLevel === "admin" ? "ADMINISTRADOR" : "LOCADOR",
     status: item.status ? "ativo" : "inativo",
     telefone: item.phone || "",
     especialidade: item.specialty || "",
@@ -288,7 +288,7 @@ export async function getUsuarioDetail(id: string): Promise<User> {
     nome: item.username,
     email: item.email,
     senha: "",
-    papel: item.accessLevel === "admin" ? "ADMINISTRADOR" : "PSICOLOGO",
+    papel: item.accessLevel === "admin" ? "ADMINISTRADOR" : "LOCADOR",
     status: item.status ? "ativo" : "inativo",
     telefone: item.phone || "",
     especialidade: item.specialty || "",
@@ -319,7 +319,7 @@ export async function saveUsuario(input: Partial<User> & { id?: string }): Promi
     specialty: input.especialidade,
     photo: input.foto,
     units: input.unidades,
-    professionId: input.professionId,
+    professionId: input.professionId !== undefined && input.professionId !== null && Number(input.professionId) !== 0 ? Number(input.professionId) : null,
     cpf: input.cpf,
     address: input.endereco,
     cep: input.cep,
@@ -343,7 +343,7 @@ export async function saveUsuario(input: Partial<User> & { id?: string }): Promi
     nome: data.username,
     email: data.email,
     senha: "",
-    papel: data.accessLevel === "admin" ? "ADMINISTRADOR" : "PSICOLOGO",
+    papel: data.accessLevel === "admin" ? "ADMINISTRADOR" : "LOCADOR",
     status: data.status ? "ativo" : "inativo",
     telefone: data.phone || "",
     especialidade: data.specialty || "",
