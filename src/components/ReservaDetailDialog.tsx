@@ -6,6 +6,7 @@ import {
   User,
   Mail,
   Phone,
+  MessageCircle,
   FileText,
   CreditCard,
   MapPin,
@@ -13,6 +14,7 @@ import {
   ExternalLink,
   Loader2,
 } from "lucide-react";
+import { openWhatsApp } from "@/utils/whatsapp";
 import {
   Dialog,
   DialogContent,
@@ -131,9 +133,28 @@ export function ReservaDetailDialog({
                   <span className="truncate">{fullUser?.email || "E-mail não informado"}</span>
                 </div>
 
-                <div className="flex items-center gap-2 text-muted-foreground">
-                  <Phone className="size-3.5 shrink-0 text-primary/70" />
-                  <span>{fullUser?.telefone || "Telefone não informado"}</span>
+                <div className="flex items-center justify-between col-span-1 sm:col-span-2 bg-muted/20 p-2 rounded-lg border border-border/40">
+                  <div className="flex items-center gap-2 text-muted-foreground">
+                    <Phone className="size-3.5 shrink-0 text-primary/70" />
+                    <span className="font-medium text-foreground">{fullUser?.telefone || "Telefone não informado"}</span>
+                  </div>
+                  {fullUser?.telefone ? (
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="outline"
+                      onClick={() =>
+                        openWhatsApp(
+                          fullUser.telefone,
+                          `Olá ${fullUser.nome || ""}! Entro em contato referente à sua reserva na Clínica Escuta (${sala?.nome ?? "Sala"} - ${formatarDataLonga(reserva.data)}).`
+                        )
+                      }
+                      className="h-7 gap-1.5 text-xs font-medium bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-500/20 border-emerald-500/30"
+                    >
+                      <MessageCircle className="size-3.5" />
+                      Conversar no WhatsApp
+                    </Button>
+                  ) : null}
                 </div>
 
                 {fullUser?.cpf ? (
