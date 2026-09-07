@@ -85,3 +85,15 @@ export interface NovaReserva {
   status?: ReservaStatus | undefined;
   comprovante?: string;
 }
+
+export interface Holiday {
+  id: number;
+  name: string;
+  startDate: string; // yyyy-MM-dd
+  endDate: string; // yyyy-MM-dd
+  unitId?: number | null;
+  unitName?: string;
+  description?: string;
+  status: boolean;
+}
+

@@ -1,6 +1,6 @@
 import { BACKEND_URL } from "@/config/api";
 import { overlaps, readDB, uid, writeDB } from "./db";
-import type { BusinessHours, NovaReserva, Profession, Reserva, ReservaStatus, Sala, Unidade, User } from "@/types";
+import type { BusinessHours, Holiday, NovaReserva, Profession, Reserva, ReservaStatus, Sala, Unidade, User } from "@/types";
 
 export const defaultBusinessHours = (): BusinessHours => ({
   "0": { ativo: false, abertura: null, fechamento: null },
@@ -697,3 +697,100 @@ export async function completeTour(id: string): Promise<void> {
     writeDB(db);
   }
 }
+
+/* ------------------------------- Holidays ------------------------------- */
+export async function listHolidays(unitId?: string | number): Promise<Holiday[]> {
+  try {
+    const url = unitId ? `${BACKEND_URL}/holidays?unitId=${unitId}` : `${BACKEND_URL}/holidays`;
+    const response = await fetch(url, {
+      headers: getHeaders(),
+    });
+    if (response.ok) {
+      const data = await response.json();
+      return data.map((item: any) => ({
+        id: item.id,
+        name: item.name,
+        startDate: item.startDate,
+        endDate: item.endDate,
+        unitId: item.unitId,
+        unitName: item.unitName,
+        description: item.description,
+        status: item.status !== undefined ? item.status : true,
+      }));
+    }
+  } catch (error) {
+    console.warn("Falha ao buscar feriados do backend, usando DB local fallback", error);
+  }
+
+  const db = readDB();
+  return (db.holidays || []).filter((h) => {
+    if (!unitId) return true;
+    return !h.unitId || String(h.unitId) === String(unitId);
+  });
+}
+
+export async function saveHoliday(input: {
+  id?: number;
+  name: string;
+  startDate: string;
+  endDate?: string;
+  unitId?: number | null;
+  description?: string;
+  status?: boolean;
+}): Promise<Holiday> {
+  const url = input.id ? `${BACKEND_URL}/holidays/${input.id}` : `${BACKEND_URL}/holidays`;
+  const method = input.id ? "PUT" : "POST";
+
+  const response = await fetch(url, {
+    method,
+    headers: getHeaders(),
+    body: JSON.stringify({
+      id: input.id,
+      name: input.name,
+      startDate: input.startDate,
+      endDate: input.endDate || input.startDate,
+      unitId: input.unitId ?? null,
+      description: input.description ?? "",
+      status: input.status ?? true,
+    }),
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    throw new Error(errorText || "Falha ao salvar feriado.");
+  }
+
+  const data = await response.json();
+
+  // Sync to local DB
+  const db = readDB();
+  if (!db.holidays) db.holidays = [];
+  const index = db.holidays.findIndex((h) => h.id === data.id);
+  if (index > -1) {
+    db.holidays[index] = data;
+  } else {
+    db.holidays.push(data);
+  }
+  writeDB(db);
+
+  return data;
+}
+
+export async function deleteHoliday(id: number): Promise<void> {
+  const response = await fetch(`${BACKEND_URL}/holidays/${id}`, {
+    method: "DELETE",
+    headers: getHeaders(),
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    throw new Error(errorText || "Falha ao excluir feriado.");
+  }
+
+  const db = readDB();
+  if (db.holidays) {
+    db.holidays = db.holidays.filter((h) => h.id !== id);
+    writeDB(db);
+  }
+}
+

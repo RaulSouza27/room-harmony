@@ -19,10 +19,11 @@ import {
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { useAuth } from "@/contexts/AuthContext";
-import { useCreateReserva, useUpdateReserva } from "@/hooks/useApi";
+import { useCreateReserva, useUpdateReserva, useHolidays } from "@/hooks/useApi";
 import { findConflitos } from "@/services/api";
 import { HORARIOS, toMinutes } from "@/services/db";
 import type { Reserva, Sala, Unidade, User, Recorrencia } from "@/types";
+import { CalendarOff } from "lucide-react";
 
 interface Props {
   open: boolean;
@@ -155,6 +156,20 @@ export function ReservaFormDialog({
     });
   }, [daySchedule]);
 
+  const { data: holidays = [] } = useHolidays(unidadeId);
+
+  const feriadoDaData = useMemo(() => {
+    if (!data) return null;
+    return holidays.find((h) => {
+      if (!h.status) return false;
+      const isGlobalOrUnit = !h.unitId || String(h.unitId) === String(unidadeId);
+      if (!isGlobalOrUnit) return false;
+      const startDate = h.startDate;
+      const endDate = h.endDate || h.startDate;
+      return data >= startDate && data <= endDate;
+    });
+  }, [data, holidays, unidadeId]);
+
   const comprovanteFaltando = !isAdmin && (!comprovante || comprovante.trim() === "" || comprovante === "empty");
 
   const podeSalvar =
@@ -163,6 +178,7 @@ export function ReservaFormDialog({
     !!profissionalId &&
     !horarioInvalido &&
     !foraDoHorario &&
+    !feriadoDaData &&
     conflitos.length === 0 &&
     !comprovanteFaltando;
 
@@ -430,6 +446,17 @@ export function ReservaFormDialog({
             )}
           </div>
 
+          {feriadoDaData ? (
+            <div className="flex items-center gap-2 rounded-md border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-sm text-amber-700 dark:text-amber-300">
+              <CalendarOff className="size-4 shrink-0 text-amber-600 dark:text-amber-400" />
+              <span>
+                {feriadoDaData.unitId
+                  ? `A unidade (${unidades.find((u) => String(u.id) === String(unidadeId))?.nome || feriadoDaData.unitName || "selecionada"}) estará fechada nesta data devido ao bloqueio: `
+                  : "Todas as unidades estarão fechadas nesta data devido ao feriado: "}
+                <strong>{feriadoDaData.name}</strong>.
+              </span>
+            </div>
+          ) : null}
           {foraDoHorario ? (
             <p className="rounded-md border border-destructive/30 bg-destructive/5 px-3 py-2 text-sm text-destructive">
               {!daySchedule || !daySchedule.ativo

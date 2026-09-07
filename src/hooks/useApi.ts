@@ -10,6 +10,7 @@ export const keys = {
   reservas: (filters?: api.ReservaFilters) => ["reservas", filters ?? {}] as const,
   profissoes: ["profissoes"] as const,
   reservaReceipt: (id: string) => ["reservaReceipt", id] as const,
+  holidays: (unitId?: string | number) => ["holidays", unitId ?? "all"] as const,
 };
 
 export const useUnidades = () =>
@@ -291,3 +292,44 @@ export function useCompleteTour() {
     onError: (e: Error) => toast.error(e.message),
   });
 }
+
+export function useHolidays(unitId?: string | number) {
+  return useQuery({
+    queryKey: keys.holidays(unitId),
+    queryFn: () => api.listHolidays(unitId),
+    staleTime: 1000 * 60 * 5,
+  });
+}
+
+export function useSaveHoliday() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (input: {
+      id?: number;
+      name: string;
+      startDate: string;
+      endDate?: string;
+      unitId?: number | null;
+      description?: string;
+      status?: boolean;
+    }) => api.saveHoliday(input),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["holidays"] });
+      toast.success("Feriado/bloqueio salvo com sucesso.");
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+}
+
+export function useDeleteHoliday() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (id: number) => api.deleteHoliday(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["holidays"] });
+      toast.success("Feriado/bloqueio removido.");
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+}
+

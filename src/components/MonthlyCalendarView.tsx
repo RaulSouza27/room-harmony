@@ -1,8 +1,9 @@
-import { ChevronLeft, ChevronRight, Calendar as CalendarIcon } from "lucide-react";
+import { ChevronLeft, ChevronRight, Calendar as CalendarIcon, CalendarOff } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { formatarMesAno, obterGradeDoMes, type DiaGrade } from "@/lib/format";
 import type { Reserva, Sala, Unidade, User } from "@/types";
+import { useHolidays } from "@/hooks/useApi";
 
 interface Props {
   ano: number;
@@ -29,6 +30,7 @@ export function MonthlyCalendarView({
   onNextMonth,
   onToday,
 }: Props) {
+  const { data: holidays = [] } = useHolidays();
   const grade = obterGradeDoMes(ano, mes);
   const totalSalasAtivas = salas.filter((s) => s.status === "ativa").length;
 
@@ -91,6 +93,13 @@ export function MonthlyCalendarView({
             const aprovadas = reservasDia.filter((r) => r.status === "aprovada");
             const pendentes = reservasDia.filter((r) => r.status === "pendente");
 
+            const feriadoDoDia = holidays.find(
+              (h) =>
+                h.status &&
+                diaInfo.dataISO >= h.startDate &&
+                diaInfo.dataISO <= (h.endDate || h.startDate)
+            );
+
             const temReservas = reservasDia.length > 0;
 
             return (
@@ -100,7 +109,8 @@ export function MonthlyCalendarView({
                 className={cn(
                   "group relative min-h-[90px] sm:min-h-[110px] p-1.5 sm:p-2.5 transition-all cursor-pointer flex flex-col justify-between hover:bg-accent/40",
                   !diaInfo.eMesAtual && "bg-muted/20 opacity-45 hover:opacity-75",
-                  diaInfo.eHoje && "bg-primary/5 font-semibold"
+                  diaInfo.eHoje && "bg-primary/5 font-semibold",
+                  feriadoDoDia && "bg-amber-500/5 hover:bg-amber-500/10"
                 )}
               >
                 {/* Número do Dia */}
@@ -117,11 +127,16 @@ export function MonthlyCalendarView({
                     {diaInfo.dia}
                   </span>
 
-                  {totalSalasAtivas > 0 && diaInfo.eMesAtual && (
+                  {feriadoDoDia ? (
+                    <span className="inline-flex items-center gap-1 rounded bg-amber-500/15 px-1.5 py-0.5 text-[10px] font-medium text-amber-700 dark:text-amber-300" title={feriadoDoDia.name}>
+                      <CalendarOff className="size-3 shrink-0" />
+                      <span className="truncate max-w-[65px] hidden sm:inline">{feriadoDoDia.name}</span>
+                    </span>
+                  ) : totalSalasAtivas > 0 && diaInfo.eMesAtual ? (
                     <span className="hidden sm:inline text-[10px] font-normal text-muted-foreground/70">
                       {aprovadas.length} reserv.
                     </span>
-                  )}
+                  ) : null}
                 </div>
 
                 {/* Conteúdo / Indicadores de Reservas do Dia */}

@@ -3,6 +3,7 @@ import {
   CalendarCheck,
   CalendarDays,
   CalendarPlus,
+  CalendarOff,
   Building2,
   ClipboardList,
   DoorOpen,
@@ -58,6 +59,7 @@ export function AppShell({
         { to: "/app/profissoes", label: "Profissões", icon: Briefcase },
         { to: "/app/salas", label: "Salas", icon: DoorOpen },
         { to: "/app/unidades", label: "Unidades", icon: Building2 },
+        { to: "/app/feriados", label: "Feriados e Bloqueios", icon: CalendarOff },
         { to: "/app/perfil", label: "Meu perfil", icon: UserRound },
       ]
     : [
