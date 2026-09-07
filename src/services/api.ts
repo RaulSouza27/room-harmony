@@ -80,6 +80,7 @@ export async function login(email: string, senha: string): Promise<User> {
     telefone: data.phone || "",
     foto: data.photo || "",
     unidades: [],
+    professionId: data.professionId,
     mustCompleteTour: data.mustCompleteTour || false,
     firstLogin: data.firstLogin || false,
     cpf: data.cpf || "",
@@ -313,8 +314,8 @@ export async function saveUsuario(input: Partial<User> & { id?: string }): Promi
     username: input.nome,
     email: input.email,
     password: input.senha,
-    accessLevel: input.papel === "ADMINISTRADOR" ? "admin" : "psi",
-    status: input.status === "ativo",
+    accessLevel: input.papel ? (input.papel === "ADMINISTRADOR" ? "admin" : "psi") : undefined,
+    status: input.status !== undefined ? input.status === "ativo" : undefined,
     phone: input.telefone,
     specialty: input.especialidade,
     photo: input.foto,
@@ -423,7 +424,9 @@ export async function listReservas(filters?: ReservaFilters): Promise<Reserva[]>
   if (filters?.endDate) params.append("endDate", filters.endDate);
   if (filters?.userId) params.append("userId", filters.userId);
   if (filters?.roomId) params.append("roomId", filters.roomId);
-  if (filters?.unitId) params.append("unitId", filters.unitId);
+  if (filters?.unitId && filters.unitId !== "todas" && !isNaN(Number(filters.unitId))) {
+    params.append("unitId", filters.unitId);
+  }
   if (filters?.status) params.append("status", filters.status);
   if (filters?.includeReceipt) params.append("includeReceipt", "true");
 

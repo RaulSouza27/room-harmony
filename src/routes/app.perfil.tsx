@@ -187,7 +187,7 @@ function PerfilPage() {
               <div>
                 <dt className="text-xs text-muted-foreground">Profissão</dt>
                 <dd className="text-card-foreground font-medium text-primary">
-                  {profissoes?.find((p) => p.id === user.professionId)?.profission ?? "—"}
+                  {profissoes?.find((p) => Number(p.id) === Number(user.professionId))?.profission ?? "—"}
                 </dd>
               </div>
             ) : null}

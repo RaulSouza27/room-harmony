@@ -39,6 +39,7 @@ export const useReservas = (filters?: api.ReservaFilters) =>
     queryKey: keys.reservas(filters),
     queryFn: () => api.listReservas(filters),
     staleTime: 1000 * 60,
+    placeholderData: (previousData) => previousData,
   });
 
 export const useProfessions = () =>

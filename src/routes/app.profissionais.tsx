@@ -101,7 +101,7 @@ function ProfissionaisPage() {
                     </Badge>
                     {u.professionId ? (
                       <Badge variant="outline" className="border-primary/30 text-primary">
-                        {profissoes.find((p) => p.id === u.professionId)?.profission ?? "Profissão"}
+                        {profissoes.find((p) => Number(p.id) === Number(u.professionId))?.profission ?? "Profissão"}
                       </Badge>
                     ) : null}
                     <Badge
