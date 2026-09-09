@@ -51,6 +51,7 @@ export interface Sala {
   descricao: string;
   status: SalaStatus;
   fotos: string[];
+  photoCount?: number;
 }
 
 export type ReservaStatus = "pendente" | "aprovada" | "negada" | "cancelada";

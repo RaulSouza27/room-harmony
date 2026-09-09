@@ -6,6 +6,7 @@ import type { NovaReserva, Reserva, Sala, Unidade, User } from "@/types";
 export const keys = {
   unidades: ["unidades"] as const,
   salas: ["salas"] as const,
+  salaDetail: (id: string) => ["salaDetail", id] as const,
   usuarios: ["usuarios"] as const,
   reservas: (filters?: api.ReservaFilters) => ["reservas", filters ?? {}] as const,
   profissoes: ["profissoes"] as const,
@@ -25,6 +26,14 @@ export const useSalas = () =>
     queryKey: keys.salas,
     queryFn: api.listSalas,
     staleTime: 1000 * 60 * 15,
+  });
+
+export const useSala = (id: string | null) =>
+  useQuery({
+    queryKey: id ? keys.salaDetail(id) : ["salaDetail", null],
+    queryFn: () => api.getSala(id!),
+    enabled: !!id,
+    staleTime: 1000 * 60 * 5,
   });
 
 export const useUsuarios = () =>
@@ -100,11 +109,14 @@ export function useDeleteUnidade() {
 }
 
 export function useSaveSala() {
-  const invalidate = useInvalidate(keys.salas);
+  const qc = useQueryClient();
   return useMutation({
     mutationFn: (input: Omit<Sala, "id"> & { id?: string }) => api.saveSala(input),
-    onSuccess: () => {
-      invalidate();
+    onSuccess: (_, variables) => {
+      qc.invalidateQueries({ queryKey: keys.salas });
+      if (variables.id) {
+        qc.invalidateQueries({ queryKey: keys.salaDetail(variables.id) });
+      }
       toast.success("Sala salva com sucesso.");
     },
     onError: (e: Error) => toast.error(e.message),

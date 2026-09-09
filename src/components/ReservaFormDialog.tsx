@@ -19,7 +19,7 @@ import {
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { useAuth } from "@/contexts/AuthContext";
-import { useCreateReserva, useUpdateReserva, useHolidays } from "@/hooks/useApi";
+import { useCreateReserva, useUpdateReserva, useHolidays, useSala } from "@/hooks/useApi";
 import { findConflitos } from "@/services/api";
 import { HORARIOS, toMinutes } from "@/services/db";
 import type { Reserva, Sala, Unidade, User, Recorrencia } from "@/types";
@@ -108,7 +108,8 @@ export function ReservaFormDialog({
 
   const salasDaUnidade = salas.filter((s) => s.unidade_id === unidadeId && s.status === "ativa");
   const profissionais = usuarios.filter((u) => u.status === "ativo");
-  const selectedRoom = salas.find((x) => x.id === salaId);
+  const { data: fullSelectedRoom } = useSala(open && salaId ? salaId : null);
+  const selectedRoom = fullSelectedRoom ?? salas.find((x) => x.id === salaId);
 
   const horarioInvalido = toMinutes(fim) <= toMinutes(inicio);
   const conflitos =
@@ -269,11 +270,11 @@ export function ReservaFormDialog({
             </div>
           </div>
 
-          {salas.find((s) => s.id === salaId) ? (
+          {selectedRoom ? (
             <div className="rounded-lg border border-border p-3 bg-muted/10 space-y-2">
               <p className="text-xs font-semibold text-foreground">Imagens e detalhes da sala:</p>
               {(() => {
-                const s = salas.find((x) => x.id === salaId)!;
+                const s = selectedRoom;
                 return (
                   <>
                     {s.descricao ? (

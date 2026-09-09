@@ -191,7 +191,40 @@ export async function listSalas(): Promise<Sala[]> {
     descricao: item.description || "",
     status: item.status ? "ativa" : "inativa",
     fotos: item.photos || [],
+    photoCount: item.photoCount ?? (item.photos?.length || 0),
   }));
+}
+
+export async function getSala(id: string): Promise<Sala> {
+  const response = await fetch(`${BACKEND_URL}/rooms/${id}`, {
+    headers: getHeaders(),
+  });
+  if (!response.ok) {
+    throw new Error("Falha ao carregar detalhes da sala.");
+  }
+  const data = await response.json();
+  return {
+    id: String(data.id),
+    unidade_id: String(data.unitId),
+    nome: data.name,
+    descricao: data.description || "",
+    status: data.status ? "ativa" : "inativa",
+    fotos: data.photos || [],
+    photoCount: data.photoCount ?? (data.photos?.length || 0),
+  };
+}
+
+export async function getSalaFoto(
+  id: string,
+  index: number,
+): Promise<{ photo: string; index: number; total: number }> {
+  const response = await fetch(`${BACKEND_URL}/rooms/${id}/photo/${index}`, {
+    headers: getHeaders(),
+  });
+  if (!response.ok) {
+    throw new Error("Falha ao carregar foto da sala.");
+  }
+  return response.json();
 }
 
 export async function saveSala(input: Omit<Sala, "id"> & { id?: string }): Promise<Sala> {
@@ -227,6 +260,7 @@ export async function saveSala(input: Omit<Sala, "id"> & { id?: string }): Promi
     descricao: data.description || "",
     status: data.status ? "ativa" : "inativa",
     fotos: data.photos || [],
+    photoCount: data.photoCount ?? (data.photos?.length || 0),
   };
 }
 
