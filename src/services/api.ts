@@ -1,6 +1,16 @@
 import { BACKEND_URL } from "@/config/api";
 import { overlaps, readDB, uid, writeDB } from "./db";
-import type { NovaReserva, Profession, Reserva, ReservaStatus, Sala, Unidade, User } from "@/types";
+import type { BusinessHours, Holiday, NovaReserva, Profession, Reserva, ReservaStatus, Sala, Unidade, User } from "@/types";
+
+export const defaultBusinessHours = (): BusinessHours => ({
+  "0": { ativo: false, abertura: null, fechamento: null },
+  "1": { ativo: true, abertura: "08:00", fechamento: "18:00" },
+  "2": { ativo: true, abertura: "08:00", fechamento: "18:00" },
+  "3": { ativo: true, abertura: "08:00", fechamento: "18:00" },
+  "4": { ativo: true, abertura: "08:00", fechamento: "18:00" },
+  "5": { ativo: true, abertura: "08:00", fechamento: "18:00" },
+  "6": { ativo: true, abertura: "08:00", fechamento: "12:00" },
+});
 
 /**
  * Camada de serviço mockada. As assinaturas imitam uma API REST
@@ -58,7 +68,7 @@ export async function login(email: string, senha: string): Promise<User> {
     throw new Error(data?.message || "Credenciais ou resposta do servidor incorretas.");
   }
 
-  const papel = data.accessLevel === "admin" ? "ADMINISTRADOR" : "PSICOLOGO";
+  const papel = data.accessLevel === "admin" ? "ADMINISTRADOR" : "LOCADOR";
 
   const user: User = {
     id: data.id ? String(data.id) : data.username || email,
@@ -67,10 +77,16 @@ export async function login(email: string, senha: string): Promise<User> {
     senha: "",
     papel,
     status: "ativo",
-    telefone: "",
+    telefone: data.phone || "",
+    foto: data.photo || "",
     unidades: [],
+    professionId: data.professionId,
     mustCompleteTour: data.mustCompleteTour || false,
     firstLogin: data.firstLogin || false,
+    cpf: data.cpf || "",
+    endereco: data.address || "",
+    cep: data.cep || "",
+    boardNumber: data.boardNumber || "",
   };
 
   const db = readDB();
@@ -108,6 +124,7 @@ export async function listUnidades(): Promise<Unidade[]> {
     nome: item.name,
     endereco: item.address,
     status: item.status ? "ativa" : "inativa",
+    business_hours: item.businessHours || defaultBusinessHours(),
   }));
 }
 
@@ -116,6 +133,7 @@ export async function saveUnidade(input: Omit<Unidade, "id"> & { id?: string }):
     name: input.nome,
     address: input.endereco,
     status: input.status === "ativa",
+    businessHours: input.business_hours || defaultBusinessHours(),
   };
 
   const url = input.id ? `${BACKEND_URL}/units/${input.id}` : `${BACKEND_URL}/units`;
@@ -138,6 +156,7 @@ export async function saveUnidade(input: Omit<Unidade, "id"> & { id?: string }):
     nome: data.name,
     endereco: data.address,
     status: data.status ? "ativa" : "inativa",
+    business_hours: data.businessHours || input.business_hours || defaultBusinessHours(),
   };
 }
 
@@ -172,7 +191,40 @@ export async function listSalas(): Promise<Sala[]> {
     descricao: item.description || "",
     status: item.status ? "ativa" : "inativa",
     fotos: item.photos || [],
+    photoCount: item.photoCount ?? (item.photos?.length || 0),
   }));
+}
+
+export async function getSala(id: string): Promise<Sala> {
+  const response = await fetch(`${BACKEND_URL}/rooms/${id}`, {
+    headers: getHeaders(),
+  });
+  if (!response.ok) {
+    throw new Error("Falha ao carregar detalhes da sala.");
+  }
+  const data = await response.json();
+  return {
+    id: String(data.id),
+    unidade_id: String(data.unitId),
+    nome: data.name,
+    descricao: data.description || "",
+    status: data.status ? "ativa" : "inativa",
+    fotos: data.photos || [],
+    photoCount: data.photoCount ?? (data.photos?.length || 0),
+  };
+}
+
+export async function getSalaFoto(
+  id: string,
+  index: number,
+): Promise<{ photo: string; index: number; total: number }> {
+  const response = await fetch(`${BACKEND_URL}/rooms/${id}/photo/${index}`, {
+    headers: getHeaders(),
+  });
+  if (!response.ok) {
+    throw new Error("Falha ao carregar foto da sala.");
+  }
+  return response.json();
 }
 
 export async function saveSala(input: Omit<Sala, "id"> & { id?: string }): Promise<Sala> {
@@ -208,6 +260,7 @@ export async function saveSala(input: Omit<Sala, "id"> & { id?: string }): Promi
     descricao: data.description || "",
     status: data.status ? "ativa" : "inativa",
     fotos: data.photos || [],
+    photoCount: data.photoCount ?? (data.photos?.length || 0),
   };
 }
 
@@ -241,7 +294,7 @@ export async function listUsuarios(): Promise<User[]> {
     nome: item.username,
     email: item.email,
     senha: "",
-    papel: item.accessLevel === "admin" ? "ADMINISTRADOR" : "PSICOLOGO",
+    papel: item.accessLevel === "admin" ? "ADMINISTRADOR" : "LOCADOR",
     status: item.status ? "ativo" : "inativo",
     telefone: item.phone || "",
     especialidade: item.specialty || "",
@@ -250,7 +303,40 @@ export async function listUsuarios(): Promise<User[]> {
     professionId: item.professionId,
     mustCompleteTour: item.mustCompleteTour || false,
     firstLogin: item.firstLogin !== undefined ? item.firstLogin : (item.isFirstLogin || false),
+    cpf: item.cpf || "",
+    endereco: item.address || "",
+    cep: item.cep || "",
+    boardNumber: item.boardNumber || "",
   }));
+}
+
+export async function getUsuarioDetail(id: string): Promise<User> {
+  const response = await fetch(`${BACKEND_URL}/users/${id}`, {
+    headers: getHeaders(),
+  });
+  if (!response.ok) {
+    throw new Error("Falha ao carregar perfil do usuário.");
+  }
+  const item = await response.json();
+  return {
+    id: String(item.id),
+    nome: item.username,
+    email: item.email,
+    senha: "",
+    papel: item.accessLevel === "admin" ? "ADMINISTRADOR" : "LOCADOR",
+    status: item.status ? "ativo" : "inativo",
+    telefone: item.phone || "",
+    especialidade: item.specialty || "",
+    foto: item.photo || "",
+    unidades: item.units || [],
+    professionId: item.professionId,
+    mustCompleteTour: item.mustCompleteTour || false,
+    firstLogin: item.firstLogin !== undefined ? item.firstLogin : (item.isFirstLogin || false),
+    cpf: item.cpf || "",
+    endereco: item.address || "",
+    cep: item.cep || "",
+    boardNumber: item.boardNumber || "",
+  };
 }
 
 export async function saveUsuario(input: Partial<User> & { id?: string }): Promise<User> {
@@ -262,13 +348,17 @@ export async function saveUsuario(input: Partial<User> & { id?: string }): Promi
     username: input.nome,
     email: input.email,
     password: input.senha,
-    accessLevel: input.papel === "ADMINISTRADOR" ? "admin" : "psi",
-    status: input.status === "ativo",
+    accessLevel: input.papel ? (input.papel === "ADMINISTRADOR" ? "admin" : "psi") : undefined,
+    status: input.status !== undefined ? input.status === "ativo" : undefined,
     phone: input.telefone,
     specialty: input.especialidade,
     photo: input.foto,
     units: input.unidades,
-    professionId: input.professionId,
+    professionId: input.professionId !== undefined && input.professionId !== null && Number(input.professionId) !== 0 ? Number(input.professionId) : null,
+    cpf: input.cpf,
+    address: input.endereco,
+    cep: input.cep,
+    boardNumber: input.boardNumber,
   };
 
   const response = await fetch(url, {
@@ -288,7 +378,7 @@ export async function saveUsuario(input: Partial<User> & { id?: string }): Promi
     nome: data.username,
     email: data.email,
     senha: "",
-    papel: data.accessLevel === "admin" ? "ADMINISTRADOR" : "PSICOLOGO",
+    papel: data.accessLevel === "admin" ? "ADMINISTRADOR" : "LOCADOR",
     status: data.status ? "ativo" : "inativo",
     telefone: data.phone || "",
     especialidade: data.specialty || "",
@@ -297,6 +387,10 @@ export async function saveUsuario(input: Partial<User> & { id?: string }): Promi
     professionId: data.professionId,
     mustCompleteTour: data.mustCompleteTour || false,
     firstLogin: data.firstLogin !== undefined ? data.firstLogin : (data.isFirstLogin || false),
+    cpf: data.cpf || "",
+    endereco: data.address || "",
+    cep: data.cep || "",
+    boardNumber: data.boardNumber || "",
   };
 }
 
@@ -309,6 +403,19 @@ export async function resetPassword(id: string): Promise<void> {
   if (!response.ok) {
     const errorText = await response.text();
     throw new Error(errorText || "Falha ao resetar senha.");
+  }
+}
+
+export async function changePassword(id: string, password: string): Promise<void> {
+  const response = await fetch(`${BACKEND_URL}/users/${id}/first-login`, {
+    method: "PUT",
+    headers: getHeaders(),
+    body: JSON.stringify({ password }),
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    throw new Error(errorText || "Falha ao alterar senha.");
   }
 }
 
@@ -335,10 +442,32 @@ export async function changePasswordFirstLogin(id: string, newPassword: string):
 }
 
 /* ------------------------------ Reservas ---------------------------- */
-export async function listReservas(): Promise<Reserva[]> {
-  const rooms = await listSalas();
+export interface ReservaFilters {
+  startDate?: string | undefined;
+  endDate?: string | undefined;
+  userId?: string | undefined;
+  roomId?: string | undefined;
+  unitId?: string | undefined;
+  status?: string | undefined;
+  includeReceipt?: boolean | undefined;
+}
 
-  const response = await fetch(`${BACKEND_URL}/reservations/readAll`, {
+export async function listReservas(filters?: ReservaFilters): Promise<Reserva[]> {
+  const params = new URLSearchParams();
+  if (filters?.startDate) params.append("startDate", filters.startDate);
+  if (filters?.endDate) params.append("endDate", filters.endDate);
+  if (filters?.userId) params.append("userId", filters.userId);
+  if (filters?.roomId) params.append("roomId", filters.roomId);
+  if (filters?.unitId && filters.unitId !== "todas" && !isNaN(Number(filters.unitId))) {
+    params.append("unitId", filters.unitId);
+  }
+  if (filters?.status) params.append("status", filters.status);
+  if (filters?.includeReceipt) params.append("includeReceipt", "true");
+
+  const queryString = params.toString();
+  const url = `${BACKEND_URL}/reservations/readAll${queryString ? `?${queryString}` : ""}`;
+
+  const response = await fetch(url, {
     headers: getHeaders(),
   });
   if (!response.ok) {
@@ -346,11 +475,10 @@ export async function listReservas(): Promise<Reserva[]> {
   }
   const data = await response.json();
   return data.map((item: any) => {
-    const room = rooms.find((r) => r.id === String(item.roomsId));
     return {
       id: String(item.id),
       sala_id: String(item.roomsId),
-      unidade_id: room ? room.unidade_id : "",
+      unidade_id: item.unitId ? String(item.unitId) : "",
       profissional_id: String(item.userId),
       data: item.data,
       hora_inicio: item.horaInicio.slice(0, 5),
@@ -364,6 +492,17 @@ export async function listReservas(): Promise<Reserva[]> {
       comprovante: item.depositImage || "",
     };
   });
+}
+
+export async function getReservaReceipt(id: string): Promise<string> {
+  const response = await fetch(`${BACKEND_URL}/reservations/${id}/receipt`, {
+    headers: getHeaders(),
+  });
+  if (!response.ok) {
+    throw new Error("Falha ao carregar comprovante.");
+  }
+  const data = await response.json();
+  return data.depositImage || "";
 }
 
 /** Conflitos que ocupam o horário (aprovadas e pendentes). */
@@ -595,3 +734,100 @@ export async function completeTour(id: string): Promise<void> {
     writeDB(db);
   }
 }
+
+/* ------------------------------- Holidays ------------------------------- */
+export async function listHolidays(unitId?: string | number): Promise<Holiday[]> {
+  try {
+    const url = unitId ? `${BACKEND_URL}/holidays?unitId=${unitId}` : `${BACKEND_URL}/holidays`;
+    const response = await fetch(url, {
+      headers: getHeaders(),
+    });
+    if (response.ok) {
+      const data = await response.json();
+      return data.map((item: any) => ({
+        id: item.id,
+        name: item.name,
+        startDate: item.startDate,
+        endDate: item.endDate,
+        unitId: item.unitId,
+        unitName: item.unitName,
+        description: item.description,
+        status: item.status !== undefined ? item.status : true,
+      }));
+    }
+  } catch (error) {
+    console.warn("Falha ao buscar feriados do backend, usando DB local fallback", error);
+  }
+
+  const db = readDB();
+  return (db.holidays || []).filter((h) => {
+    if (!unitId) return true;
+    return !h.unitId || String(h.unitId) === String(unitId);
+  });
+}
+
+export async function saveHoliday(input: {
+  id?: number;
+  name: string;
+  startDate: string;
+  endDate?: string;
+  unitId?: number | null;
+  description?: string;
+  status?: boolean;
+}): Promise<Holiday> {
+  const url = input.id ? `${BACKEND_URL}/holidays/${input.id}` : `${BACKEND_URL}/holidays`;
+  const method = input.id ? "PUT" : "POST";
+
+  const response = await fetch(url, {
+    method,
+    headers: getHeaders(),
+    body: JSON.stringify({
+      id: input.id,
+      name: input.name,
+      startDate: input.startDate,
+      endDate: input.endDate || input.startDate,
+      unitId: input.unitId ?? null,
+      description: input.description ?? "",
+      status: input.status ?? true,
+    }),
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    throw new Error(errorText || "Falha ao salvar feriado.");
+  }
+
+  const data = await response.json();
+
+  // Sync to local DB
+  const db = readDB();
+  if (!db.holidays) db.holidays = [];
+  const index = db.holidays.findIndex((h) => h.id === data.id);
+  if (index > -1) {
+    db.holidays[index] = data;
+  } else {
+    db.holidays.push(data);
+  }
+  writeDB(db);
+
+  return data;
+}
+
+export async function deleteHoliday(id: number): Promise<void> {
+  const response = await fetch(`${BACKEND_URL}/holidays/${id}`, {
+    method: "DELETE",
+    headers: getHeaders(),
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    throw new Error(errorText || "Falha ao excluir feriado.");
+  }
+
+  const db = readDB();
+  if (db.holidays) {
+    db.holidays = db.holidays.filter((h) => h.id !== id);
+    writeDB(db);
+  }
+}
+

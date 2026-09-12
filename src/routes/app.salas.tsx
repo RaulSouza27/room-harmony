@@ -1,7 +1,8 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
+import { ChevronLeft, ChevronRight, Download, Eye, Images, Loader2 } from "lucide-react";
 import { AppShell } from "@/components/AppShell";
-import { ConfirmDialog } from "@/components/ReservaActions";
+import { handleDownloadReceipt } from "@/components/ReceiptViewerDialog";
 import { EmptyState, ErrorState, LoadingState } from "@/components/common";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -21,7 +22,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { useDeleteSala, useSalas, useSaveSala, useUnidades } from "@/hooks/useApi";
+import { useSala, useSalas, useSaveSala, useUnidades } from "@/hooks/useApi";
+import { getSalaFoto } from "@/services/api";
 import type { Sala, SalaStatus } from "@/types";
 
 export const Route = createFileRoute("/app/salas")({
@@ -48,12 +50,9 @@ const statusLabel: Record<SalaStatus, string> = {
 function SalasPage() {
   const salasQ = useSalas();
   const { data: unidades } = useUnidades();
-  // const excluir = useDeleteSala();
   const [open, setOpen] = useState(false);
   const [editando, setEditando] = useState<Sala | null>(null);
-  const [alvo, setAlvo] = useState<Sala | null>(null);
   const [alvoVisualizacao, setAlvoVisualizacao] = useState<Sala | null>(null);
-  const [photoIndexVisualizacao, setPhotoIndexVisualizacao] = useState<number>(0);
 
   const salas = salasQ.data ?? [];
 
@@ -81,127 +80,267 @@ function SalasPage() {
         <EmptyState title="Nenhuma sala cadastrada" description="Crie a primeira sala." />
       ) : (
         <ul className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
-          {salas.map((s) => (
-            <li
-              key={s.id}
-              className="rounded-xl border border-border bg-card overflow-hidden shadow-soft flex flex-col justify-between"
-            >
-              <div>
-                {s.fotos && s.fotos.length > 0 ? (
-                  <div
-                    className="w-full h-40 bg-muted overflow-hidden cursor-pointer animate-fade-in"
-                    onClick={() => {
-                      setAlvoVisualizacao(s);
-                      setPhotoIndexVisualizacao(0);
-                    }}
-                  >
-                    <img
-                      src={s.fotos[0]}
-                      alt={s.nome}
-                      className="w-full h-full object-cover transition-transform hover:scale-105 duration-300"
-                    />
-                  </div>
-                ) : null}
-                <div className="p-4">
-                  <div className="flex items-start justify-between gap-2">
-                    <div className="min-w-0 flex-1">
-                      <p className="text-sm font-semibold text-card-foreground truncate">
-                        {s.nome}
-                      </p>
-                      <p className="text-xs text-muted-foreground">
-                        Unidade: {unidades?.find((u) => u.id === s.unidade_id)?.nome ?? "—"}
-                      </p>
-                      {s.descricao ? (
-                        <p className="mt-2 text-xs text-muted-foreground leading-relaxed break-words">
-                          {s.descricao}
-                        </p>
-                      ) : null}
-                    </div>
-                    <Badge
-                      variant="outline"
-                      className={
-                        s.status === "ativa"
-                          ? "border-success/40 bg-success/15 text-success-foreground shrink-0"
-                          : "text-muted-foreground shrink-0"
-                      }
+          {salas.map((s) => {
+            const count = s.photoCount ?? s.fotos?.length ?? 0;
+            return (
+              <li
+                key={s.id}
+                className="rounded-xl border border-border bg-card overflow-hidden shadow-soft flex flex-col justify-between"
+              >
+                <div>
+                  {count > 0 ? (
+                    <div
+                      className="relative w-full h-44 bg-muted overflow-hidden cursor-pointer group select-none flex flex-col items-center justify-center bg-gradient-to-br from-muted/50 to-muted"
+                      onClick={() => setAlvoVisualizacao(s)}
                     >
-                      {statusLabel[s.status]}
-                    </Badge>
+                      <Images className="size-10 text-primary/40 mb-2 transition-transform duration-300 group-hover:scale-110" />
+                      <span className="text-xs font-medium text-muted-foreground">
+                        {count} {count === 1 ? "foto cadastrada" : "fotos cadastradas"}
+                      </span>
+                      <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-1.5 text-white text-xs font-medium backdrop-blur-[1px]">
+                        <Eye className="size-4" />
+                        <span>Visualizar fotos</span>
+                      </div>
+                      <div className="absolute top-2.5 right-2.5 bg-black/60 backdrop-blur-md text-white text-[11px] font-medium px-2.5 py-0.5 rounded-full flex items-center gap-1 shadow-sm">
+                        <Images className="size-3" />
+                        {count}
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="w-full h-36 bg-muted/30 flex flex-col items-center justify-center text-muted-foreground border-b border-border/60">
+                      <Images className="size-6 mb-1 opacity-40" />
+                      <span className="text-xs">Sem fotos cadastradas</span>
+                    </div>
+                  )}
+                  <div className="p-4">
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="min-w-0 flex-1">
+                        <p className="text-sm font-semibold text-card-foreground truncate">
+                          {s.nome}
+                        </p>
+                        <p className="text-xs text-muted-foreground">
+                          Unidade: {unidades?.find((u) => u.id === s.unidade_id)?.nome ?? "—"}
+                        </p>
+                        {s.descricao ? (
+                          <p className="mt-2 text-xs text-muted-foreground leading-relaxed break-words">
+                            {s.descricao}
+                          </p>
+                        ) : null}
+                      </div>
+                      <Badge
+                        variant="outline"
+                        className={
+                          s.status === "ativa"
+                            ? "border-success/40 bg-success/15 text-success-foreground shrink-0"
+                            : "text-muted-foreground shrink-0"
+                        }
+                      >
+                        {statusLabel[s.status]}
+                      </Badge>
+                    </div>
                   </div>
                 </div>
-              </div>
-              <div className="p-4 pt-0 flex gap-2">
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={() => {
-                    setEditando(s);
-                    setOpen(true);
-                  }}
-                >
-                  Editar
-                </Button>
-              </div>
-            </li>
-          ))}
+                <div className="p-4 pt-0 flex items-center justify-between gap-2">
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => {
+                      setEditando(s);
+                      setOpen(true);
+                    }}
+                  >
+                    Editar
+                  </Button>
+                  {count > 0 ? (
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      className="gap-1.5 text-xs text-primary hover:text-primary"
+                      onClick={() => setAlvoVisualizacao(s)}
+                    >
+                      <Eye className="size-3.5" />
+                      Visualizar fotos ({count})
+                    </Button>
+                  ) : null}
+                </div>
+              </li>
+            );
+          })}
         </ul>
       )}
 
       <SalaDialog open={open} onOpenChange={setOpen} sala={editando} unidades={unidades ?? []} />
 
-      {/* <ConfirmDialog
-        open={!!alvo}
-        onOpenChange={(v) => !v && setAlvo(null)}
-        title="Excluir esta sala?"
-        description="As reservas vinculadas também serão removidas."
-        confirmLabel="Excluir"
-        destructive
-        onConfirm={() => alvo && excluir.mutate(alvo.id)}
-       >*/}
-
-      {alvoVisualizacao !== null && alvoVisualizacao.fotos && alvoVisualizacao.fotos.length > 0 ? (
-        <Dialog open={alvoVisualizacao !== null} onOpenChange={() => setAlvoVisualizacao(null)}>
-          <DialogContent className="sm:max-w-xl p-3 flex flex-col items-center justify-center bg-background/95 border-none shadow-2xl">
-            <div className="relative w-full aspect-video rounded-lg overflow-hidden bg-black flex items-center justify-center">
-              <img
-                src={alvoVisualizacao.fotos[photoIndexVisualizacao]}
-                alt={`Foto ${photoIndexVisualizacao + 1}`}
-                className="max-w-full max-h-full object-contain animate-fade-in"
-              />
-              {alvoVisualizacao.fotos.length > 1 ? (
-                <>
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setPhotoIndexVisualizacao((prev) =>
-                        prev === 0 ? alvoVisualizacao.fotos.length - 1 : prev - 1,
-                      );
-                    }}
-                    className="absolute left-2 top-1/2 -translate-y-1/2 bg-black/60 text-white rounded-full p-2 text-sm hover:bg-black/80 font-bold transition-transform active:scale-95"
-                  >
-                    ◀
-                  </button>
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setPhotoIndexVisualizacao((prev) =>
-                        prev === alvoVisualizacao.fotos.length - 1 ? 0 : prev + 1,
-                      );
-                    }}
-                    className="absolute right-2 top-1/2 -translate-y-1/2 bg-black/60 text-white rounded-full p-2 text-sm hover:bg-black/80 font-bold transition-transform active:scale-95"
-                  >
-                    ▶
-                  </button>
-                </>
-              ) : null}
-            </div>
-            <div className="mt-2 text-xs text-muted-foreground font-medium">
-              Foto {photoIndexVisualizacao + 1} de {alvoVisualizacao.fotos.length}
-            </div>
-          </DialogContent>
-        </Dialog>
-      ) : null}
+      <RoomPhotoViewerDialog
+        sala={alvoVisualizacao}
+        onClose={() => setAlvoVisualizacao(null)}
+      />
     </AppShell>
+  );
+}
+
+function RoomPhotoViewerDialog({
+  sala,
+  onClose,
+}: {
+  sala: Sala | null;
+  onClose: () => void;
+}) {
+  const [photoIndex, setPhotoIndex] = useState(0);
+  const [photosMap, setPhotosMap] = useState<Record<number, string>>({});
+  const [loading, setLoading] = useState(false);
+
+  const totalPhotos = sala?.photoCount ?? sala?.fotos?.length ?? 0;
+
+  useEffect(() => {
+    if (!sala || totalPhotos === 0) return;
+    setPhotoIndex(0);
+    setPhotosMap({});
+  }, [sala]);
+
+  useEffect(() => {
+    if (!sala || totalPhotos === 0) return;
+
+    // Se já temos a foto em cache local, não precisa buscar novamente
+    if (photosMap[photoIndex]) return;
+
+    let isMounted = true;
+    setLoading(true);
+    getSalaFoto(sala.id, photoIndex)
+      .then((res) => {
+        if (isMounted && res.photo) {
+          setPhotosMap((prev) => ({ ...prev, [photoIndex]: res.photo }));
+        }
+      })
+      .catch((err) => {
+        console.error("Erro ao carregar foto da sala:", err);
+      })
+      .finally(() => {
+        if (isMounted) setLoading(false);
+      });
+
+    return () => {
+      isMounted = false;
+    };
+  }, [sala, photoIndex, totalPhotos, photosMap]);
+
+  useEffect(() => {
+    if (!sala || totalPhotos <= 1) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "ArrowLeft") {
+        setPhotoIndex((prev) => (prev === 0 ? totalPhotos - 1 : prev - 1));
+      } else if (e.key === "ArrowRight") {
+        setPhotoIndex((prev) => (prev === totalPhotos - 1 ? 0 : prev + 1));
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [sala, totalPhotos]);
+
+  if (!sala || totalPhotos === 0) return null;
+
+  const currentPhoto = photosMap[photoIndex];
+
+  return (
+    <Dialog open={!!sala} onOpenChange={() => onClose()}>
+      <DialogContent className="sm:max-w-3xl p-4 flex flex-col items-center justify-center bg-background border border-border shadow-2xl rounded-xl">
+        <div className="w-full flex items-center justify-between border-b pb-3 mb-2">
+          <div>
+            <h3 className="text-base font-semibold text-foreground flex items-center gap-2">
+              <Images className="size-4 text-primary" />
+              {sala.nome}
+            </h3>
+            <p className="text-xs text-muted-foreground">
+              Foto {photoIndex + 1} de {totalPhotos}
+            </p>
+          </div>
+          {currentPhoto ? (
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() =>
+                handleDownloadReceipt(
+                  currentPhoto,
+                  `sala-${sala.nome.replace(/\s+/g, "-").toLowerCase()}-foto-${photoIndex + 1}.png`,
+                )
+              }
+              className="gap-1.5 text-xs font-medium"
+            >
+              <Download className="size-3.5" />
+              Baixar foto
+            </Button>
+          ) : null}
+        </div>
+
+        <div className="relative w-full aspect-video rounded-lg overflow-hidden bg-black/90 flex items-center justify-center min-h-[340px]">
+          {loading && !currentPhoto ? (
+            <div className="flex flex-col items-center justify-center text-white/70 gap-2">
+              <Loader2 className="size-7 animate-spin text-primary" />
+              <span className="text-xs font-medium">Carregando foto {photoIndex + 1}...</span>
+            </div>
+          ) : currentPhoto ? (
+            <img
+              key={photoIndex}
+              src={currentPhoto}
+              alt={`Foto ${photoIndex + 1}`}
+              className="max-w-full max-h-[65vh] object-contain animate-fade-in"
+            />
+          ) : (
+            <div className="text-white/50 text-xs">Foto não disponível</div>
+          )}
+
+          {totalPhotos > 1 ? (
+            <>
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setPhotoIndex((prev) => (prev === 0 ? totalPhotos - 1 : prev - 1));
+                }}
+                className="absolute left-3 top-1/2 -translate-y-1/2 bg-black/70 hover:bg-black text-white rounded-full p-2.5 shadow-md transition-all hover:scale-110 active:scale-95"
+                title="Foto anterior"
+              >
+                <ChevronLeft className="size-5" />
+              </button>
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setPhotoIndex((prev) => (prev === totalPhotos - 1 ? 0 : prev + 1));
+                }}
+                className="absolute right-3 top-1/2 -translate-y-1/2 bg-black/70 hover:bg-black text-white rounded-full p-2.5 shadow-md transition-all hover:scale-110 active:scale-95"
+                title="Próxima foto"
+              >
+                <ChevronRight className="size-5" />
+              </button>
+            </>
+          ) : null}
+        </div>
+
+        {totalPhotos > 1 ? (
+          <div className="mt-3 w-full flex items-center justify-center gap-2 overflow-x-auto py-1">
+            {Array.from({ length: totalPhotos }).map((_, idx) => (
+              <button
+                key={idx}
+                type="button"
+                onClick={() => setPhotoIndex(idx)}
+                className={`relative w-16 h-12 rounded-md overflow-hidden border-2 transition-all cursor-pointer flex items-center justify-center bg-muted/40 ${
+                  idx === photoIndex
+                    ? "border-primary scale-105 shadow-sm ring-2 ring-primary/20"
+                    : "border-transparent opacity-60 hover:opacity-100"
+                }`}
+              >
+                {photosMap[idx] ? (
+                  <img src={photosMap[idx]} alt={`Miniatura ${idx + 1}`} className="w-full h-full object-cover" />
+                ) : (
+                  <span className="text-[11px] font-medium text-muted-foreground">Foto {idx + 1}</span>
+                )}
+              </button>
+            ))}
+          </div>
+        ) : null}
+      </DialogContent>
+    </Dialog>
   );
 }
 
@@ -226,6 +365,7 @@ function SalaDialog({
   unidades: { id: string; nome: string }[];
 }) {
   const salvar = useSaveSala();
+  const { data: salaDetail, isLoading: loadingDetail } = useSala(open && sala ? sala.id : null);
   const [nome, setNome] = useState("");
   const [unidadeId, setUnidadeId] = useState("");
   const [descricao, setDescricao] = useState("");
@@ -239,14 +379,14 @@ function SalaDialog({
     setDescricao(sala?.descricao ?? "");
     setStatus(sala?.status ?? "ativa");
 
-    const existingFotos = sala?.fotos ?? [];
+    const existingFotos = salaDetail?.fotos ?? sala?.fotos ?? [];
     setFotos([
       existingFotos[0] ?? "",
       existingFotos[1] ?? "",
       existingFotos[2] ?? "",
       existingFotos[3] ?? "",
     ]);
-  }, [open, sala, unidades]);
+  }, [open, sala, salaDetail, unidades]);
 
   const valido = nome.trim().length > 0 && unidadeId !== "";
 
@@ -305,7 +445,14 @@ function SalaDialog({
             </Select>
           </div>
           <div className="space-y-2">
-            <Label>Imagens da sala (máx. 4)</Label>
+            <div className="flex items-center justify-between">
+              <Label>Imagens da sala (máx. 4)</Label>
+              {loadingDetail ? (
+                <span className="text-[11px] text-muted-foreground flex items-center gap-1">
+                  <Loader2 className="size-3 animate-spin" /> Carregando fotos...
+                </span>
+              ) : null}
+            </div>
             <div className="grid grid-cols-2 gap-3">
               {Array.from({ length: 4 }).map((_, index) => {
                 const foto = fotos[index];

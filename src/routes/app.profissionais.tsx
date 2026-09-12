@@ -25,6 +25,8 @@ import {
 import { useSaveUsuario, useUsuarios, useProfessions, useResetPassword } from "@/hooks/useApi";
 import type { Role, User } from "@/types";
 
+import { BulkUserImportDialog } from "@/components/BulkUserImportDialog";
+
 export const Route = createFileRoute("/app/profissionais")({
   ssr: false,
   head: () => ({
@@ -48,6 +50,7 @@ function ProfissionaisPage() {
   const resetarSenha = useResetPassword();
   const [editando, setEditando] = useState<User | null>(null);
   const [open, setOpen] = useState(false);
+  const [bulkImportOpen, setBulkImportOpen] = useState(false);
   const [alvoStatus, setAlvoStatus] = useState<User | null>(null);
   const [alvoReset, setAlvoReset] = useState<User | null>(null);
 
@@ -59,15 +62,24 @@ function ProfissionaisPage() {
       title="Profissionais"
       description={`${usuarios.length} usuário(s) cadastrado(s)`}
       actions={
-        <Button
-          size="sm"
-          onClick={() => {
-            setEditando(null);
-            setOpen(true);
-          }}
-        >
-          Novo profissional
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() => setBulkImportOpen(true)}
+          >
+            Cadastro em massa
+          </Button>
+          <Button
+            size="sm"
+            onClick={() => {
+              setEditando(null);
+              setOpen(true);
+            }}
+          >
+            Novo profissional
+          </Button>
+        </div>
       }
     >
       {usuariosQ.isLoading ? (
@@ -85,11 +97,11 @@ function ProfissionaisPage() {
                   <div className="flex flex-wrap items-center gap-2">
                     <p className="text-sm font-semibold text-card-foreground">{u.nome}</p>
                     <Badge variant="secondary">
-                      {u.papel === "ADMINISTRADOR" ? "Administrador" : "Psicólogo(a)"}
+                      {u.papel === "ADMINISTRADOR" ? "Administrador" : "Locador(a)"}
                     </Badge>
                     {u.professionId ? (
                       <Badge variant="outline" className="border-primary/30 text-primary">
-                        {profissoes.find((p) => p.id === u.professionId)?.profission ?? "Profissão"}
+                        {profissoes.find((p) => Number(p.id) === Number(u.professionId))?.profission ?? "Profissão"}
                       </Badge>
                     ) : null}
                     <Badge
@@ -104,6 +116,13 @@ function ProfissionaisPage() {
                     </Badge>
                   </div>
                   <p className="mt-1 text-sm text-muted-foreground">{u.email}</p>
+                  <div className="mt-2 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-x-4 gap-y-1 text-xs text-muted-foreground bg-muted/20 p-2.5 rounded-lg border border-border/40">
+                    {u.telefone && <div><strong>Telefone:</strong> {u.telefone}</div>}
+                    {u.cpf && <div><strong>CPF:</strong> {u.cpf}</div>}
+                    {u.boardNumber && <div><strong>Reg. Conselho:</strong> {u.boardNumber}</div>}
+                    {u.cep && <div><strong>CEP:</strong> {u.cep}</div>}
+                    {u.endereco && <div className="sm:col-span-2 truncate"><strong>Endereço:</strong> {u.endereco}</div>}
+                  </div>
                 </div>
                 <div className="flex flex-wrap gap-2">
                   <Button
@@ -135,6 +154,8 @@ function ProfissionaisPage() {
       )}
 
       <ProfissionalDialog open={open} onOpenChange={setOpen} usuario={editando} />
+
+      <BulkUserImportDialog open={bulkImportOpen} onOpenChange={setBulkImportOpen} />
 
       <ConfirmDialog
         open={!!alvoStatus}
@@ -189,20 +210,40 @@ function ProfissionalDialog({
   const profissoesQ = useProfessions();
   const [nome, setNome] = useState("");
   const [email, setEmail] = useState("");
-  const [papel, setPapel] = useState<Role>("PSICOLOGO");
+  const [papel, setPapel] = useState<Role>("LOCADOR");
   const [status, setStatus] = useState<"ativo" | "inativo">("ativo");
   const [professionId, setProfessionId] = useState<string>("0");
+  const [phone, setPhone] = useState("");
+  const [cpf, setCpf] = useState("");
+  const [endereco, setEndereco] = useState("");
+  const [cep, setCep] = useState("");
+  const [boardNumber, setBoardNumber] = useState("");
+  const [photo, setPhoto] = useState("");
 
   useEffect(() => {
     if (!open) return;
     setNome(usuario?.nome ?? "");
     setEmail(usuario?.email ?? "");
-    setPapel(usuario?.papel ?? "PSICOLOGO");
+    setPapel(usuario?.papel ?? "LOCADOR");
     setStatus(usuario?.status ?? "ativo");
     setProfessionId(usuario?.professionId ? String(usuario.professionId) : "0");
+    setPhone(usuario?.telefone ?? "");
+    setCpf(usuario?.cpf ?? "");
+    setEndereco(usuario?.endereco ?? "");
+    setCep(usuario?.cep ?? "");
+    setBoardNumber(usuario?.boardNumber ?? "");
+    setPhoto(usuario?.foto ?? "");
   }, [open, usuario]);
 
-  const valido = nome.trim().length > 2 && /\S+@\S+\.\S+/.test(email);
+  const cleanCpf = cpf.replace(/\D/g, "");
+  const cleanCep = cep.replace(/\D/g, "");
+
+  const valido =
+    nome.trim().length > 2 &&
+    /\S+@\S+\.\S+/.test(email) &&
+    (cleanCpf.length === 0 || cleanCpf.length === 11) &&
+    (cleanCep.length === 0 || cleanCep.length === 8) &&
+    (papel !== "LOCADOR" || professionId !== "0");
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -214,6 +255,45 @@ function ProfissionalDialog({
           </DialogDescription>
         </DialogHeader>
         <div className="space-y-4">
+          <div className="flex flex-col items-center justify-center gap-2 mb-2">
+            <Label className="text-xs font-semibold text-muted-foreground">Foto de Perfil</Label>
+            <div className="relative group size-20 rounded-full border border-border overflow-hidden bg-muted flex items-center justify-center shadow-soft">
+              {photo ? (
+                <>
+                  <img src={photo} alt="Foto de perfil" className="size-full object-cover" />
+                  <button
+                    type="button"
+                    onClick={() => setPhoto("")}
+                    className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-white text-xs font-semibold cursor-pointer"
+                  >
+                    Remover
+                  </button>
+                </>
+              ) : (
+                <label className="cursor-pointer size-full flex flex-col items-center justify-center text-[10px] text-muted-foreground hover:text-foreground">
+                  <span>Adicionar</span>
+                  <span>Foto</span>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    onChange={async (e) => {
+                      const file = e.target.files?.[0];
+                      if (file) {
+                        try {
+                          const base64 = await fileToBase64(file);
+                          setPhoto(base64);
+                        } catch (err) {
+                          console.error(err);
+                        }
+                      }
+                    }}
+                  />
+                </label>
+              )}
+            </div>
+          </div>
+
           <div className="space-y-2">
             <Label htmlFor="nome">Nome completo</Label>
             <Input
@@ -223,16 +303,76 @@ function ProfissionalDialog({
               maxLength={100}
             />
           </div>
-          <div className="space-y-2">
-            <Label htmlFor="email">E-mail</Label>
-            <Input
-              id="email"
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              maxLength={255}
-            />
+          
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div className="space-y-2">
+              <Label htmlFor="email">E-mail</Label>
+              <Input
+                id="email"
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                maxLength={255}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="phone">Telefone</Label>
+              <Input
+                id="phone"
+                value={phone}
+                onChange={(e) => setPhone(e.target.value)}
+                maxLength={20}
+                placeholder="(00) 00000-0000"
+              />
+            </div>
           </div>
+
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div className="space-y-2">
+              <Label htmlFor="cpf">CPF</Label>
+              <Input
+                id="cpf"
+                value={cpf}
+                onChange={(e) => setCpf(e.target.value)}
+                maxLength={14}
+                placeholder="000.000.000-00"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="boardNumber">Registro do Conselho (CRP/etc)</Label>
+              <Input
+                id="boardNumber"
+                value={boardNumber}
+                onChange={(e) => setBoardNumber(e.target.value)}
+                maxLength={11}
+                placeholder="Ex: CRP-00000"
+              />
+            </div>
+          </div>
+
+          <div className="grid gap-4 sm:grid-cols-3">
+            <div className="space-y-2">
+              <Label htmlFor="cep">CEP</Label>
+              <Input
+                id="cep"
+                value={cep}
+                onChange={(e) => setCep(e.target.value)}
+                maxLength={9}
+                placeholder="00000-000"
+              />
+            </div>
+            <div className="col-span-2 space-y-2">
+              <Label htmlFor="endereco">Endereço</Label>
+              <Input
+                id="endereco"
+                value={endereco}
+                onChange={(e) => setEndereco(e.target.value)}
+                maxLength={50}
+                placeholder="Rua, número, complemento"
+              />
+            </div>
+          </div>
+
           <div className="space-y-2">
             <Label>Papel</Label>
             <Select value={papel} onValueChange={(v) => setPapel(v as Role)}>
@@ -240,12 +380,12 @@ function ProfissionalDialog({
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="PSICOLOGO">Psicólogo(a)</SelectItem>
+                <SelectItem value="LOCADOR">Locador(a)</SelectItem>
                 <SelectItem value="ADMINISTRADOR">Administrador</SelectItem>
               </SelectContent>
             </Select>
           </div>
-          {papel === "PSICOLOGO" && (
+          {papel === "LOCADOR" && (
             <div className="space-y-2">
               <Label>Profissão</Label>
               <Select value={professionId} onValueChange={setProfessionId}>
@@ -253,7 +393,7 @@ function ProfissionalDialog({
                   <SelectValue placeholder="Selecione uma profissão" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="0">Nenhuma</SelectItem>
+                  <SelectItem value="0">Selecione uma profissão</SelectItem>
                   {(profissoesQ.data ?? []).map((p) => (
                     <SelectItem key={p.id} value={String(p.id)}>
                       {p.profission}
@@ -289,7 +429,13 @@ function ProfissionalDialog({
                 email: email.trim(),
                 papel,
                 status,
-                professionId: papel === "PSICOLOGO" && professionId !== "0" ? Number(professionId) : null,
+                professionId: papel === "LOCADOR" && professionId !== "0" ? Number(professionId) : null,
+                telefone: phone.trim(),
+                cpf: cleanCpf,
+                endereco: endereco.trim(),
+                cep: cleanCep,
+                boardNumber: boardNumber.trim(),
+                foto: photo,
               });
               onOpenChange(false);
             }}
@@ -300,4 +446,13 @@ function ProfissionalDialog({
       </DialogContent>
     </Dialog>
   );
+}
+
+function fileToBase64(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.readAsDataURL(file);
+    reader.onload = () => resolve(reader.result as string);
+    reader.onerror = (error) => reject(error);
+  });
 }

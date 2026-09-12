@@ -3,6 +3,7 @@ import {
   CalendarCheck,
   CalendarDays,
   CalendarPlus,
+  CalendarOff,
   Building2,
   ClipboardList,
   DoorOpen,
@@ -20,7 +21,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { useAuth } from "@/contexts/AuthContext";
-import { useReservas, useCompleteTour } from "@/hooks/useApi";
+import { useReservasPendentesCount, useCompleteTour } from "@/hooks/useApi";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 
@@ -46,8 +47,7 @@ export function AppShell({
   const navigate = useNavigate();
   const [openMobile, setOpenMobile] = useState(false);
   const pathname = useRouterState({ select: (s) => s.location.pathname });
-  const { data: reservas } = useReservas();
-  const pendentes = (reservas ?? []).filter((r) => r.status === "pendente").length;
+  const pendentes = useReservasPendentesCount();
 
   const items: NavItem[] = isAdmin
     ? [
@@ -59,6 +59,7 @@ export function AppShell({
         { to: "/app/profissoes", label: "Profissões", icon: Briefcase },
         { to: "/app/salas", label: "Salas", icon: DoorOpen },
         { to: "/app/unidades", label: "Unidades", icon: Building2 },
+        { to: "/app/feriados", label: "Feriados e Bloqueios", icon: CalendarOff },
         { to: "/app/perfil", label: "Meu perfil", icon: UserRound },
       ]
     : [
@@ -70,7 +71,7 @@ export function AppShell({
       ];
 
   const nav = (
-    <nav className={cn("flex flex-1 flex-col gap-1 p-3", user?.mustCompleteTour && "pointer-events-none opacity-50")}>
+    <nav className={cn("flex flex-1 flex-col gap-1 p-3 overflow-y-auto min-h-0", user?.mustCompleteTour && "pointer-events-none opacity-50")}>
       {items.map((item) => {
         const active = pathname === item.to;
         return (
@@ -99,7 +100,7 @@ export function AppShell({
   );
 
   const brand = (
-    <div className="flex items-center gap-2.5 border-b border-sidebar-border px-4 py-4">
+    <div className="flex items-center gap-2.5 border-b border-sidebar-border px-4 py-4 shrink-0">
       <div className="flex size-9 items-center justify-center rounded-lg overflow-hidden">
         <img src="/logo.PNG" alt="Logo" className="size-7 object-contain" />
       </div>
@@ -111,7 +112,7 @@ export function AppShell({
   );
 
   const footer = (
-    <div className="border-t border-sidebar-border p-3">
+    <div className="border-t border-sidebar-border p-3 shrink-0">
       <div className="flex items-center gap-3 rounded-lg px-2 py-2">
         <Avatar className="size-8">
           {user?.foto ? <AvatarImage src={user.foto} alt={user.nome} /> : null}
@@ -126,7 +127,7 @@ export function AppShell({
         <div className="min-w-0 flex-1">
           <p className="truncate text-sm font-medium text-sidebar-foreground">{user?.nome}</p>
           <p className="truncate text-xs text-muted-foreground">
-            {isAdmin ? "Administrador" : "Psicólogo(a)"}
+            {isAdmin ? "Administrador" : "Locador(a)"}
           </p>
         </div>
       </div>
@@ -145,7 +146,7 @@ export function AppShell({
 
   return (
     <div className="flex min-h-screen w-full bg-background">
-      <aside className="hidden w-64 shrink-0 flex-col border-r border-sidebar-border bg-sidebar md:flex">
+      <aside className="sticky top-0 h-screen hidden w-64 shrink-0 flex-col border-r border-sidebar-border bg-sidebar md:flex">
         {brand}
         {nav}
         {footer}
@@ -179,7 +180,7 @@ export function AppShell({
         <main className="flex-1 p-4 md:p-8">{children}</main>
       </div>
 
-      {user?.mustCompleteTour && <TourOverlay />}
+      {user?.mustCompleteTour && !user?.firstLogin && <TourOverlay />}
     </div>
   );
 }
@@ -193,6 +194,7 @@ interface TourStep {
 
 function TourOverlay() {
   const { user, isAdmin, refresh } = useAuth();
+  if (user?.firstLogin) return null;
   const navigate = useNavigate();
   const { location } = useRouterState();
   const pathname = location.pathname;
@@ -345,10 +347,11 @@ function TourOverlay() {
 
   // Lock navigation to the current step
   useEffect(() => {
+    if (user?.firstLogin) return;
     if (pathname !== currentStep.to) {
       navigate({ to: currentStep.to });
     }
-  }, [pathname, currentStep.to, navigate]);
+  }, [user?.firstLogin, pathname, currentStep.to, navigate]);
 
   const handleNext = async () => {
     if (currentStepIndex < steps.length - 1) {

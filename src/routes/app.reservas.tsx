@@ -1,5 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useState } from "react";
+import { useMemo, useState } from "react";
+import { Eye, FileText } from "lucide-react";
 import { AppShell } from "@/components/AppShell";
 import {
   AprovacaoActions,
@@ -8,11 +9,13 @@ import {
   ConfirmDialog,
 } from "@/components/ReservaActions";
 import { ReservaFormDialog } from "@/components/ReservaFormDialog";
+import { ReservaDetailDialog } from "@/components/ReservaDetailDialog";
 import { EmptyState, ErrorState, LoadingState, StatusBadge } from "@/components/common";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Dialog, DialogContent } from "@/components/ui/dialog";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { ReceiptViewerDialog } from "@/components/ReceiptViewerDialog";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
   Select,
@@ -24,6 +27,15 @@ import {
 import { useReservas, useSalas, useUnidades, useUsuarios, useDeleteReservasBatch } from "@/hooks/useApi";
 import { formatarData } from "@/lib/format";
 import type { Reserva } from "@/types";
+
+function getInitials(name?: string) {
+  if (!name) return "U";
+  const parts = name.trim().split(" ");
+  if (parts.length >= 2) {
+    return `${parts[0][0]}${parts[parts.length - 1][0]}`.toUpperCase();
+  }
+  return name.slice(0, 2).toUpperCase();
+}
 
 export const Route = createFileRoute("/app/reservas")({
   ssr: false,
@@ -45,19 +57,31 @@ export const Route = createFileRoute("/app/reservas")({
 });
 
 function ReservasPage() {
-  const reservasQ = useReservas();
-  const salasQ = useSalas();
-  const unidadesQ = useUnidades();
-  const usuariosQ = useUsuarios();
-
   const [unidade, setUnidade] = useState("todas");
   const [sala, setSala] = useState("todas");
   const [profissional, setProfissional] = useState("todos");
   const [status, setStatus] = useState("todos");
   const [de, setDe] = useState("");
   const [ate, setAte] = useState("");
+
+  const filters = useMemo(() => {
+    return {
+      startDate: de || undefined,
+      endDate: ate || undefined,
+      userId: profissional !== "todos" ? profissional : undefined,
+      roomId: sala !== "todas" ? sala : undefined,
+      unitId: unidade !== "todas" ? unidade : undefined,
+      status: status !== "todos" ? status : undefined,
+    };
+  }, [de, ate, profissional, sala, unidade, status]);
+
+  const reservasQ = useReservas(filters);
+  const salasQ = useSalas();
+  const unidadesQ = useUnidades();
+  const usuariosQ = useUsuarios();
   const [criar, setCriar] = useState(false);
   const [editando, setEditando] = useState<Reserva | null>(null);
+  const [detalheReserva, setDetalheReserva] = useState<Reserva | null>(null);
   const [alvoVisualizacaoComprovante, setAlvoVisualizacaoComprovante] = useState<string | null>(
     null,
   );
@@ -231,6 +255,7 @@ function ReservasPage() {
             <ul className="space-y-3">
               {lista.map((r) => {
                 const isSelected = selectedIds.includes(r.id);
+                const prof = usuarios.find((u) => u.id === r.profissional_id);
                 return (
                   <li
                     key={r.id}
@@ -251,31 +276,70 @@ function ReservasPage() {
                     />
                     <div className="flex-1 min-w-0">
                       <div className="flex flex-wrap items-start justify-between gap-4">
-                        <div className="min-w-0">
-                          <div className="flex flex-wrap items-center gap-2">
-                            <p className="text-sm font-semibold text-card-foreground">
-                              {usuarios.find((u) => u.id === r.profissional_id)?.nome ?? "—"}
-                            </p>
-                            <StatusBadge status={r.status} />
+                        <div className="min-w-0 flex-1">
+                          <div className="flex items-start gap-3">
+                            <Avatar className="size-10 border border-border shrink-0 mt-0.5">
+                              <AvatarImage src={prof?.foto} alt={prof?.nome ?? "Profissional"} />
+                              <AvatarFallback className="bg-primary/10 text-primary font-semibold text-xs">
+                                {getInitials(prof?.nome)}
+                              </AvatarFallback>
+                            </Avatar>
+                            <div className="min-w-0 flex-1">
+                              <div className="flex flex-wrap items-center gap-2">
+                                <p className="text-sm font-semibold text-card-foreground">
+                                  {prof?.nome ?? "—"}
+                                </p>
+                                <StatusBadge status={r.status} />
+                              </div>
+
+                              <div className="flex flex-wrap items-center gap-x-2 text-xs text-muted-foreground mt-0.5">
+                                <span>{prof?.especialidade ?? "Psicólogo(a)"}</span>
+                                {prof?.boardNumber ? (
+                                  <>
+                                    <span>•</span>
+                                    <span>CRP: {prof.boardNumber}</span>
+                                  </>
+                                ) : null}
+                                {prof?.telefone ? (
+                                  <>
+                                    <span>•</span>
+                                    <span>Tel: {prof.telefone}</span>
+                                  </>
+                                ) : null}
+                              </div>
+
+                              <p className="mt-2 text-sm text-card-foreground">
+                                {salas.find((s) => s.id === r.sala_id)?.nome ?? "—"} ·{" "}
+                                {unidades.find((u) => u.id === r.unidade_id)?.nome ?? "—"} ·{" "}
+                                {formatarData(r.data)} · {r.hora_inicio}–{r.hora_fim}
+                              </p>
+
+                              {r.motivo_negacao ? (
+                                <p className="mt-1 text-xs text-destructive">Negada: {r.motivo_negacao}</p>
+                              ) : null}
+                              <div className="mt-2.5 flex flex-wrap items-center gap-2">
+                                <button
+                                  type="button"
+                                  onClick={() => setDetalheReserva(r)}
+                                  className="inline-flex items-center gap-1.5 text-xs text-primary font-medium hover:underline bg-primary/5 hover:bg-primary/10 border border-primary/20 px-2.5 py-1 rounded-md transition-colors"
+                                >
+                                  <Eye className="size-3.5" />
+                                  Detalhes
+                                </button>
+
+                                {r.comprovante && r.comprovante !== "empty" ? (
+                                  <button
+                                    type="button"
+                                    onClick={() => setAlvoVisualizacaoComprovante(r.id)}
+                                    className="inline-flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground font-medium hover:underline bg-muted/30 border border-border px-2.5 py-1 rounded-md transition-colors"
+                                  >
+                                    <FileText className="size-3.5" />
+                                    Ver comprovante
+                                  </button>
+                                ) : null}
+                              </div>
+                            </div>
                           </div>
-                          <p className="mt-1 text-sm text-muted-foreground">
-                            {salas.find((s) => s.id === r.sala_id)?.nome ?? "—"} ·{" "}
-                            {unidades.find((u) => u.id === r.unidade_id)?.nome ?? "—"} ·{" "}
-                            {formatarData(r.data)} · {r.hora_inicio}–{r.hora_fim}
-                          </p>
-                          {r.motivo_negacao ? (
-                            <p className="mt-1 text-xs text-destructive">Negada: {r.motivo_negacao}</p>
-                          ) : null}
-                          {r.comprovante && r.comprovante !== "empty" ? (
-                            <span
-                              className="text-xs text-primary underline cursor-pointer inline-flex items-center gap-1 mt-1 block"
-                              onClick={() => {
-                                setAlvoVisualizacaoComprovante(r.comprovante!);
-                              }}
-                            >
-                              📄 Ver comprovante de pagamento
-                            </span>
-                          ) : null}
                         </div>
                         <div className="flex flex-wrap items-center gap-2">
                           {r.status === "pendente" ? (
@@ -317,25 +381,20 @@ function ReservasPage() {
         />
       ) : null}
 
-      {alvoVisualizacaoComprovante ? (
-        <Dialog
-          open={!!alvoVisualizacaoComprovante}
-          onOpenChange={() => setAlvoVisualizacaoComprovante(null)}
-        >
-          <DialogContent className="sm:max-w-xl p-3 flex flex-col items-center justify-center bg-background/95 border-none shadow-2xl">
-            <div className="relative w-full aspect-video rounded-lg overflow-hidden bg-black flex items-center justify-center">
-              <img
-                src={alvoVisualizacaoComprovante}
-                alt="Comprovante de pagamento"
-                className="max-w-full max-h-full object-contain animate-fade-in"
-              />
-            </div>
-            <div className="mt-2 text-xs text-muted-foreground font-medium">
-              Comprovante de Pagamento Anexado
-            </div>
-          </DialogContent>
-        </Dialog>
-      ) : null}
+      <ReceiptViewerDialog
+        open={!!alvoVisualizacaoComprovante}
+        onOpenChange={(v) => !v && setAlvoVisualizacaoComprovante(null)}
+        reservaId={alvoVisualizacaoComprovante}
+      />
+
+      <ReservaDetailDialog
+        open={!!detalheReserva}
+        onOpenChange={(v) => !v && setDetalheReserva(null)}
+        reserva={detalheReserva}
+        sala={salas.find((s) => s.id === detalheReserva?.sala_id)}
+        unidade={unidades.find((u) => u.id === detalheReserva?.unidade_id)}
+        usuario={usuarios.find((u) => u.id === detalheReserva?.profissional_id)}
+      />
       <ConfirmDialog
         open={confirmBatchDelete}
         onOpenChange={setConfirmBatchDelete}

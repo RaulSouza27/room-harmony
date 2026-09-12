@@ -94,7 +94,7 @@ function getRoleFromToken(token: string): Role | null {
       window.atob(parts[1].replace(/-/g, "+").replace(/_/g, "/"))
     );
     if (payload.access_level === "admin") return "ADMINISTRADOR";
-    if (payload.access_level === "psi") return "PSICOLOGO";
+    if (payload.access_level === "psi") return "LOCADOR";
     return null;
   } catch (e) {
     return null;

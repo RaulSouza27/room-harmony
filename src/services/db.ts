@@ -1,4 +1,4 @@
-import type { Reserva, Sala, Unidade, User } from "@/types";
+import type { Holiday, Reserva, Sala, Unidade, User } from "@/types";
 
 const KEY = "clinica-salas-db-v2";
 
@@ -7,6 +7,7 @@ export interface DB {
   unidades: Unidade[];
   salas: Sala[];
   reservas: Reserva[];
+  holidays?: Holiday[];
 }
 
 export const HORARIOS = Array.from(
@@ -21,7 +22,7 @@ function today(offset = 0) {
 }
 
 function seed(): DB {
-  return { users: [], unidades: [], salas: [], reservas: [] };
+  return { users: [], unidades: [], salas: [], reservas: [], holidays: [] };
 }
 
 export function readDB(): DB {

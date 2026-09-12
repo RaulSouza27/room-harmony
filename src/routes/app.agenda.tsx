@@ -1,13 +1,18 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
+import { Calendar, CalendarDays, CalendarRange, Eye } from "lucide-react";
 import { AppShell } from "@/components/AppShell";
 import { AvailabilityGrid, type SlotInfo } from "@/components/AvailabilityGrid";
+import { MonthlyCalendarView } from "@/components/MonthlyCalendarView";
+import { YearlyCalendarView } from "@/components/YearlyCalendarView";
 import {
   AprovacaoActions,
   CancelarReservaButton,
   ExcluirReservaButton,
 } from "@/components/ReservaActions";
 import { ReservaFormDialog } from "@/components/ReservaFormDialog";
+import { ReceiptViewerDialog } from "@/components/ReceiptViewerDialog";
+import { ReservaDetailDialog } from "@/components/ReservaDetailDialog";
 import { ErrorState, LoadingState, StatusBadge } from "@/components/common";
 import { Button } from "@/components/ui/button";
 import {
@@ -26,9 +31,10 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useAuth } from "@/contexts/AuthContext";
 import { useReservas, useSalas, useUnidades, useUsuarios } from "@/hooks/useApi";
-import { formatarDataLonga, hojeISO, formatRecorrencia } from "@/lib/format";
+import { formatarDataLonga, formatarMesAno, hojeISO, formatRecorrencia } from "@/lib/format";
 import type { Reserva } from "@/types";
 
 export const Route = createFileRoute("/app/agenda")({
@@ -39,7 +45,7 @@ export const Route = createFileRoute("/app/agenda")({
       {
         name: "description",
         content:
-          "Grade de disponibilidade das salas por unidade e horário: livre, pendente ou ocupado.",
+          "Grade de disponibilidade das salas por unidade, dia, mês ou ano: livre, pendente ou ocupado.",
       },
       { property: "og:title", content: "Disponibilidade de salas — Clínica Escuta" },
       {
@@ -51,19 +57,53 @@ export const Route = createFileRoute("/app/agenda")({
   component: AgendaPage,
 });
 
+type ModoVisao = "diario" | "mensal" | "anual";
+
 function AgendaPage() {
   const { user, isAdmin } = useAuth();
-  const unidadesQ = useUnidades();
-  const salasQ = useSalas();
-  const reservasQ = useReservas();
-  const usuariosQ = useUsuarios();
-
+  const [modoVisao, setModoVisao] = useState<ModoVisao>("diario");
   const [unidadeFiltro, setUnidadeFiltro] = useState("todas");
   const [data, setData] = useState(hojeISO());
+
+  const hojeDate = new Date();
+  const [ano, setAno] = useState(hojeDate.getFullYear());
+  const [mes, setMes] = useState(hojeDate.getMonth() + 1); // 1..12
+
+  const dateFilters = useMemo(() => {
+    if (modoVisao === "diario") {
+      return {
+        startDate: data,
+        endDate: data,
+        unitId: unidadeFiltro !== "todas" ? unidadeFiltro : undefined,
+      };
+    }
+    if (modoVisao === "mensal") {
+      const start = `${ano}-${String(mes).padStart(2, "0")}-01`;
+      const lastDay = new Date(ano, mes, 0).getDate();
+      const end = `${ano}-${String(mes).padStart(2, "0")}-${String(lastDay).padStart(2, "0")}`;
+      return {
+        startDate: start,
+        endDate: end,
+        unitId: unidadeFiltro !== "todas" ? unidadeFiltro : undefined,
+      };
+    }
+    return {
+      startDate: `${ano}-01-01`,
+      endDate: `${ano}-12-31`,
+      unitId: unidadeFiltro !== "todas" ? unidadeFiltro : undefined,
+    };
+  }, [modoVisao, data, ano, mes, unidadeFiltro]);
+
+  const unidadesQ = useUnidades();
+  const salasQ = useSalas();
+  const reservasQ = useReservas(dateFilters);
+  const usuariosQ = useUsuarios();
+
   const [preset, setPreset] = useState<SlotInfo | null>(null);
   const [formOpen, setFormOpen] = useState(false);
   const [detalhe, setDetalhe] = useState<Reserva | null>(null);
   const [editando, setEditando] = useState<Reserva | null>(null);
+  const [detalheCompleto, setDetalheCompleto] = useState<Reserva | null>(null);
   const [alvoVisualizacaoComprovante, setAlvoVisualizacaoComprovante] = useState<string | null>(
     null,
   );
@@ -88,7 +128,14 @@ function AgendaPage() {
       (unidadeFiltro === "todas" || s.unidade_id === unidadeFiltro),
   );
 
-  const reservasDoDia = reservas.filter((r) => r.data === data);
+  const idsSalasVisiveis = useMemo(() => new Set(salasVisiveis.map((s) => s.id)), [salasVisiveis]);
+
+  const reservasFiltradas = useMemo(
+    () => reservas.filter((r) => idsSalasVisiveis.has(r.sala_id)),
+    [reservas, idsSalasVisiveis],
+  );
+
+  const reservasDoDia = reservasFiltradas.filter((r) => r.data === data);
   const loading = unidadesQ.isLoading || salasQ.isLoading || reservasQ.isLoading;
   const error = unidadesQ.error ?? salasQ.error ?? reservasQ.error;
 
@@ -101,41 +148,130 @@ function AgendaPage() {
     setFormOpen(true);
   }
 
+  function handleSelectDayFromMonth(dataISO: string) {
+    setData(dataISO);
+    const [y, m] = dataISO.split("-").map(Number);
+    if (y && m) {
+      setAno(y);
+      setMes(m);
+    }
+    setModoVisao("diario");
+  }
+
+  function handleSelectMonthFromYear(mesSelecionado: number) {
+    setMes(mesSelecionado);
+    setModoVisao("mensal");
+  }
+
+  function handleDataChange(novaData: string) {
+    setData(novaData);
+    if (novaData) {
+      const [y, m] = novaData.split("-").map(Number);
+      if (y && m) {
+        setAno(y);
+        setMes(m);
+      }
+    }
+  }
+
+  function handlePrevMonth() {
+    if (mes === 1) {
+      setMes(12);
+      setAno((a) => a - 1);
+    } else {
+      setMes((m) => m - 1);
+    }
+  }
+
+  function handleNextMonth() {
+    if (mes === 12) {
+      setMes(1);
+      setAno((a) => a + 1);
+    } else {
+      setMes((m) => m + 1);
+    }
+  }
+
+  function handleToday() {
+    const hoje = hojeISO();
+    setData(hoje);
+    const d = new Date();
+    setAno(d.getFullYear());
+    setMes(d.getMonth() + 1);
+  }
+
   const nomeSala = (id: string) => salas.find((s) => s.id === id)?.nome ?? "—";
   const nomeUnidade = (id: string) => unidades.find((u) => u.id === id)?.nome ?? "—";
   const nomeProf = (id: string) => usuarios.find((u) => u.id === id)?.nome ?? "—";
 
+  const descricaoHeader =
+    modoVisao === "diario"
+      ? formatarDataLonga(data)
+      : modoVisao === "mensal"
+        ? formatarMesAno(ano, mes)
+        : `Ano de ${ano}`;
+
   return (
     <AppShell
       title={isAdmin ? "Agenda geral" : "Disponibilidade"}
-      description={formatarDataLonga(data)}
+      description={descricaoHeader}
     >
       <div className="space-y-5">
-        <div className="grid gap-4 rounded-xl border border-border bg-card p-4 shadow-soft sm:grid-cols-3">
-          <div className="space-y-2">
-            <Label>Unidade</Label>
-            <Select value={unidadeFiltro} onValueChange={setUnidadeFiltro}>
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="todas">Todas as unidades</SelectItem>
-                {unidadesVisiveis.map((u) => (
-                  <SelectItem key={u.id} value={u.id}>
-                    {u.nome}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+        {/* Filtros e Modos de Visão */}
+        <div className="flex flex-col gap-4 rounded-xl border border-border bg-card p-4 shadow-soft sm:flex-row sm:items-end sm:justify-between">
+          <div className="grid gap-4 sm:flex sm:items-end flex-1">
+            <div className="space-y-2 min-w-[200px]">
+              <Label>Unidade</Label>
+              <Select value={unidadeFiltro} onValueChange={setUnidadeFiltro}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="todas">Todas as unidades</SelectItem>
+                  {unidadesVisiveis.map((u) => (
+                    <SelectItem key={u.id} value={u.id}>
+                      {u.nome}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            {modoVisao === "diario" && (
+              <div className="space-y-2 min-w-[170px]">
+                <Label htmlFor="data">Data</Label>
+                <Input
+                  id="data"
+                  type="date"
+                  value={data}
+                  onChange={(e) => handleDataChange(e.target.value)}
+                />
+              </div>
+            )}
           </div>
-          <div className="space-y-2">
-            <Label htmlFor="data">Data</Label>
-            <Input id="data" type="date" value={data} onChange={(e) => setData(e.target.value)} />
-          </div>
-          <div className="flex items-end">
+
+          <div className="flex flex-wrap items-center gap-3">
+            {/* Seletor de Modo de Visão */}
+            <Tabs
+              value={modoVisao}
+              onValueChange={(v) => setModoVisao(v as ModoVisao)}
+              className="w-auto"
+            >
+              <TabsList className="grid grid-cols-3 w-[240px]">
+                <TabsTrigger value="diario" className="gap-1 text-xs">
+                  <Calendar className="size-3.5" /> Dia
+                </TabsTrigger>
+                <TabsTrigger value="mensal" className="gap-1 text-xs">
+                  <CalendarDays className="size-3.5" /> Mês
+                </TabsTrigger>
+                <TabsTrigger value="anual" className="gap-1 text-xs">
+                  <CalendarRange className="size-3.5" /> Ano
+                </TabsTrigger>
+              </TabsList>
+            </Tabs>
+
             <Button
               variant="outline"
-              className="w-full"
               onClick={() => {
                 setPreset(null);
                 setFormOpen(true);
@@ -147,19 +283,44 @@ function AgendaPage() {
         </div>
 
         {loading ? (
-          <LoadingState label="Carregando grade de disponibilidade..." />
+          <LoadingState label="Carregando dados de disponibilidade..." />
         ) : error ? (
           <ErrorState message={error.message} />
-        ) : (
+        ) : modoVisao === "diario" ? (
           <AvailabilityGrid
             salas={salasVisiveis}
             unidades={unidades}
             reservas={reservasDoDia}
             usuarios={usuarios}
             onSlotClick={handleSlot}
+            data={data}
+          />
+        ) : modoVisao === "mensal" ? (
+          <MonthlyCalendarView
+            ano={ano}
+            mes={mes}
+            salas={salasVisiveis}
+            unidades={unidades}
+            reservas={reservasFiltradas}
+            usuarios={usuarios}
+            onSelectDay={handleSelectDayFromMonth}
+            onPrevMonth={handlePrevMonth}
+            onNextMonth={handleNextMonth}
+            onToday={handleToday}
+          />
+        ) : (
+          <YearlyCalendarView
+            ano={ano}
+            salas={salasVisiveis}
+            reservas={reservasFiltradas}
+            onSelectMonth={handleSelectMonthFromYear}
+            onPrevYear={() => setAno((a) => a - 1)}
+            onNextYear={() => setAno((a) => a + 1)}
+            onCurrentYear={() => setAno(hojeDate.getFullYear())}
           />
         )}
       </div>
+
 
       <ReservaFormDialog
         open={formOpen}
@@ -244,6 +405,18 @@ function AgendaPage() {
 
               {isAdmin ? (
                 <div className="flex flex-wrap items-center gap-2 border-t border-border pt-4">
+                  <Button
+                    size="sm"
+                    variant="secondary"
+                    onClick={() => {
+                      setDetalheCompleto(detalhe);
+                      setDetalhe(null);
+                    }}
+                    className="gap-1.5"
+                  >
+                    <Eye className="size-3.5" />
+                    Ver perfil completo
+                  </Button>
                   {detalhe.status === "pendente" ? (
                     <AprovacaoActions reserva={detalhe} reservas={reservas} compact />
                   ) : null}
@@ -265,7 +438,19 @@ function AgendaPage() {
               ) : detalhe.profissional_id === user?.id &&
                 detalhe.status !== "cancelada" &&
                 detalhe.data >= hojeISO() ? (
-                <div className="border-t border-border pt-4">
+                <div className="border-t border-border pt-4 flex items-center justify-between gap-2">
+                  <Button
+                    size="sm"
+                    variant="secondary"
+                    onClick={() => {
+                      setDetalheCompleto(detalhe);
+                      setDetalhe(null);
+                    }}
+                    className="gap-1.5"
+                  >
+                    <Eye className="size-3.5" />
+                    Detalhes
+                  </Button>
                   <CancelarReservaButton reserva={detalhe} label="Cancelar minha reserva" />
                 </div>
               ) : null}
@@ -274,25 +459,20 @@ function AgendaPage() {
         </DialogContent>
       </Dialog>
 
-      {alvoVisualizacaoComprovante ? (
-        <Dialog
-          open={!!alvoVisualizacaoComprovante}
-          onOpenChange={() => setAlvoVisualizacaoComprovante(null)}
-        >
-          <DialogContent className="sm:max-w-xl p-3 flex flex-col items-center justify-center bg-background/95 border-none shadow-2xl">
-            <div className="relative w-full aspect-video rounded-lg overflow-hidden bg-black flex items-center justify-center">
-              <img
-                src={alvoVisualizacaoComprovante}
-                alt="Comprovante de pagamento"
-                className="max-w-full max-h-full object-contain"
-              />
-            </div>
-            <div className="mt-2 text-xs text-muted-foreground font-medium">
-              Comprovante de Pagamento Anexado
-            </div>
-          </DialogContent>
-        </Dialog>
-      ) : null}
+      <ReceiptViewerDialog
+        open={!!alvoVisualizacaoComprovante}
+        onOpenChange={(v) => !v && setAlvoVisualizacaoComprovante(null)}
+        receiptUrl={alvoVisualizacaoComprovante}
+      />
+
+      <ReservaDetailDialog
+        open={!!detalheCompleto}
+        onOpenChange={(v) => !v && setDetalheCompleto(null)}
+        reserva={detalheCompleto}
+        sala={salas.find((s) => s.id === detalheCompleto?.sala_id)}
+        unidade={unidades.find((u) => u.id === detalheCompleto?.unidade_id)}
+        usuario={usuarios.find((u) => u.id === detalheCompleto?.profissional_id)}
+      />
     </AppShell>
   );
 }

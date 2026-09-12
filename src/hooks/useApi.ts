@@ -6,16 +6,78 @@ import type { NovaReserva, Reserva, Sala, Unidade, User } from "@/types";
 export const keys = {
   unidades: ["unidades"] as const,
   salas: ["salas"] as const,
+  salaDetail: (id: string) => ["salaDetail", id] as const,
   usuarios: ["usuarios"] as const,
-  reservas: ["reservas"] as const,
+  reservas: (filters?: api.ReservaFilters) => ["reservas", filters ?? {}] as const,
   profissoes: ["profissoes"] as const,
+  reservaReceipt: (id: string) => ["reservaReceipt", id] as const,
+  holidays: (unitId?: string | number) => ["holidays", unitId ?? "all"] as const,
 };
 
-export const useUnidades = () => useQuery({ queryKey: keys.unidades, queryFn: api.listUnidades });
-export const useSalas = () => useQuery({ queryKey: keys.salas, queryFn: api.listSalas });
-export const useUsuarios = () => useQuery({ queryKey: keys.usuarios, queryFn: api.listUsuarios });
-export const useReservas = () => useQuery({ queryKey: keys.reservas, queryFn: api.listReservas });
-export const useProfessions = () => useQuery({ queryKey: keys.profissoes, queryFn: api.listProfessions });
+export const useUnidades = () =>
+  useQuery({
+    queryKey: keys.unidades,
+    queryFn: api.listUnidades,
+    staleTime: 1000 * 60 * 15,
+  });
+
+export const useSalas = () =>
+  useQuery({
+    queryKey: keys.salas,
+    queryFn: api.listSalas,
+    staleTime: 1000 * 60 * 15,
+  });
+
+export const useSala = (id: string | null) =>
+  useQuery({
+    queryKey: id ? keys.salaDetail(id) : ["salaDetail", null],
+    queryFn: () => api.getSala(id!),
+    enabled: !!id,
+    staleTime: 1000 * 60 * 5,
+  });
+
+export const useUsuarios = () =>
+  useQuery({
+    queryKey: keys.usuarios,
+    queryFn: api.listUsuarios,
+    staleTime: 1000 * 60 * 15,
+  });
+
+export const useReservas = (filters?: api.ReservaFilters) =>
+  useQuery({
+    queryKey: keys.reservas(filters),
+    queryFn: () => api.listReservas(filters),
+    staleTime: 1000 * 60,
+    placeholderData: (previousData) => previousData,
+  });
+
+export const useProfessions = () =>
+  useQuery({
+    queryKey: keys.profissoes,
+    queryFn: api.listProfessions,
+    staleTime: 1000 * 60 * 15,
+  });
+
+export const useReservaReceipt = (id: string | null) =>
+  useQuery({
+    queryKey: id ? keys.reservaReceipt(id) : ["reservaReceipt", null],
+    queryFn: () => api.getReservaReceipt(id!),
+    enabled: !!id && id !== "empty" && id !== "has_receipt",
+    staleTime: 1000 * 60 * 10,
+  });
+
+export const useUsuarioDetail = (id: string | null) =>
+  useQuery({
+    queryKey: id ? ["usuarioDetail", id] : ["usuarioDetail", null],
+    queryFn: () => api.getUsuarioDetail(id!),
+    enabled: !!id,
+    staleTime: 1000 * 60 * 10,
+  });
+
+export const useReservasPendentesCount = () => {
+  const { data } = useReservas({ status: "pendente" });
+  return data?.length ?? 0;
+};
 
 function useInvalidate(key: readonly unknown[]) {
   const qc = useQueryClient();
@@ -47,11 +109,14 @@ export function useDeleteUnidade() {
 }
 
 export function useSaveSala() {
-  const invalidate = useInvalidate(keys.salas);
+  const qc = useQueryClient();
   return useMutation({
     mutationFn: (input: Omit<Sala, "id"> & { id?: string }) => api.saveSala(input),
-    onSuccess: () => {
-      invalidate();
+    onSuccess: (_, variables) => {
+      qc.invalidateQueries({ queryKey: keys.salas });
+      if (variables.id) {
+        qc.invalidateQueries({ queryKey: keys.salaDetail(variables.id) });
+      }
       toast.success("Sala salva com sucesso.");
     },
     onError: (e: Error) => toast.error(e.message),
@@ -64,7 +129,7 @@ export function useDeleteSala() {
     mutationFn: (id: string) => api.deleteSala(id),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: keys.salas });
-      qc.invalidateQueries({ queryKey: keys.reservas });
+      qc.invalidateQueries({ queryKey: ["reservas"] });
       toast.success("Sala removida.");
     },
     onError: (e: Error) => toast.error(e.message),
@@ -83,6 +148,57 @@ export function useSaveUsuario() {
   });
 }
 
+export function useBulkSaveUsuarios() {
+  const invalidate = useInvalidate(keys.usuarios);
+  return useMutation({
+    mutationFn: async ({
+      users,
+      onProgress,
+    }: {
+      users: Partial<User>[];
+      onProgress?: (
+        current: number,
+        total: number,
+        results: { successCount: number; failCount: number; errors: Array<{ email: string; error: string }> }
+      ) => void;
+    }) => {
+      let successCount = 0;
+      let failCount = 0;
+      const errors: Array<{ email: string; error: string }> = [];
+
+      for (let i = 0; i < users.length; i++) {
+        const u = users[i];
+        try {
+          await api.saveUsuario(u);
+          successCount++;
+        } catch (err: any) {
+          failCount++;
+          errors.push({
+            email: u.email || `Item ${i + 1}`,
+            error: err?.message || "Erro desconhecido ao cadastrar",
+          });
+        }
+        if (onProgress) {
+          onProgress(i + 1, users.length, { successCount, failCount, errors });
+        }
+      }
+
+      return { successCount, failCount, errors, total: users.length };
+    },
+    onSuccess: (data) => {
+      invalidate();
+      if (data.failCount === 0) {
+        toast.success(`${data.successCount} profissional(is) cadastrado(s) com sucesso!`);
+      } else {
+        toast.warning(
+          `${data.successCount} profissional(is) cadastrado(s) com sucesso e ${data.failCount} falha(s).`
+        );
+      }
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+}
+
 export function useResetPassword() {
   const invalidate = useInvalidate(keys.usuarios);
   return useMutation({
@@ -95,8 +211,19 @@ export function useResetPassword() {
   });
 }
 
+export function useChangePassword() {
+  return useMutation({
+    mutationFn: ({ id, password }: { id: string; password: string }) =>
+      api.changePassword(id, password),
+    onSuccess: () => {
+      toast.success("Senha alterada com sucesso.");
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+}
+
 export function useCreateReserva() {
-  const invalidate = useInvalidate(keys.reservas);
+  const invalidate = useInvalidate(["reservas"]);
   return useMutation({
     mutationFn: (input: NovaReserva) => api.createReserva(input),
     onSuccess: () => {
@@ -108,7 +235,7 @@ export function useCreateReserva() {
 }
 
 export function useUpdateReserva(successMessage = "Reserva atualizada.") {
-  const invalidate = useInvalidate(keys.reservas);
+  const invalidate = useInvalidate(["reservas"]);
   return useMutation({
     mutationFn: ({ id, patch }: { id: string; patch: Partial<Reserva> }) =>
       api.updateReserva(id, patch),
@@ -121,7 +248,7 @@ export function useUpdateReserva(successMessage = "Reserva atualizada.") {
 }
 
 export function useDeleteReserva() {
-  const invalidate = useInvalidate(keys.reservas);
+  const invalidate = useInvalidate(["reservas"]);
   return useMutation({
     mutationFn: (id: string) => api.deleteReserva(id),
     onSuccess: () => {
@@ -133,7 +260,7 @@ export function useDeleteReserva() {
 }
 
 export function useDeleteReservasBatch() {
-  const invalidate = useInvalidate(keys.reservas);
+  const invalidate = useInvalidate(["reservas"]);
   return useMutation({
     mutationFn: (ids: string[]) => api.deleteReservasBatch(ids),
     onSuccess: () => {
@@ -178,3 +305,44 @@ export function useCompleteTour() {
     onError: (e: Error) => toast.error(e.message),
   });
 }
+
+export function useHolidays(unitId?: string | number) {
+  return useQuery({
+    queryKey: keys.holidays(unitId),
+    queryFn: () => api.listHolidays(unitId),
+    staleTime: 1000 * 60 * 5,
+  });
+}
+
+export function useSaveHoliday() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (input: {
+      id?: number;
+      name: string;
+      startDate: string;
+      endDate?: string;
+      unitId?: number | null;
+      description?: string;
+      status?: boolean;
+    }) => api.saveHoliday(input),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["holidays"] });
+      toast.success("Feriado/bloqueio salvo com sucesso.");
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+}
+
+export function useDeleteHoliday() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (id: number) => api.deleteHoliday(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["holidays"] });
+      toast.success("Feriado/bloqueio removido.");
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+}
+
