@@ -2,6 +2,8 @@ import { Fragment } from "react";
 import { HORARIOS, toMinutes } from "@/services/db";
 import { cn } from "@/lib/utils";
 import type { Reserva, Sala, Unidade, User } from "@/types";
+import { useHolidays } from "@/hooks/useApi";
+import { CalendarOff } from "lucide-react";
 
 export type SlotInfo =
   | { tipo: "livre"; sala: Sala; hora: string }
@@ -14,6 +16,7 @@ interface Props {
   usuarios: User[];
   onSlotClick?: (slot: SlotInfo) => void;
   emptyLabel?: string;
+  data?: string;
 }
 
 function reservaNoSlot(reservas: Reserva[], salaId: string, hora: string) {
@@ -40,9 +43,37 @@ export function AvailabilityGrid({
   usuarios,
   onSlotClick,
   emptyLabel = "Nenhuma sala encontrada para os filtros escolhidos.",
+  data,
 }: Props) {
+  const { data: holidays = [] } = useHolidays();
+
   const nomeUnidade = (id: string) => unidades.find((u) => u.id === id)?.nome ?? "—";
   const nomeProf = (id: string) => usuarios.find((u) => u.id === id)?.nome ?? "Profissional";
+
+  const getHolidayForSala = (sala: Sala) => {
+    if (!data) return null;
+    return holidays.find((h) => {
+      if (!h.status) return null;
+      const isGlobalOrUnit = !h.unitId || String(h.unitId) === String(sala.unidade_id);
+      if (!isGlobalOrUnit) return false;
+      const startDate = h.startDate;
+      const endDate = h.endDate || h.startDate;
+      return data >= startDate && data <= endDate;
+    });
+  };
+
+  const isSlotForaDoHorario = (sala: Sala, hora: string) => {
+    if (!data) return false;
+    if (getHolidayForSala(sala)) return true;
+    const dateObj = new Date(data + "T00:00:00");
+    const dayOfWeek = dateObj.getDay();
+    const unidade = unidades.find((u) => u.id === sala.unidade_id);
+    if (!unidade?.business_hours) return false;
+    const bh = unidade.business_hours[String(dayOfWeek)];
+    if (!bh || !bh.ativo || !bh.abertura || !bh.fechamento) return true;
+    const hMin = toMinutes(hora);
+    return hMin < toMinutes(bh.abertura) || hMin >= toMinutes(bh.fechamento);
+  };
 
   if (!salas.length) {
     return (
@@ -52,8 +83,45 @@ export function AvailabilityGrid({
     );
   }
 
+  const holidaysNaData = data
+    ? holidays.filter(
+        (h) =>
+          h.status &&
+          data >= h.startDate &&
+          data <= (h.endDate || h.startDate)
+      )
+    : [];
+
   return (
     <div className="space-y-4">
+      {holidaysNaData.length > 0 && (
+        <div className="space-y-2">
+          {holidaysNaData.map((h) => {
+            const unitObj = h.unitId ? unidades.find((u) => String(u.id) === String(h.unitId)) : null;
+            const unitText = h.unitId
+              ? (unitObj ? `Unidade ${unitObj.nome}` : h.unitName || `Unidade ${h.unitId}`)
+              : "Todas as Unidades";
+
+            return (
+              <div
+                key={h.id}
+                className="flex items-center gap-3 rounded-lg border border-amber-500/30 bg-amber-500/10 p-3 text-sm text-amber-700 dark:text-amber-300"
+              >
+                <CalendarOff className="size-5 shrink-0 text-amber-600 dark:text-amber-400" />
+                <div>
+                  <span className="font-semibold">
+                    {h.unitId ? `Fechamento (${unitText})` : "Fechamento (Todas as Unidades)"}: {h.name}
+                  </span>
+                  {h.description && (
+                    <span className="block text-xs opacity-90">{h.description}</span>
+                  )}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+
       <Legend />
 
       {/* Grade (desktop / tablet) */}
@@ -84,7 +152,8 @@ export function AvailabilityGrid({
                   {hora}
                 </th>
                 {salas.map((sala) => {
-                  const indisponivel = sala.status !== "ativa";
+                  const foraDoHorario = isSlotForaDoHorario(sala, hora);
+                  const indisponivel = sala.status !== "ativa" || foraDoHorario;
                   const reserva = indisponivel ? undefined : reservaNoSlot(reservas, sala.id, hora);
                   const key = indisponivel
                     ? "indisponivel"
@@ -113,11 +182,13 @@ export function AvailabilityGrid({
                           slotStyles[key],
                         )}
                       >
-                        {indisponivel
+                        {sala.status !== "ativa"
                           ? "Inativa"
-                          : reserva
-                            ? nomeProf(reserva.profissional_id).split(" ")[0]
-                            : "Livre"}
+                          : foraDoHorario
+                            ? "Fechado"
+                            : reserva
+                              ? nomeProf(reserva.profissional_id).split(" ")[0]
+                              : "Livre"}
                       </button>
                     </td>
                   );
@@ -143,16 +214,20 @@ export function AvailabilityGrid({
             ) : (
               <div className="grid grid-cols-3 gap-1.5">
                 {HORARIOS.map((hora) => {
-                  const reserva = reservaNoSlot(reservas, sala.id, hora);
-                  const key = reserva
-                    ? reserva.status === "pendente"
-                      ? "pendente"
-                      : "aprovada"
-                    : "livre";
+                  const foraDoHorario = isSlotForaDoHorario(sala, hora);
+                  const reserva = foraDoHorario ? undefined : reservaNoSlot(reservas, sala.id, hora);
+                  const key = foraDoHorario
+                    ? "indisponivel"
+                    : reserva
+                      ? reserva.status === "pendente"
+                        ? "pendente"
+                        : "aprovada"
+                      : "livre";
                   return (
                     <button
                       key={hora}
                       type="button"
+                      disabled={foraDoHorario}
                       onClick={() =>
                         onSlotClick?.(
                           reserva
@@ -161,11 +236,11 @@ export function AvailabilityGrid({
                         )
                       }
                       className={cn(
-                        "rounded-md px-1 py-2 text-[11px] font-medium transition-colors",
+                        "rounded-md px-1 py-2 text-[11px] font-medium transition-colors disabled:cursor-not-allowed",
                         slotStyles[key],
                       )}
                     >
-                      {hora}
+                      {foraDoHorario ? `${hora} (Fechado)` : hora}
                     </button>
                   );
                 })}
@@ -183,7 +258,7 @@ function Legend() {
     ["Livre", "bg-success/25"],
     ["Pendente", "bg-warning/40"],
     ["Ocupado", "bg-muted"],
-    ["Indisponível", "bg-border/60"],
+    ["Indisponível / Fechado", "bg-border/60"],
   ];
   return (
     <div className="flex flex-wrap items-center gap-4 text-xs text-muted-foreground">

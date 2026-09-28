@@ -1,4 +1,4 @@
-export type Role = "PSICOLOGO" | "ADMINISTRADOR";
+export type Role = "LOCADOR" | "ADMINISTRADOR";
 export type UserStatus = "ativo" | "inativo";
 
 export interface Profession {
@@ -18,13 +18,28 @@ export interface User {
   foto?: string | undefined;
   unidades: string[];
   professionId?: number | null;
+  mustCompleteTour?: boolean;
+  cpf: string;
+  endereco: string;
+  cep: string;
+  boardNumber: string;
+  firstLogin?: boolean;
 }
+
+export interface HorarioDia {
+  ativo: boolean;
+  abertura: string | null;
+  fechamento: string | null;
+}
+
+export type BusinessHours = Record<string, HorarioDia>;
 
 export interface Unidade {
   id: string;
   nome: string;
   endereco: string;
   status: "ativa" | "inativa";
+  business_hours?: BusinessHours;
 }
 
 export type SalaStatus = "ativa" | "inativa";
@@ -36,10 +51,11 @@ export interface Sala {
   descricao: string;
   status: SalaStatus;
   fotos: string[];
+  photoCount?: number;
 }
 
 export type ReservaStatus = "pendente" | "aprovada" | "negada" | "cancelada";
-export type Recorrencia = "unica" | "semanal";
+export type Recorrencia = "unica" | "semanal_mensal" | "semanal_anual" | "semanal";
 
 export interface Reserva {
   id: string;
@@ -70,3 +86,15 @@ export interface NovaReserva {
   status?: ReservaStatus | undefined;
   comprovante?: string;
 }
+
+export interface Holiday {
+  id: number;
+  name: string;
+  startDate: string; // yyyy-MM-dd
+  endDate: string; // yyyy-MM-dd
+  unitId?: number | null;
+  unitName?: string;
+  description?: string;
+  status: boolean;
+}
+

@@ -10,8 +10,9 @@ const ADMIN_ONLY = [
   "/app/salas",
   "/app/unidades",
   "/app/profissoes",
+  "/app/feriados",
 ];
-const PSI_ONLY = ["/app/solicitar", "/app/minhas-reservas"];
+const LOCADOR_ONLY = ["/app/solicitar", "/app/minhas-reservas"];
 
 export const Route = createFileRoute("/app")({
   ssr: false,
@@ -29,8 +30,23 @@ function AppLayout() {
       navigate({ to: "/", replace: true });
       return;
     }
+
+    // Force redirection to password reset if firstLogin is true
+    if (user.firstLogin) {
+      if (pathname !== "/app/reset-first-password") {
+        navigate({ to: "/app/reset-first-password", replace: true });
+      }
+      return;
+    }
+
+    // If firstLogin is false, user shouldn't access the reset-first-password route
+    if (pathname === "/app/reset-first-password") {
+      navigate({ to: "/app/dashboard", replace: true });
+      return;
+    }
+
     const blocked = isAdmin
-      ? PSI_ONLY.includes(pathname)
+      ? LOCADOR_ONLY.includes(pathname)
       : ADMIN_ONLY.some((p) => pathname.startsWith(p));
     if (blocked) navigate({ to: "/app/dashboard", replace: true });
   }, [user, loading, isAdmin, pathname, navigate]);

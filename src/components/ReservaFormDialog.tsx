@@ -19,10 +19,11 @@ import {
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { useAuth } from "@/contexts/AuthContext";
-import { useCreateReserva, useUpdateReserva } from "@/hooks/useApi";
+import { useCreateReserva, useUpdateReserva, useHolidays, useSala } from "@/hooks/useApi";
 import { findConflitos } from "@/services/api";
 import { HORARIOS, toMinutes } from "@/services/db";
-import type { Reserva, Sala, Unidade, User } from "@/types";
+import type { Reserva, Sala, Unidade, User, Recorrencia } from "@/types";
+import { CalendarOff } from "lucide-react";
 
 interface Props {
   open: boolean;
@@ -71,7 +72,7 @@ export function ReservaFormDialog({
   const [fim, setFim] = useState("09:00");
   const [profissionalId, setProfissionalId] = useState("");
   const [observacoes, setObservacoes] = useState("");
-  const [recorrencia, setRecorrencia] = useState<"unica" | "semanal">("unica");
+  const [recorrencia, setRecorrencia] = useState<Recorrencia>("unica");
   const [comprovante, setComprovante] = useState("");
   const [selectedPhotoIndex, setSelectedPhotoIndex] = useState<number | null>(null);
 
@@ -90,13 +91,25 @@ export function ReservaFormDialog({
     );
     setProfissionalId(reserva?.profissional_id ?? (isAdmin ? "" : (user?.id ?? "")));
     setObservacoes(reserva?.observacoes ?? "");
-    setRecorrencia(reserva?.recorrencia ?? "unica");
+    
+    // Map legacy 'semanal' to 'semanal_mensal'
+    const rec = (reserva?.recorrencia === "semanal") ? "semanal_mensal" : (reserva?.recorrencia ?? "unica");
+    setRecorrencia(rec as Recorrencia);
     setComprovante(reserva?.comprovante ?? "");
   }, [open, reserva, preset, unidadesDisponiveis, isAdmin, user]);
 
+  // Enforce automatic reservation duration set: 1h for avulsa, 4h for shift (turno)
+  useEffect(() => {
+    const startHour = Number(inicio.slice(0, 2));
+    const duration = (recorrencia === "semanal_anual") ? 4 : 1;
+    const endHour = startHour + duration;
+    setFim(`${String(endHour).padStart(2, "0")}:00`);
+  }, [inicio, recorrencia]);
+
   const salasDaUnidade = salas.filter((s) => s.unidade_id === unidadeId && s.status === "ativa");
   const profissionais = usuarios.filter((u) => u.status === "ativo");
-  const selectedRoom = salas.find((x) => x.id === salaId);
+  const { data: fullSelectedRoom } = useSala(open && salaId ? salaId : null);
+  const selectedRoom = fullSelectedRoom ?? salas.find((x) => x.id === salaId);
 
   const horarioInvalido = toMinutes(fim) <= toMinutes(inicio);
   const conflitos =
@@ -110,8 +123,65 @@ export function ReservaFormDialog({
         })
       : [];
 
+  const dayOfWeek = useMemo(() => {
+    if (!data) return -1;
+    const dateObj = new Date(data + "T00:00:00");
+    return dateObj.getDay(); // 0 = Sunday, 1 = Monday, ..., 6 = Saturday
+  }, [data]);
+
+  const unidadeObj = useMemo(() => unidades.find((u) => u.id === unidadeId), [unidades, unidadeId]);
+
+  const daySchedule = useMemo(() => {
+    if (!unidadeObj?.business_hours || dayOfWeek < 0) return null;
+    return unidadeObj.business_hours[String(dayOfWeek)] ?? null;
+  }, [unidadeObj, dayOfWeek]);
+
+  const foraDoHorario = useMemo(() => {
+    if (!daySchedule || !daySchedule.ativo || !daySchedule.abertura || !daySchedule.fechamento) {
+      return true;
+    }
+    const startMin = toMinutes(inicio);
+    const endMin = toMinutes(fim);
+    const abertMin = toMinutes(daySchedule.abertura);
+    const fechMin = toMinutes(daySchedule.fechamento);
+    return startMin < abertMin || endMin > fechMin;
+  }, [daySchedule, inicio, fim]);
+
+  const horariosInicioDisponiveis = useMemo(() => {
+    if (!daySchedule || !daySchedule.ativo || !daySchedule.abertura || !daySchedule.fechamento) return HORARIOS;
+    const abertMin = toMinutes(daySchedule.abertura);
+    const fechMin = toMinutes(daySchedule.fechamento);
+    return HORARIOS.filter((h) => {
+      const hMin = toMinutes(h);
+      return hMin >= abertMin && hMin < fechMin;
+    });
+  }, [daySchedule]);
+
+  const { data: holidays = [] } = useHolidays(unidadeId);
+
+  const feriadoDaData = useMemo(() => {
+    if (!data) return null;
+    return holidays.find((h) => {
+      if (!h.status) return false;
+      const isGlobalOrUnit = !h.unitId || String(h.unitId) === String(unidadeId);
+      if (!isGlobalOrUnit) return false;
+      const startDate = h.startDate;
+      const endDate = h.endDate || h.startDate;
+      return data >= startDate && data <= endDate;
+    });
+  }, [data, holidays, unidadeId]);
+
+  const comprovanteFaltando = !isAdmin && (!comprovante || comprovante.trim() === "" || comprovante === "empty");
+
   const podeSalvar =
-    !!unidadeId && !!salaId && !!profissionalId && !horarioInvalido && conflitos.length === 0;
+    !!unidadeId &&
+    !!salaId &&
+    !!profissionalId &&
+    !horarioInvalido &&
+    !foraDoHorario &&
+    !feriadoDaData &&
+    conflitos.length === 0 &&
+    !comprovanteFaltando;
 
   async function handleSubmit() {
     if (reserva) {
@@ -200,11 +270,11 @@ export function ReservaFormDialog({
             </div>
           </div>
 
-          {salas.find((s) => s.id === salaId) ? (
+          {selectedRoom ? (
             <div className="rounded-lg border border-border p-3 bg-muted/10 space-y-2">
               <p className="text-xs font-semibold text-foreground">Imagens e detalhes da sala:</p>
               {(() => {
-                const s = salas.find((x) => x.id === salaId)!;
+                const s = selectedRoom;
                 return (
                   <>
                     {s.descricao ? (
@@ -267,7 +337,7 @@ export function ReservaFormDialog({
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  {HORARIOS.map((h) => (
+                  {horariosInicioDisponiveis.map((h) => (
                     <SelectItem key={h} value={h}>
                       {h}
                     </SelectItem>
@@ -277,7 +347,7 @@ export function ReservaFormDialog({
             </div>
             <div className="space-y-2">
               <Label>Fim</Label>
-              <Select value={fim} onValueChange={setFim}>
+              <Select value={fim} onValueChange={setFim} disabled>
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
@@ -294,13 +364,14 @@ export function ReservaFormDialog({
 
           <div className="space-y-2">
             <Label>Recorrência</Label>
-            <Select value={recorrencia} onValueChange={(v) => setRecorrencia(v as "unica")}>
+            <Select value={recorrencia} onValueChange={(v) => setRecorrencia(v as Recorrencia)}>
               <SelectTrigger>
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="unica">Única</SelectItem>
-                <SelectItem value="semanal">Semanal</SelectItem>
+                <SelectItem value="unica">Hora avulsa (1h)</SelectItem>
+                <SelectItem value="semanal_mensal">Hora avulsa fixa (semanal até fim do mês)</SelectItem>
+                <SelectItem value="semanal_anual">Turno (4h - semanal até fim do ano)</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -317,7 +388,17 @@ export function ReservaFormDialog({
           </div>
 
           <div className="space-y-2">
-            <Label>Comprovante de Pagamento</Label>
+            <div className="flex items-center justify-between">
+              <Label className="flex items-center gap-1">
+                Comprovante de Pagamento
+                {!isAdmin && <span className="text-destructive font-bold">*</span>}
+              </Label>
+            </div>
+
+            <p className="text-xs text-amber-700 bg-amber-50 dark:text-amber-300 dark:bg-amber-950/40 p-2.5 rounded-lg border border-amber-200/50 dark:border-amber-900/50">
+              ⚠️ A reserva só é feita mediante a apresentação do comprovante de pagamento.
+            </p>
+
             {comprovante ? (
               <div className="relative border border-border rounded-lg p-2 bg-muted/10">
                 <div className="relative aspect-video rounded overflow-hidden bg-black flex items-center justify-center h-40">
@@ -336,29 +417,54 @@ export function ReservaFormDialog({
                 </div>
               </div>
             ) : (
-              <label className="flex flex-col items-center justify-center cursor-pointer border border-dashed border-border rounded-lg p-4 h-24 bg-muted/20 hover:bg-muted/30 transition-colors">
-                <span className="text-sm font-medium text-foreground">Anexar Comprovante</span>
-                <span className="text-xs text-muted-foreground mt-1">Upload de imagem</span>
-                <input
-                  type="file"
-                  accept="image/*"
-                  className="hidden"
-                  onChange={async (e) => {
-                    const file = e.target.files?.[0];
-                    if (file) {
-                      try {
-                        const base64 = await fileToBase64Helper(file);
-                        setComprovante(base64);
-                      } catch (err) {
-                        console.error(err);
+              <div className="space-y-2">
+                <label className="flex flex-col items-center justify-center cursor-pointer border border-dashed border-border rounded-lg p-4 h-24 bg-muted/20 hover:bg-muted/30 transition-colors">
+                  <span className="text-sm font-medium text-foreground">Anexar Comprovante</span>
+                  <span className="text-xs text-muted-foreground mt-1">Upload de imagem</span>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    onChange={async (e) => {
+                      const file = e.target.files?.[0];
+                      if (file) {
+                        try {
+                          const base64 = await fileToBase64Helper(file);
+                          setComprovante(base64);
+                        } catch (err) {
+                          console.error(err);
+                        }
                       }
-                    }
-                  }}
-                />
-              </label>
+                    }}
+                  />
+                </label>
+                {comprovanteFaltando && (
+                  <p className="text-xs font-semibold text-destructive animate-pulse">
+                    * Campo obrigatório: Por favor, anexe o comprovante de pagamento.
+                  </p>
+                )}
+              </div>
             )}
           </div>
 
+          {feriadoDaData ? (
+            <div className="flex items-center gap-2 rounded-md border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-sm text-amber-700 dark:text-amber-300">
+              <CalendarOff className="size-4 shrink-0 text-amber-600 dark:text-amber-400" />
+              <span>
+                {feriadoDaData.unitId
+                  ? `A unidade (${unidades.find((u) => String(u.id) === String(unidadeId))?.nome || feriadoDaData.unitName || "selecionada"}) estará fechada nesta data devido ao bloqueio: `
+                  : "Todas as unidades estarão fechadas nesta data devido ao feriado: "}
+                <strong>{feriadoDaData.name}</strong>.
+              </span>
+            </div>
+          ) : null}
+          {foraDoHorario ? (
+            <p className="rounded-md border border-destructive/30 bg-destructive/5 px-3 py-2 text-sm text-destructive">
+              {!daySchedule || !daySchedule.ativo
+                ? "A unidade selecionada está fechada neste dia da semana."
+                : `A unidade funciona apenas das ${daySchedule.abertura} às ${daySchedule.fechamento} neste dia.`}
+            </p>
+          ) : null}
           {horarioInvalido ? (
             <p className="rounded-md border border-destructive/30 bg-destructive/5 px-3 py-2 text-sm text-destructive">
               O horário final deve ser depois do horário inicial.

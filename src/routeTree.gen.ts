@@ -14,12 +14,15 @@ import { Route as AppRouteImport } from './routes/app'
 import { Route as AppIndexRouteImport } from './routes/app.index'
 import { Route as AppAgendaRouteImport } from './routes/app.agenda'
 import { Route as AppAprovacoesRouteImport } from './routes/app.aprovacoes'
+import { Route as AppAuditoriaRouteImport } from './routes/app.auditoria'
 import { Route as AppDashboardRouteImport } from './routes/app.dashboard'
+import { Route as AppFeriadosRouteImport } from './routes/app.feriados'
 import { Route as AppMinhasReservasRouteImport } from './routes/app.minhas-reservas'
 import { Route as AppPerfilRouteImport } from './routes/app.perfil'
 import { Route as AppProfissionaisRouteImport } from './routes/app.profissionais'
 import { Route as AppProfissoesRouteImport } from './routes/app.profissoes'
 import { Route as AppReservasRouteImport } from './routes/app.reservas'
+import { Route as AppResetFirstPasswordRouteImport } from './routes/app.reset-first-password'
 import { Route as AppSalasRouteImport } from './routes/app.salas'
 import { Route as AppSolicitarRouteImport } from './routes/app.solicitar'
 import { Route as AppUnidadesRouteImport } from './routes/app.unidades'
@@ -49,9 +52,19 @@ const AppAprovacoesRoute = AppAprovacoesRouteImport.update({
   path: '/aprovacoes',
   getParentRoute: () => AppRoute,
 } as any)
+const AppAuditoriaRoute = AppAuditoriaRouteImport.update({
+  id: '/auditoria',
+  path: '/auditoria',
+  getParentRoute: () => AppRoute,
+} as any)
 const AppDashboardRoute = AppDashboardRouteImport.update({
   id: '/dashboard',
   path: '/dashboard',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppFeriadosRoute = AppFeriadosRouteImport.update({
+  id: '/feriados',
+  path: '/feriados',
   getParentRoute: () => AppRoute,
 } as any)
 const AppMinhasReservasRoute = AppMinhasReservasRouteImport.update({
@@ -79,6 +92,11 @@ const AppReservasRoute = AppReservasRouteImport.update({
   path: '/reservas',
   getParentRoute: () => AppRoute,
 } as any)
+const AppResetFirstPasswordRoute = AppResetFirstPasswordRouteImport.update({
+  id: '/reset-first-password',
+  path: '/reset-first-password',
+  getParentRoute: () => AppRoute,
+} as any)
 const AppSalasRoute = AppSalasRouteImport.update({
   id: '/salas',
   path: '/salas',
@@ -100,12 +118,15 @@ export interface FileRoutesByFullPath {
   '/app': typeof AppRouteWithChildren
   '/app/agenda': typeof AppAgendaRoute
   '/app/aprovacoes': typeof AppAprovacoesRoute
+  '/app/auditoria': typeof AppAuditoriaRoute
   '/app/dashboard': typeof AppDashboardRoute
+  '/app/feriados': typeof AppFeriadosRoute
   '/app/minhas-reservas': typeof AppMinhasReservasRoute
   '/app/perfil': typeof AppPerfilRoute
   '/app/profissionais': typeof AppProfissionaisRoute
   '/app/profissoes': typeof AppProfissoesRoute
   '/app/reservas': typeof AppReservasRoute
+  '/app/reset-first-password': typeof AppResetFirstPasswordRoute
   '/app/salas': typeof AppSalasRoute
   '/app/solicitar': typeof AppSolicitarRoute
   '/app/unidades': typeof AppUnidadesRoute
@@ -115,12 +136,15 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/app/agenda': typeof AppAgendaRoute
   '/app/aprovacoes': typeof AppAprovacoesRoute
+  '/app/auditoria': typeof AppAuditoriaRoute
   '/app/dashboard': typeof AppDashboardRoute
+  '/app/feriados': typeof AppFeriadosRoute
   '/app/minhas-reservas': typeof AppMinhasReservasRoute
   '/app/perfil': typeof AppPerfilRoute
   '/app/profissionais': typeof AppProfissionaisRoute
   '/app/profissoes': typeof AppProfissoesRoute
   '/app/reservas': typeof AppReservasRoute
+  '/app/reset-first-password': typeof AppResetFirstPasswordRoute
   '/app/salas': typeof AppSalasRoute
   '/app/solicitar': typeof AppSolicitarRoute
   '/app/unidades': typeof AppUnidadesRoute
@@ -132,12 +156,15 @@ export interface FileRoutesById {
   '/app': typeof AppRouteWithChildren
   '/app/agenda': typeof AppAgendaRoute
   '/app/aprovacoes': typeof AppAprovacoesRoute
+  '/app/auditoria': typeof AppAuditoriaRoute
   '/app/dashboard': typeof AppDashboardRoute
+  '/app/feriados': typeof AppFeriadosRoute
   '/app/minhas-reservas': typeof AppMinhasReservasRoute
   '/app/perfil': typeof AppPerfilRoute
   '/app/profissionais': typeof AppProfissionaisRoute
   '/app/profissoes': typeof AppProfissoesRoute
   '/app/reservas': typeof AppReservasRoute
+  '/app/reset-first-password': typeof AppResetFirstPasswordRoute
   '/app/salas': typeof AppSalasRoute
   '/app/solicitar': typeof AppSolicitarRoute
   '/app/unidades': typeof AppUnidadesRoute
@@ -150,12 +177,15 @@ export interface FileRouteTypes {
     | '/app'
     | '/app/agenda'
     | '/app/aprovacoes'
+    | '/app/auditoria'
     | '/app/dashboard'
+    | '/app/feriados'
     | '/app/minhas-reservas'
     | '/app/perfil'
     | '/app/profissionais'
     | '/app/profissoes'
     | '/app/reservas'
+    | '/app/reset-first-password'
     | '/app/salas'
     | '/app/solicitar'
     | '/app/unidades'
@@ -165,12 +195,15 @@ export interface FileRouteTypes {
     | '/'
     | '/app/agenda'
     | '/app/aprovacoes'
+    | '/app/auditoria'
     | '/app/dashboard'
+    | '/app/feriados'
     | '/app/minhas-reservas'
     | '/app/perfil'
     | '/app/profissionais'
     | '/app/profissoes'
     | '/app/reservas'
+    | '/app/reset-first-password'
     | '/app/salas'
     | '/app/solicitar'
     | '/app/unidades'
@@ -181,12 +214,15 @@ export interface FileRouteTypes {
     | '/app'
     | '/app/agenda'
     | '/app/aprovacoes'
+    | '/app/auditoria'
     | '/app/dashboard'
+    | '/app/feriados'
     | '/app/minhas-reservas'
     | '/app/perfil'
     | '/app/profissionais'
     | '/app/profissoes'
     | '/app/reservas'
+    | '/app/reset-first-password'
     | '/app/salas'
     | '/app/solicitar'
     | '/app/unidades'
@@ -235,11 +271,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppAprovacoesRouteImport
       parentRoute: typeof AppRoute
     }
+    '/app/auditoria': {
+      id: '/app/auditoria'
+      path: '/auditoria'
+      fullPath: '/app/auditoria'
+      preLoaderRoute: typeof AppAuditoriaRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/app/dashboard': {
       id: '/app/dashboard'
       path: '/dashboard'
       fullPath: '/app/dashboard'
       preLoaderRoute: typeof AppDashboardRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/feriados': {
+      id: '/app/feriados'
+      path: '/feriados'
+      fullPath: '/app/feriados'
+      preLoaderRoute: typeof AppFeriadosRouteImport
       parentRoute: typeof AppRoute
     }
     '/app/minhas-reservas': {
@@ -277,6 +327,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppReservasRouteImport
       parentRoute: typeof AppRoute
     }
+    '/app/reset-first-password': {
+      id: '/app/reset-first-password'
+      path: '/reset-first-password'
+      fullPath: '/app/reset-first-password'
+      preLoaderRoute: typeof AppResetFirstPasswordRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/app/salas': {
       id: '/app/salas'
       path: '/salas'
@@ -304,12 +361,15 @@ declare module '@tanstack/react-router' {
 interface AppRouteChildren {
   AppAgendaRoute: typeof AppAgendaRoute
   AppAprovacoesRoute: typeof AppAprovacoesRoute
+  AppAuditoriaRoute: typeof AppAuditoriaRoute
   AppDashboardRoute: typeof AppDashboardRoute
+  AppFeriadosRoute: typeof AppFeriadosRoute
   AppMinhasReservasRoute: typeof AppMinhasReservasRoute
   AppPerfilRoute: typeof AppPerfilRoute
   AppProfissionaisRoute: typeof AppProfissionaisRoute
   AppProfissoesRoute: typeof AppProfissoesRoute
   AppReservasRoute: typeof AppReservasRoute
+  AppResetFirstPasswordRoute: typeof AppResetFirstPasswordRoute
   AppSalasRoute: typeof AppSalasRoute
   AppSolicitarRoute: typeof AppSolicitarRoute
   AppUnidadesRoute: typeof AppUnidadesRoute
@@ -319,12 +379,15 @@ interface AppRouteChildren {
 const AppRouteChildren: AppRouteChildren = {
   AppAgendaRoute: AppAgendaRoute,
   AppAprovacoesRoute: AppAprovacoesRoute,
+  AppAuditoriaRoute: AppAuditoriaRoute,
   AppDashboardRoute: AppDashboardRoute,
+  AppFeriadosRoute: AppFeriadosRoute,
   AppMinhasReservasRoute: AppMinhasReservasRoute,
   AppPerfilRoute: AppPerfilRoute,
   AppProfissionaisRoute: AppProfissionaisRoute,
   AppProfissoesRoute: AppProfissoesRoute,
   AppReservasRoute: AppReservasRoute,
+  AppResetFirstPasswordRoute: AppResetFirstPasswordRoute,
   AppSalasRoute: AppSalasRoute,
   AppSolicitarRoute: AppSolicitarRoute,
   AppUnidadesRoute: AppUnidadesRoute,
