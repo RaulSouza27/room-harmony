@@ -14,6 +14,7 @@ import {
   Users,
   Briefcase,
   CheckCircle2,
+  ShieldCheck,
 } from "lucide-react";
 import { useState, useMemo, useEffect, type ReactNode } from "react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -60,6 +61,7 @@ export function AppShell({
         { to: "/app/salas", label: "Salas", icon: DoorOpen },
         { to: "/app/unidades", label: "Unidades", icon: Building2 },
         { to: "/app/feriados", label: "Feriados e Bloqueios", icon: CalendarOff },
+        { to: "/app/auditoria", label: "Auditoria", icon: ShieldCheck },
         { to: "/app/perfil", label: "Meu perfil", icon: UserRound },
       ]
     : [

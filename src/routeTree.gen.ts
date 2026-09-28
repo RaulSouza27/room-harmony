@@ -14,6 +14,7 @@ import { Route as AppRouteImport } from './routes/app'
 import { Route as AppIndexRouteImport } from './routes/app.index'
 import { Route as AppAgendaRouteImport } from './routes/app.agenda'
 import { Route as AppAprovacoesRouteImport } from './routes/app.aprovacoes'
+import { Route as AppAuditoriaRouteImport } from './routes/app.auditoria'
 import { Route as AppDashboardRouteImport } from './routes/app.dashboard'
 import { Route as AppFeriadosRouteImport } from './routes/app.feriados'
 import { Route as AppMinhasReservasRouteImport } from './routes/app.minhas-reservas'
@@ -49,6 +50,11 @@ const AppAgendaRoute = AppAgendaRouteImport.update({
 const AppAprovacoesRoute = AppAprovacoesRouteImport.update({
   id: '/aprovacoes',
   path: '/aprovacoes',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppAuditoriaRoute = AppAuditoriaRouteImport.update({
+  id: '/auditoria',
+  path: '/auditoria',
   getParentRoute: () => AppRoute,
 } as any)
 const AppDashboardRoute = AppDashboardRouteImport.update({
@@ -112,6 +118,7 @@ export interface FileRoutesByFullPath {
   '/app': typeof AppRouteWithChildren
   '/app/agenda': typeof AppAgendaRoute
   '/app/aprovacoes': typeof AppAprovacoesRoute
+  '/app/auditoria': typeof AppAuditoriaRoute
   '/app/dashboard': typeof AppDashboardRoute
   '/app/feriados': typeof AppFeriadosRoute
   '/app/minhas-reservas': typeof AppMinhasReservasRoute
@@ -129,6 +136,7 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/app/agenda': typeof AppAgendaRoute
   '/app/aprovacoes': typeof AppAprovacoesRoute
+  '/app/auditoria': typeof AppAuditoriaRoute
   '/app/dashboard': typeof AppDashboardRoute
   '/app/feriados': typeof AppFeriadosRoute
   '/app/minhas-reservas': typeof AppMinhasReservasRoute
@@ -148,6 +156,7 @@ export interface FileRoutesById {
   '/app': typeof AppRouteWithChildren
   '/app/agenda': typeof AppAgendaRoute
   '/app/aprovacoes': typeof AppAprovacoesRoute
+  '/app/auditoria': typeof AppAuditoriaRoute
   '/app/dashboard': typeof AppDashboardRoute
   '/app/feriados': typeof AppFeriadosRoute
   '/app/minhas-reservas': typeof AppMinhasReservasRoute
@@ -168,6 +177,7 @@ export interface FileRouteTypes {
     | '/app'
     | '/app/agenda'
     | '/app/aprovacoes'
+    | '/app/auditoria'
     | '/app/dashboard'
     | '/app/feriados'
     | '/app/minhas-reservas'
@@ -185,6 +195,7 @@ export interface FileRouteTypes {
     | '/'
     | '/app/agenda'
     | '/app/aprovacoes'
+    | '/app/auditoria'
     | '/app/dashboard'
     | '/app/feriados'
     | '/app/minhas-reservas'
@@ -203,6 +214,7 @@ export interface FileRouteTypes {
     | '/app'
     | '/app/agenda'
     | '/app/aprovacoes'
+    | '/app/auditoria'
     | '/app/dashboard'
     | '/app/feriados'
     | '/app/minhas-reservas'
@@ -257,6 +269,13 @@ declare module '@tanstack/react-router' {
       path: '/aprovacoes'
       fullPath: '/app/aprovacoes'
       preLoaderRoute: typeof AppAprovacoesRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/auditoria': {
+      id: '/app/auditoria'
+      path: '/auditoria'
+      fullPath: '/app/auditoria'
+      preLoaderRoute: typeof AppAuditoriaRouteImport
       parentRoute: typeof AppRoute
     }
     '/app/dashboard': {
@@ -342,6 +361,7 @@ declare module '@tanstack/react-router' {
 interface AppRouteChildren {
   AppAgendaRoute: typeof AppAgendaRoute
   AppAprovacoesRoute: typeof AppAprovacoesRoute
+  AppAuditoriaRoute: typeof AppAuditoriaRoute
   AppDashboardRoute: typeof AppDashboardRoute
   AppFeriadosRoute: typeof AppFeriadosRoute
   AppMinhasReservasRoute: typeof AppMinhasReservasRoute
@@ -359,6 +379,7 @@ interface AppRouteChildren {
 const AppRouteChildren: AppRouteChildren = {
   AppAgendaRoute: AppAgendaRoute,
   AppAprovacoesRoute: AppAprovacoesRoute,
+  AppAuditoriaRoute: AppAuditoriaRoute,
   AppDashboardRoute: AppDashboardRoute,
   AppFeriadosRoute: AppFeriadosRoute,
   AppMinhasReservasRoute: AppMinhasReservasRoute,
