@@ -90,12 +90,37 @@ function ProfissionaisPage() {
       }
       if (searchQuery.trim()) {
         const query = searchQuery.toLowerCase().trim();
-        const matchesNome = u.nome.toLowerCase().includes(query);
-        const matchesEmail = u.email.toLowerCase().includes(query);
-        const matchesCpf = (u.cpf || "").replace(/\D/g, "").includes(query.replace(/\D/g, ""));
-        const matchesPhone = (u.telefone || "").toLowerCase().includes(query);
+        const cleanQueryDigits = query.replace(/\D/g, "");
+
+        const matchesNome = (u.nome || "").toLowerCase().includes(query);
+        const matchesEmail = (u.email || "").toLowerCase().includes(query);
+
+        // Busca por CPF: só filtra por números limpos se a busca contiver dígitos
+        const cleanCpf = (u.cpf || "").replace(/\D/g, "");
+        const matchesCpf =
+          cleanQueryDigits.length > 0
+            ? cleanCpf.includes(cleanQueryDigits) || (u.cpf || "").toLowerCase().includes(query)
+            : (u.cpf || "").toLowerCase().includes(query);
+
+        // Busca por Telefone
+        const cleanPhone = (u.telefone || "").replace(/\D/g, "");
+        const matchesPhone =
+          cleanQueryDigits.length > 0
+            ? cleanPhone.includes(cleanQueryDigits) || (u.telefone || "").toLowerCase().includes(query)
+            : (u.telefone || "").toLowerCase().includes(query);
+
         const matchesBoard = (u.boardNumber || "").toLowerCase().includes(query);
         const matchesEspecialidade = (u.especialidade || "").toLowerCase().includes(query);
+
+        // Busca por Nome da Profissão (ex: Psicologia, Nutrição)
+        const professionObj = profissoes.find((p) => Number(p.id) === Number(u.professionId));
+        const matchesProfissao = professionObj
+          ? professionObj.profission.toLowerCase().includes(query)
+          : false;
+
+        // Busca por Papel (Administrador / Locador)
+        const papelStr = u.papel === "ADMINISTRADOR" ? "administrador" : "locador";
+        const matchesPapel = papelStr.includes(query);
 
         return (
           matchesNome ||
@@ -103,12 +128,14 @@ function ProfissionaisPage() {
           matchesCpf ||
           matchesPhone ||
           matchesBoard ||
-          matchesEspecialidade
+          matchesEspecialidade ||
+          matchesProfissao ||
+          matchesPapel
         );
       }
       return true;
     });
-  }, [usuarios, hideInactive, searchQuery]);
+  }, [usuarios, hideInactive, searchQuery, profissoes]);
 
   // Ordenação Alfabética A-Z
   const sortedUsuarios = useMemo(() => {
