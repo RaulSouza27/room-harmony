@@ -57,3 +57,22 @@ export async function fetchAuditLogs(params?: {
 
   return response.json();
 }
+
+export async function createAuditLog(payload: {
+  action: string;
+  targetType: string;
+  targetId?: string;
+  targetName?: string;
+  details?: string;
+}): Promise<void> {
+  try {
+    await fetch(`${BACKEND_URL}/api/audit-logs`, {
+      method: "POST",
+      headers: getHeaders(),
+      body: JSON.stringify(payload),
+    });
+  } catch (error) {
+    console.error("Erro ao registrar log de auditoria:", error);
+  }
+}
+

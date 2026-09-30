@@ -200,6 +200,28 @@ export function useBulkSaveUsuarios() {
   });
 }
 
+export function useInactivateUsuario() {
+  const invalidate = useInvalidate(keys.usuarios);
+  return useMutation({
+    mutationFn: ({
+      id,
+      status,
+      usuario,
+    }: {
+      id: string;
+      status: "ativo" | "inativo";
+      usuario?: User;
+    }) => api.softDeleteUsuario(id, status, usuario),
+    onSuccess: (_, variables) => {
+      invalidate();
+      toast.success(
+        `Profissional ${variables.status === "inativo" ? "inativado" : "ativado"} com sucesso.`
+      );
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+}
+
 export function useResetPassword() {
   const invalidate = useInvalidate(keys.usuarios);
   return useMutation({
