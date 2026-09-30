@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { AppShell } from "@/components/AppShell";
 import { ConfirmDialog } from "@/components/ReservaActions";
 import { EmptyState, ErrorState, LoadingState } from "@/components/common";
@@ -22,8 +22,24 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { useSaveUsuario, useUsuarios, useProfessions, useResetPassword } from "@/hooks/useApi";
+import {
+  useSaveUsuario,
+  useUsuarios,
+  useProfessions,
+  useResetPassword,
+  useInactivateUsuario,
+} from "@/hooks/useApi";
+import { useAuth } from "@/contexts/AuthContext";
 import type { Role, User } from "@/types";
+import { DEFAULT_PASSWORD } from "@/config/api";
+import {
+  Search,
+  ArrowUpDown,
+  Eye,
+  EyeOff,
+  ChevronLeft,
+  ChevronRight,
+} from "lucide-react";
 
 import { BulkUserImportDialog } from "@/components/BulkUserImportDialog";
 
@@ -44,10 +60,19 @@ export const Route = createFileRoute("/app/profissionais")({
 });
 
 function ProfissionaisPage() {
+  const { isAdmin } = useAuth();
   const usuariosQ = useUsuarios();
   const profissoesQ = useProfessions();
-  const salvar = useSaveUsuario();
   const resetarSenha = useResetPassword();
+  const inativarUsuario = useInactivateUsuario();
+
+  // Estados de Filtro, Ordenação e Paginação
+  const [searchQuery, setSearchQuery] = useState("");
+  const [sortAlphabetical, setSortAlphabetical] = useState(false);
+  const [hideInactive, setHideInactive] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
+  const pageSize = 10;
+
   const [editando, setEditando] = useState<User | null>(null);
   const [open, setOpen] = useState(false);
   const [bulkImportOpen, setBulkImportOpen] = useState(false);
@@ -57,10 +82,84 @@ function ProfissionaisPage() {
   const usuarios = usuariosQ.data ?? [];
   const profissoes = profissoesQ.data ?? [];
 
+  // Filtragem de Busca e Inativos
+  const filteredUsuarios = useMemo(() => {
+    return usuarios.filter((u) => {
+      if (hideInactive && u.status === "inativo") {
+        return false;
+      }
+      if (searchQuery.trim()) {
+        const query = searchQuery.toLowerCase().trim();
+        const cleanQueryDigits = query.replace(/\D/g, "");
+
+        const matchesNome = (u.nome || "").toLowerCase().includes(query);
+        const matchesEmail = (u.email || "").toLowerCase().includes(query);
+
+        // Busca por CPF: só filtra por números limpos se a busca contiver dígitos
+        const cleanCpf = (u.cpf || "").replace(/\D/g, "");
+        const matchesCpf =
+          cleanQueryDigits.length > 0
+            ? cleanCpf.includes(cleanQueryDigits) || (u.cpf || "").toLowerCase().includes(query)
+            : (u.cpf || "").toLowerCase().includes(query);
+
+        // Busca por Telefone
+        const cleanPhone = (u.telefone || "").replace(/\D/g, "");
+        const matchesPhone =
+          cleanQueryDigits.length > 0
+            ? cleanPhone.includes(cleanQueryDigits) || (u.telefone || "").toLowerCase().includes(query)
+            : (u.telefone || "").toLowerCase().includes(query);
+
+        const matchesBoard = (u.boardNumber || "").toLowerCase().includes(query);
+        const matchesEspecialidade = (u.especialidade || "").toLowerCase().includes(query);
+
+        // Busca por Nome da Profissão (ex: Psicologia, Nutrição)
+        const professionObj = profissoes.find((p) => Number(p.id) === Number(u.professionId));
+        const matchesProfissao = professionObj
+          ? professionObj.profission.toLowerCase().includes(query)
+          : false;
+
+        // Busca por Papel (Administrador / Locador)
+        const papelStr = u.papel === "ADMINISTRADOR" ? "administrador" : "locador";
+        const matchesPapel = papelStr.includes(query);
+
+        return (
+          matchesNome ||
+          matchesEmail ||
+          matchesCpf ||
+          matchesPhone ||
+          matchesBoard ||
+          matchesEspecialidade ||
+          matchesProfissao ||
+          matchesPapel
+        );
+      }
+      return true;
+    });
+  }, [usuarios, hideInactive, searchQuery, profissoes]);
+
+  // Ordenação Alfabética A-Z
+  const sortedUsuarios = useMemo(() => {
+    const list = [...filteredUsuarios];
+    if (sortAlphabetical) {
+      list.sort((a, b) => a.nome.localeCompare(b.nome, "pt-BR", { sensitivity: "base" }));
+    }
+    return list;
+  }, [filteredUsuarios, sortAlphabetical]);
+
+  // Paginação
+  const totalItems = sortedUsuarios.length;
+  const totalPages = Math.max(1, Math.ceil(totalItems / pageSize));
+  const safePage = Math.min(Math.max(currentPage, 1), totalPages);
+
+  const paginatedUsuarios = useMemo(() => {
+    const startIndex = (safePage - 1) * pageSize;
+    return sortedUsuarios.slice(startIndex, startIndex + pageSize);
+  }, [sortedUsuarios, safePage, pageSize]);
+
   return (
     <AppShell
       title="Profissionais"
-      description={`${usuarios.length} usuário(s) cadastrado(s)`}
+      description={`${totalItems} profissional(is) encontrado(s)`}
       actions={
         <div className="flex items-center gap-2">
           <Button
@@ -82,75 +181,168 @@ function ProfissionaisPage() {
         </div>
       }
     >
+      {/* Barra de Filtros, Pesquisa e Controles */}
+      <div className="mb-4 flex flex-wrap items-center justify-between gap-3 bg-card p-3 rounded-xl border border-border shadow-xs">
+        <div className="relative flex-1 min-w-[240px]">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
+          <Input
+            placeholder="Buscar por nome, e-mail, CPF, telefone ou conselho..."
+            value={searchQuery}
+            onChange={(e) => {
+              setSearchQuery(e.target.value);
+              setCurrentPage(1);
+            }}
+            className="pl-9 pr-4 text-sm"
+          />
+        </div>
+
+        <div className="flex flex-wrap items-center gap-2">
+          <Button
+            size="sm"
+            variant={sortAlphabetical ? "default" : "outline"}
+            onClick={() => setSortAlphabetical((v) => !v)}
+            className="gap-1.5"
+            title="Ordenar profissionais em ordem alfabética"
+          >
+            <ArrowUpDown className="size-3.5" />
+            <span>{sortAlphabetical ? "Ordem: A-Z" : "Ordem: Padrão"}</span>
+          </Button>
+
+          <Button
+            size="sm"
+            variant={hideInactive ? "default" : "outline"}
+            onClick={() => {
+              setHideInactive((v) => !v);
+              setCurrentPage(1);
+            }}
+            className="gap-1.5"
+            title="Ocultar ou exibir profissionais inativos"
+          >
+            {hideInactive ? <EyeOff className="size-3.5" /> : <Eye className="size-3.5" />}
+            <span>{hideInactive ? "Ocultando Inativos" : "Exibindo Todos"}</span>
+          </Button>
+        </div>
+      </div>
+
       {usuariosQ.isLoading ? (
         <LoadingState />
       ) : usuariosQ.error ? (
         <ErrorState message={usuariosQ.error.message} />
-      ) : usuarios.length === 0 ? (
-        <EmptyState title="Nenhum profissional cadastrado" />
+      ) : sortedUsuarios.length === 0 ? (
+        <EmptyState title="Nenhum profissional encontrado com os filtros selecionados." />
       ) : (
-        <ul className="space-y-3">
-          {usuarios.map((u) => (
-            <li key={u.id} className="rounded-xl border border-border bg-card p-4 shadow-soft">
-              <div className="flex flex-wrap items-start justify-between gap-4">
-                <div className="min-w-0">
-                  <div className="flex flex-wrap items-center gap-2">
-                    <p className="text-sm font-semibold text-card-foreground">{u.nome}</p>
-                    <Badge variant="secondary">
-                      {u.papel === "ADMINISTRADOR" ? "Administrador" : "Locador(a)"}
-                    </Badge>
-                    {u.professionId ? (
-                      <Badge variant="outline" className="border-primary/30 text-primary">
-                        {profissoes.find((p) => Number(p.id) === Number(u.professionId))?.profission ?? "Profissão"}
+        <>
+          <ul className="space-y-3">
+            {paginatedUsuarios.map((u) => (
+              <li key={u.id} className="rounded-xl border border-border bg-card p-4 shadow-soft">
+                <div className="flex flex-wrap items-start justify-between gap-4">
+                  <div className="min-w-0">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <p className="text-sm font-semibold text-card-foreground">{u.nome}</p>
+                      <Badge variant="secondary">
+                        {u.papel === "ADMINISTRADOR" ? "Administrador" : "Locador(a)"}
                       </Badge>
-                    ) : null}
-                    <Badge
+                      {u.professionId ? (
+                        <Badge variant="outline" className="border-primary/30 text-primary">
+                          {profissoes.find((p) => Number(p.id) === Number(u.professionId))?.profission ?? "Profissão"}
+                        </Badge>
+                      ) : null}
+                      <Badge
+                        variant="outline"
+                        className={
+                          u.status === "ativo"
+                            ? "border-success/40 bg-success/15 text-success-foreground"
+                            : "text-muted-foreground bg-muted/30"
+                        }
+                      >
+                        {u.status === "ativo" ? "Ativo" : "Inativo"}
+                      </Badge>
+                    </div>
+                    <p className="mt-1 text-sm text-muted-foreground">{u.email}</p>
+                    <div className="mt-2 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-x-4 gap-y-1 text-xs text-muted-foreground bg-muted/20 p-2.5 rounded-lg border border-border/40">
+                      {u.telefone && <div><strong>Telefone:</strong> {u.telefone}</div>}
+                      {u.cpf && <div><strong>CPF:</strong> {u.cpf}</div>}
+                      {u.boardNumber && <div><strong>Reg. Conselho:</strong> {u.boardNumber}</div>}
+                      {u.cep && <div><strong>CEP:</strong> {u.cep}</div>}
+                      {u.endereco && <div className="sm:col-span-2 truncate"><strong>Endereço:</strong> {u.endereco}</div>}
+                    </div>
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    <Button
+                      size="sm"
                       variant="outline"
-                      className={
-                        u.status === "ativo"
-                          ? "border-success/40 bg-success/15 text-success-foreground"
-                          : "text-muted-foreground"
-                      }
+                      onClick={() => {
+                        setEditando(u);
+                        setOpen(true);
+                      }}
                     >
-                      {u.status === "ativo" ? "Ativo" : "Inativo"}
-                    </Badge>
-                  </div>
-                  <p className="mt-1 text-sm text-muted-foreground">{u.email}</p>
-                  <div className="mt-2 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-x-4 gap-y-1 text-xs text-muted-foreground bg-muted/20 p-2.5 rounded-lg border border-border/40">
-                    {u.telefone && <div><strong>Telefone:</strong> {u.telefone}</div>}
-                    {u.cpf && <div><strong>CPF:</strong> {u.cpf}</div>}
-                    {u.boardNumber && <div><strong>Reg. Conselho:</strong> {u.boardNumber}</div>}
-                    {u.cep && <div><strong>CEP:</strong> {u.cep}</div>}
-                    {u.endereco && <div className="sm:col-span-2 truncate"><strong>Endereço:</strong> {u.endereco}</div>}
+                      Editar
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="text-destructive border-destructive/20 hover:bg-destructive/10 hover:text-destructive"
+                      onClick={() => setAlvoReset(u)}
+                    >
+                      Resetar Senha
+                    </Button>
+                    {isAdmin && (
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        className={
+                          u.status === "ativo"
+                            ? "text-destructive hover:bg-destructive/10 hover:text-destructive font-medium"
+                            : "text-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-950/30 font-medium"
+                        }
+                        onClick={() => setAlvoStatus(u)}
+                      >
+                        {u.status === "ativo" ? "Inativar" : "Ativar"}
+                      </Button>
+                    )}
                   </div>
                 </div>
-                <div className="flex flex-wrap gap-2">
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={() => {
-                      setEditando(u);
-                      setOpen(true);
-                    }}
-                  >
-                    Editar
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    className="text-destructive border-destructive/20 hover:bg-destructive/10 hover:text-destructive"
-                    onClick={() => setAlvoReset(u)}
-                  >
-                    Resetar Senha
-                  </Button>
-                  <Button size="sm" variant="ghost" onClick={() => setAlvoStatus(u)}>
-                    {u.status === "ativo" ? "Inativar" : "Ativar"}
-                  </Button>
-                </div>
+              </li>
+            ))}
+          </ul>
+
+          {/* Paginação */}
+          {totalPages > 1 && (
+            <div className="mt-4 flex flex-wrap items-center justify-between gap-3 border-t border-border pt-4 text-xs text-muted-foreground">
+              <div>
+                Exibindo <strong>{(safePage - 1) * pageSize + 1}</strong> a{" "}
+                <strong>{Math.min(safePage * pageSize, totalItems)}</strong> de{" "}
+                <strong>{totalItems}</strong> profissional(is)
               </div>
-            </li>
-          ))}
-        </ul>
+
+              <div className="flex items-center gap-1">
+                <Button
+                  size="sm"
+                  variant="outline"
+                  disabled={safePage === 1}
+                  onClick={() => setCurrentPage((p) => Math.max(p - 1, 1))}
+                  className="h-8 px-2.5"
+                >
+                  <ChevronLeft className="size-4 mr-1" /> Anterior
+                </Button>
+
+                <span className="px-2 font-medium text-foreground">
+                  Página {safePage} de {totalPages}
+                </span>
+
+                <Button
+                  size="sm"
+                  variant="outline"
+                  disabled={safePage >= totalPages}
+                  onClick={() => setCurrentPage((p) => Math.min(p + 1, totalPages))}
+                  className="h-8 px-2.5"
+                >
+                  Próxima <ChevronRight className="size-4 ml-1" />
+                </Button>
+              </div>
+            </div>
+          )}
+        </>
       )}
 
       <ProfissionalDialog open={open} onOpenChange={setOpen} usuario={editando} />
@@ -163,16 +355,21 @@ function ProfissionaisPage() {
         title={alvoStatus?.status === "ativo" ? "Inativar profissional?" : "Ativar profissional?"}
         description={
           alvoStatus?.status === "ativo"
-            ? "O profissional perderá o acesso ao sistema."
-            : "O profissional voltará a acessar o sistema."
+            ? `TEM CERTEZA que deseja inativar o profissional "${alvoStatus?.nome}"? Ele perderá o acesso à plataforma e a ação será registrada no histórico de auditoria.`
+            : `Deseja reativar o acesso do profissional "${alvoStatus?.nome}" à plataforma? A ação será registrada no histórico de auditoria.`
         }
-        onConfirm={() =>
-          alvoStatus &&
-          salvar.mutate({
-            id: alvoStatus.id,
-            status: alvoStatus.status === "ativo" ? "inativo" : "ativo",
-          })
-        }
+        confirmLabel={alvoStatus?.status === "ativo" ? "Sim, Inativar" : "Sim, Ativar"}
+        destructive={alvoStatus?.status === "ativo"}
+        onConfirm={() => {
+          if (alvoStatus) {
+            inativarUsuario.mutate({
+              id: alvoStatus.id,
+              status: alvoStatus.status === "ativo" ? "inativo" : "ativo",
+              usuario: alvoStatus,
+            });
+            setAlvoStatus(null);
+          }
+        }}
       />
 
       <ConfirmDialog
@@ -251,7 +448,7 @@ function ProfissionalDialog({
         <DialogHeader>
           <DialogTitle>{usuario ? "Editar profissional" : "Novo profissional"}</DialogTitle>
           <DialogDescription>
-            {usuario ? "Atualize os dados do usuário." : "A senha inicial padrão é psi123."}
+            {usuario ? "Atualize os dados do usuário." : `A senha inicial padrão é ${DEFAULT_PASSWORD}.`}
           </DialogDescription>
         </DialogHeader>
         <div className="space-y-4">

@@ -1,5 +1,6 @@
 import { BACKEND_URL } from "@/config/api";
 import { overlaps, readDB, uid, writeDB } from "./db";
+import { createAuditLog } from "./auditService";
 import type { BusinessHours, Holiday, NovaReserva, Profession, Reserva, ReservaStatus, Sala, Unidade, User } from "@/types";
 
 export const defaultBusinessHours = (): BusinessHours => ({
@@ -393,6 +394,51 @@ export async function saveUsuario(input: Partial<User> & { id?: string }): Promi
     boardNumber: data.boardNumber || "",
   };
 }
+
+export async function softDeleteUsuario(
+  id: string,
+  novoStatus: "ativo" | "inativo",
+  usuario?: User
+): Promise<void> {
+  const isAtivo = novoStatus === "ativo";
+
+  let success = false;
+  if (!isAtivo) {
+    try {
+      const deleteRes = await fetch(`${BACKEND_URL}/users/${id}`, {
+        method: "DELETE",
+        headers: getHeaders(),
+      });
+      if (deleteRes.ok) {
+        success = true;
+      }
+    } catch {
+      // Se falhar o DELETE REST direto, fallback para alteração de status via PUT
+    }
+  }
+
+  if (!success) {
+    const response = await fetch(`${BACKEND_URL}/users/${id}`, {
+      method: "PUT",
+      headers: getHeaders(),
+      body: JSON.stringify({ status: isAtivo }),
+    });
+
+    if (!response.ok) {
+      throw new Error(`Falha ao ${isAtivo ? "ativar" : "inativar"} o profissional.`);
+    }
+  }
+
+  // Registrar na auditoria
+  await createAuditLog({
+    action: isAtivo ? "USER_ACTIVATED" : "USER_INACTIVATED",
+    targetType: "USER",
+    targetId: String(id),
+    targetName: usuario?.nome || `Profissional #${id}`,
+    details: `Status do profissional alterado para ${novoStatus.toUpperCase()}.`,
+  });
+}
+
 
 export async function resetPassword(id: string): Promise<void> {
   const response = await fetch(`${BACKEND_URL}/users/${id}/reset-password`, {
