@@ -23,6 +23,7 @@ import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { useAuth } from "@/contexts/AuthContext";
 import { useReservasPendentesCount, useCompleteTour } from "@/hooks/useApi";
+import { DEFAULT_PASSWORD } from "@/config/api";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 
@@ -249,7 +250,7 @@ function TourOverlay() {
             title: "Cadastro de Profissionais",
             description: "Controle de usuários, níveis de acesso e contas de psicólogos e administradores.",
             actions: [
-              "Cadastre novas contas. A senha inicial gerada por padrão é 'psi123'.",
+              `Cadastre novas contas. A senha inicial gerada por padrão é '${DEFAULT_PASSWORD}'.`,
               "Resetar senha: use o botão 'Resetar Senha' para restaurar a credencial inicial do usuário em caso de perda.",
               "Inative ou ative o acesso de contas à plataforma a qualquer momento."
             ]

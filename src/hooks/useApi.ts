@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import * as api from "@/services/api";
 import type { NovaReserva, Reserva, Sala, Unidade, User } from "@/types";
+import { DEFAULT_PASSWORD } from "@/config/api";
 
 export const keys = {
   unidades: ["unidades"] as const,
@@ -205,7 +206,7 @@ export function useResetPassword() {
     mutationFn: (id: string) => api.resetPassword(id),
     onSuccess: () => {
       invalidate();
-      toast.success("Senha resetada com sucesso para 'psi123'.");
+      toast.success(`Senha resetada com sucesso para '${DEFAULT_PASSWORD}'.`);
     },
     onError: (e: Error) => toast.error(e.message),
   });

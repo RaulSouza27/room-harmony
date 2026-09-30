@@ -24,6 +24,7 @@ import {
 } from "@/components/ui/select";
 import { useSaveUsuario, useUsuarios, useProfessions, useResetPassword } from "@/hooks/useApi";
 import type { Role, User } from "@/types";
+import { DEFAULT_PASSWORD } from "@/config/api";
 
 import { BulkUserImportDialog } from "@/components/BulkUserImportDialog";
 
@@ -251,7 +252,7 @@ function ProfissionalDialog({
         <DialogHeader>
           <DialogTitle>{usuario ? "Editar profissional" : "Novo profissional"}</DialogTitle>
           <DialogDescription>
-            {usuario ? "Atualize os dados do usuário." : "A senha inicial padrão é psi123."}
+            {usuario ? "Atualize os dados do usuário." : `A senha inicial padrão é ${DEFAULT_PASSWORD}.`}
           </DialogDescription>
         </DialogHeader>
         <div className="space-y-4">
