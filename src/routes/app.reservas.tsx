@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
-import { Eye, FileText } from "lucide-react";
+import { Eye, FileText, Sparkles } from "lucide-react";
 import { AppShell } from "@/components/AppShell";
 import {
   AprovacaoActions,
@@ -9,7 +9,9 @@ import {
   ConfirmDialog,
 } from "@/components/ReservaActions";
 import { ReservaFormDialog } from "@/components/ReservaFormDialog";
+import { ReservaEspecialDialog } from "@/components/ReservaEspecialDialog";
 import { ReservaDetailDialog } from "@/components/ReservaDetailDialog";
+import { useAuth } from "@/contexts/AuthContext";
 import { EmptyState, ErrorState, LoadingState, StatusBadge } from "@/components/common";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -31,8 +33,10 @@ import type { Reserva } from "@/types";
 function getInitials(name?: string) {
   if (!name) return "U";
   const parts = name.trim().split(" ");
-  if (parts.length >= 2) {
-    return `${parts[0][0]}${parts[parts.length - 1][0]}`.toUpperCase();
+  const first = parts[0];
+  const last = parts[parts.length - 1];
+  if (parts.length >= 2 && first && last && first[0] && last[0]) {
+    return `${first[0]}${last[0]}`.toUpperCase();
   }
   return name.slice(0, 2).toUpperCase();
 }
@@ -79,7 +83,9 @@ function ReservasPage() {
   const salasQ = useSalas();
   const unidadesQ = useUnidades();
   const usuariosQ = useUsuarios();
+  const { isAdmin } = useAuth();
   const [criar, setCriar] = useState(false);
+  const [criarEspecial, setCriarEspecial] = useState(false);
   const [editando, setEditando] = useState<Reserva | null>(null);
   const [detalheReserva, setDetalheReserva] = useState<Reserva | null>(null);
   const [alvoVisualizacaoComprovante, setAlvoVisualizacaoComprovante] = useState<string | null>(
@@ -114,7 +120,7 @@ function ReservasPage() {
       title="Todas as reservas"
       description={`${lista.length} registro(s)`}
       actions={
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
           {selectedIds.length > 0 && (
             <Button
               size="sm"
@@ -123,6 +129,17 @@ function ReservasPage() {
               disabled={excluirLote.isPending}
             >
               Excluir {selectedIds.length} selecionada(s)
+            </Button>
+          )}
+          {isAdmin && (
+            <Button
+              size="sm"
+              variant="outline"
+              className="gap-1.5 border-amber-500/40 text-amber-700 dark:text-amber-300 hover:bg-amber-500/10"
+              onClick={() => setCriarEspecial(true)}
+            >
+              <Sparkles className="size-4 text-amber-500" />
+              Reserva Especial (Admin)
             </Button>
           )}
           <Button size="sm" onClick={() => setCriar(true)}>
@@ -368,6 +385,13 @@ function ReservasPage() {
         salas={salas}
         usuarios={usuarios}
         reservas={reservas}
+      />
+      <ReservaEspecialDialog
+        open={criarEspecial}
+        onOpenChange={setCriarEspecial}
+        unidades={unidades}
+        salas={salas}
+        usuarios={usuarios}
       />
       {editando ? (
         <ReservaFormDialog

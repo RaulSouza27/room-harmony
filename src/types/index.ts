@@ -54,7 +54,7 @@ export interface Sala {
   photoCount?: number;
 }
 
-export type ReservaStatus = "pendente" | "aprovada" | "negada" | "cancelada";
+export type ReservaStatus = "pendente" | "aprovada" | "negada" | "cancelada" | "solicitacao_cancelamento";
 export type Recorrencia = "unica" | "semanal_mensal" | "semanal_anual" | "semanal";
 
 export interface Reserva {
