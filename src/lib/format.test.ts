@@ -8,6 +8,7 @@ import {
   formatarNomeMes,
   obterGradeDoMes,
   isReservaComMaisDe24h,
+  isReservaEspecial,
 } from './format';
 
 describe('format.ts utilities', () => {
@@ -32,6 +33,14 @@ describe('format.ts utilities', () => {
     expect(formatRecorrencia('semanal_mensal')).toBe('Hora avulsa fixa');
     expect(formatRecorrencia('semanal')).toBe('Hora avulsa fixa');
     expect(formatRecorrencia('avulso')).toBe('Hora avulsa');
+  });
+
+  it('isReservaEspecial identifies special reservations correctly', () => {
+    expect(isReservaEspecial({ comprovante: 'reserva_especial_admin' })).toBe(true);
+    expect(isReservaEspecial({ observacoes: '[Reserva Especial Admin] Teste' })).toBe(true);
+    expect(isReservaEspecial({ comprovante: 'outro', observacoes: 'Normal' })).toBe(false);
+    expect(isReservaEspecial(null)).toBe(false);
+    expect(isReservaEspecial(undefined)).toBe(false);
   });
 
   it('formatarMesAno returns capitalized Month Year string', () => {

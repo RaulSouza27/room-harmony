@@ -22,6 +22,14 @@ export function formatRecorrencia(rec: string) {
   return "Hora avulsa";
 }
 
+export function isReservaEspecial(reserva?: { comprovante?: string | null | undefined; observacoes?: string | null | undefined } | null): boolean {
+  if (!reserva) return false;
+  return (
+    reserva.comprovante === "reserva_especial_admin" ||
+    Boolean(reserva.observacoes && reserva.observacoes.includes("[Reserva Especial Admin]"))
+  );
+}
+
 export function isReservaComMaisDe24h(data: string, horaInicio: string, agora = new Date()): boolean {
   if (!data || !horaInicio) return false;
   const partesData = data.split("-").map(Number);
