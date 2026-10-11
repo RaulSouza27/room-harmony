@@ -7,7 +7,7 @@ import { ReceiptViewerDialog } from "@/components/ReceiptViewerDialog";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useAuth } from "@/contexts/AuthContext";
 import { useReservas, useSalas, useUnidades } from "@/hooks/useApi";
-import { formatarData, formatRecorrencia } from "@/lib/format";
+import { formatarData, formatRecorrencia, isReservaComMaisDe24h } from "@/lib/format";
 import type { ReservaStatus } from "@/types";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { AlertCircle, FileText, BellRing } from "lucide-react";
@@ -98,7 +98,7 @@ function MinhasReservasPage() {
           <AlertCircle className="h-4 w-4 text-amber-600 dark:text-amber-400" />
           <AlertTitle className="font-semibold text-amber-700 dark:text-amber-300">Aviso importante</AlertTitle>
           <AlertDescription className="text-amber-600/90 dark:text-amber-400/90">
-            O cancelamento de reservas já aprovadas não pode ser feito diretamente, mas você pode solicitar o cancelamento ao administrador.
+            O cancelamento de reservas já aprovadas não pode ser feito diretamente, mas você pode solicitar o cancelamento ao administrador com no mínimo 24h de antecedência.
           </AlertDescription>
         </Alert>
 
@@ -127,6 +127,8 @@ function MinhasReservasPage() {
               const sala = salas.find((s) => s.id === r.sala_id);
               const unidade = unidades.find((u) => u.id === r.unidade_id);
               const podeSolicitarCancelamento = r.status === "aprovada" || r.status === "pendente";
+              const temMaisDe24h = isReservaComMaisDe24h(r.data, r.hora_inicio);
+              const bloqueadoPor24h = r.status === "aprovada" && !temMaisDe24h;
 
               return (
                 <li key={r.id} className="rounded-xl border border-border bg-card p-4 shadow-soft">
@@ -161,10 +163,17 @@ function MinhasReservasPage() {
                         </button>
                       ) : null}
                     </div>
-                    <div className="flex flex-wrap items-center gap-2">
-                      <StatusBadge status={r.status} />
-                      {podeSolicitarCancelamento && (
-                        <CancelarReservaButton reserva={r} size="sm" />
+                    <div className="flex flex-col items-end gap-1">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <StatusBadge status={r.status} />
+                        {podeSolicitarCancelamento && (
+                          <CancelarReservaButton reserva={r} size="sm" />
+                        )}
+                      </div>
+                      {bloqueadoPor24h && (
+                        <span className="text-[10px] text-amber-600 dark:text-amber-400 font-medium">
+                          Prazo de cancelamento expirado (&lt; 24h)
+                        </span>
                       )}
                     </div>
                   </div>

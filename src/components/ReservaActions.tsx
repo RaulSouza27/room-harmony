@@ -20,6 +20,7 @@ import { findConflitos } from "@/services/api";
 import { Loader2 } from "lucide-react";
 import type { Reserva } from "@/types";
 import { toast } from "sonner";
+import { isReservaComMaisDe24h } from "@/lib/format";
 
 export function ConfirmDialog({
   open,
@@ -217,6 +218,8 @@ export function CancelarReservaButton({
 
   // Se for locatário (não-admin) e a reserva estiver APROVADA, ele solicita o cancelamento ao admin.
   const isSolicitacaoLocatario = !isAdmin && reserva.status === "aprovada";
+  const temMaisDe24h = isReservaComMaisDe24h(reserva.data, reserva.hora_inicio);
+  const bloqueadoPor24h = isSolicitacaoLocatario && !temMaisDe24h;
 
   const defaultLabel = label
     ? label
@@ -226,6 +229,14 @@ export function CancelarReservaButton({
 
   const handleConfirm = async () => {
     if (isSolicitacaoLocatario) {
+      if (!isReservaComMaisDe24h(reserva.data, reserva.hora_inicio)) {
+        toast.error(
+          "Solicitações de cancelamento só podem ser feitas com no mínimo 24h de antecedência. Em caso de urgência, contate a administração."
+        );
+        setOpen(false);
+        return;
+      }
+
       // Registrar solicitação de cancelamento pelo profissional
       await atualizar.mutateAsync({
         id: reserva.id,
@@ -272,7 +283,13 @@ export function CancelarReservaButton({
       <Button
         variant={isSolicitacaoLocatario ? "outline" : "destructive"}
         size={size}
+        disabled={bloqueadoPor24h}
         onClick={() => setOpen(true)}
+        title={
+          bloqueadoPor24h
+            ? "Cancelamentos pelo sistema só são permitidos com no mínimo 24h de antecedência. Contate a administração para urgências."
+            : undefined
+        }
       >
         {defaultLabel}
       </Button>
