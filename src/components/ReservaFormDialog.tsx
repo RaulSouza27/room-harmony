@@ -23,7 +23,7 @@ import { useCreateReserva, useUpdateReserva, useHolidays, useSala } from "@/hook
 import { findConflitos } from "@/services/api";
 import { HORARIOS, toMinutes } from "@/services/db";
 import type { Reserva, Sala, Unidade, User, Recorrencia } from "@/types";
-import { CalendarOff } from "lucide-react";
+import { CalendarOff, Loader2 } from "lucide-react";
 
 interface Props {
   open: boolean;
@@ -173,6 +173,8 @@ export function ReservaFormDialog({
 
   const comprovanteFaltando = !isAdmin && (!comprovante || comprovante.trim() === "" || comprovante === "empty");
 
+  const isSubmitting = criar.isPending || atualizar.isPending;
+
   const podeSalvar =
     !!unidadeId &&
     !!salaId &&
@@ -181,7 +183,8 @@ export function ReservaFormDialog({
     !foraDoHorario &&
     !feriadoDaData &&
     conflitos.length === 0 &&
-    !comprovanteFaltando;
+    !comprovanteFaltando &&
+    !isSubmitting;
 
   async function handleSubmit() {
     if (reserva) {
@@ -476,17 +479,33 @@ export function ReservaFormDialog({
               {conflitos[0]!.hora_inicio} às {conflitos[0]!.hora_fim}.
             </p>
           ) : null}
+          {isSubmitting ? (
+            <div className="flex items-center justify-center gap-2 rounded-lg bg-primary/10 p-3 text-sm text-primary font-medium border border-primary/20 animate-pulse">
+              <Loader2 className="size-4 animate-spin shrink-0" />
+              <span>{reserva ? "Salvando alterações da reserva..." : "Processando reserva, por favor aguarde..."}</span>
+            </div>
+          ) : null}
         </div>
 
         <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)}>
+          <Button variant="outline" onClick={() => onOpenChange(false)} disabled={isSubmitting}>
             Cancelar
           </Button>
           <Button
             onClick={handleSubmit}
-            disabled={!podeSalvar || criar.isPending || atualizar.isPending}
+            disabled={!podeSalvar}
+            className="gap-2"
           >
-            {reserva ? "Salvar alterações" : isAdmin ? "Criar reserva" : "Enviar solicitação"}
+            {isSubmitting ? <Loader2 className="size-4 animate-spin" /> : null}
+            {isSubmitting
+              ? reserva
+                ? "Salvando..."
+                : "Processando..."
+              : reserva
+                ? "Salvar alterações"
+                : isAdmin
+                  ? "Criar reserva"
+                  : "Enviar solicitação"}
           </Button>
         </DialogFooter>
       </DialogContent>

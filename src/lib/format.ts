@@ -22,6 +22,37 @@ export function formatRecorrencia(rec: string) {
   return "Hora avulsa";
 }
 
+export function isReservaComMaisDe24h(data: string, horaInicio: string, agora = new Date()): boolean {
+  if (!data || !horaInicio) return false;
+  const partesData = data.split("-").map(Number);
+  const partesHora = horaInicio.split(":").map(Number);
+  const ano = partesData[0];
+  const mes = partesData[1];
+  const dia = partesData[2];
+  const hora = partesHora[0];
+  const min = partesHora[1];
+
+  if (
+    ano === undefined ||
+    mes === undefined ||
+    dia === undefined ||
+    hora === undefined ||
+    min === undefined ||
+    Number.isNaN(ano) ||
+    Number.isNaN(mes) ||
+    Number.isNaN(dia) ||
+    Number.isNaN(hora) ||
+    Number.isNaN(min)
+  ) {
+    return false;
+  }
+
+  const dataHoraReserva = new Date(ano, mes - 1, dia, hora, min, 0);
+  const diffMs = dataHoraReserva.getTime() - agora.getTime();
+  const diffHoras = diffMs / (1000 * 60 * 60);
+  return diffHoras >= 24;
+}
+
 export function formatarMesAno(ano: number, mes: number) {
   // mes is 1-indexed (1..12)
   const date = new Date(ano, mes - 1, 1);

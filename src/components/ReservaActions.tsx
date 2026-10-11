@@ -14,8 +14,13 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { useAuth } from "@/contexts/AuthContext";
 import { useDeleteReserva, useUpdateReserva } from "@/hooks/useApi";
+import { createAuditLog } from "@/services/auditService";
+import { addNotification } from "@/services/notificationService";
 import { findConflitos } from "@/services/api";
+import { Loader2 } from "lucide-react";
 import type { Reserva } from "@/types";
+import { toast } from "sonner";
+import { isReservaComMaisDe24h } from "@/lib/format";
 
 export function ConfirmDialog({
   open,
@@ -32,8 +37,23 @@ export function ConfirmDialog({
   description?: string;
   confirmLabel?: string;
   destructive?: boolean;
-  onConfirm: () => void;
+  onConfirm: () => any;
 }) {
+  const [loading, setLoading] = useState(false);
+
+  const handleConfirm = async (e: React.MouseEvent) => {
+    e.preventDefault();
+    setLoading(true);
+    try {
+      await onConfirm();
+      onOpenChange(false);
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
     <AlertDialog open={open} onOpenChange={onOpenChange}>
       <AlertDialogContent>
@@ -42,12 +62,14 @@ export function ConfirmDialog({
           {description ? <AlertDialogDescription>{description}</AlertDialogDescription> : null}
         </AlertDialogHeader>
         <AlertDialogFooter>
-          <AlertDialogCancel>Voltar</AlertDialogCancel>
+          <AlertDialogCancel disabled={loading}>Voltar</AlertDialogCancel>
           <AlertDialogAction
-            onClick={onConfirm}
-            className={destructive ? "bg-destructive text-destructive-foreground" : ""}
+            onClick={handleConfirm}
+            disabled={loading}
+            className={destructive ? "bg-destructive text-destructive-foreground hover:bg-destructive/90" : ""}
           >
-            {confirmLabel}
+            {loading ? <Loader2 className="mr-2 size-4 animate-spin" /> : null}
+            {loading ? "Aguarde..." : confirmLabel}
           </AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>
@@ -79,6 +101,8 @@ export function AprovacaoActions({
     ignoreId: reserva.id,
   }).filter((r) => r.status === "pendente");
 
+  const [isNegando, setIsNegando] = useState(false);
+
   return (
     <>
       <div className="flex flex-wrap gap-2">
@@ -107,12 +131,19 @@ export function AprovacaoActions({
             : "A sala ficará bloqueada para este horário."
         }
         confirmLabel="Aprovar"
-        onConfirm={() =>
-          atualizar.mutate({
+        onConfirm={async () => {
+          await atualizar.mutateAsync({
             id: reserva.id,
             patch: { status: "aprovada", aprovado_por: user?.id, motivo_negacao: undefined },
-          })
-        }
+          });
+          await createAuditLog({
+            action: "APROVACAO_RESERVA",
+            targetType: "RESERVA",
+            targetId: String(reserva.id),
+            targetName: `Reserva #${reserva.id}`,
+            details: `Reserva para ${reserva.data} (${reserva.hora_inicio}-${reserva.hora_fim}) aprovada pelo administrador ${user?.nome ?? ""}.`,
+          });
+        }}
       />
 
       <AlertDialog open={negar} onOpenChange={setNegar}>
@@ -134,21 +165,36 @@ export function AprovacaoActions({
             />
           </div>
           <AlertDialogFooter>
-            <AlertDialogCancel>Voltar</AlertDialogCancel>
+            <AlertDialogCancel disabled={isNegando}>Voltar</AlertDialogCancel>
             <AlertDialogAction
-              disabled={!motivo.trim()}
-              onClick={() =>
-                atualizar.mutate({
-                  id: reserva.id,
-                  patch: {
-                    status: "negada",
-                    motivo_negacao: motivo.trim(),
-                    aprovado_por: user?.id,
-                  },
-                })
-              }
+              disabled={!motivo.trim() || isNegando}
+              onClick={async (e) => {
+                e.preventDefault();
+                setIsNegando(true);
+                try {
+                  await atualizar.mutateAsync({
+                    id: reserva.id,
+                    patch: {
+                      status: "negada",
+                      motivo_negacao: motivo.trim(),
+                      aprovado_por: user?.id,
+                    },
+                  });
+                  await createAuditLog({
+                    action: "REJEICAO_RESERVA",
+                    targetType: "RESERVA",
+                    targetId: String(reserva.id),
+                    targetName: `Reserva #${reserva.id}`,
+                    details: `Reserva para ${reserva.data} negada por ${user?.nome ?? ""}. Motivo: ${motivo.trim()}`,
+                  });
+                  setNegar(false);
+                } finally {
+                  setIsNegando(false);
+                }
+              }}
             >
-              Negar reserva
+              {isNegando ? <Loader2 className="mr-2 size-4 animate-spin" /> : null}
+              {isNegando ? "Negando..." : "Negar reserva"}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -159,36 +205,131 @@ export function AprovacaoActions({
 
 export function CancelarReservaButton({
   reserva,
-  label = "Cancelar",
+  label,
   size = "sm",
 }: {
   reserva: Reserva;
   label?: string;
   size?: "sm" | "default";
 }) {
-  const atualizar = useUpdateReserva("Reserva cancelada.");
+  const { user, isAdmin } = useAuth();
+  const atualizar = useUpdateReserva();
   const [open, setOpen] = useState(false);
+
+  // Se for locatário (não-admin) e a reserva estiver APROVADA, ele solicita o cancelamento ao admin.
+  const isSolicitacaoLocatario = !isAdmin && reserva.status === "aprovada";
+  const temMaisDe24h = isReservaComMaisDe24h(reserva.data, reserva.hora_inicio);
+  const bloqueadoPor24h = isSolicitacaoLocatario && !temMaisDe24h;
+
+  const defaultLabel = label
+    ? label
+    : isSolicitacaoLocatario
+      ? "Solicitar cancelamento"
+      : "Cancelar";
+
+  const handleConfirm = async () => {
+    if (isSolicitacaoLocatario) {
+      if (!isReservaComMaisDe24h(reserva.data, reserva.hora_inicio)) {
+        toast.error(
+          "Solicitações de cancelamento só podem ser feitas com no mínimo 24h de antecedência. Em caso de urgência, contate a administração."
+        );
+        setOpen(false);
+        return;
+      }
+
+      // Registrar solicitação de cancelamento pelo profissional
+      await atualizar.mutateAsync({
+        id: reserva.id,
+        patch: { status: "solicitacao_cancelamento" },
+      });
+
+      await createAuditLog({
+        action: "SOLICITACAO_CANCELAMENTO_RESERVA",
+        targetType: "RESERVA",
+        targetId: String(reserva.id),
+        targetName: `Reserva #${reserva.id}`,
+        details: `Profissional ${user?.nome ?? ""} solicitou cancelamento da reserva aprovada do dia ${reserva.data} (${reserva.hora_inicio}-${reserva.hora_fim}).`,
+      });
+
+      toast.success("Solicitação de cancelamento enviada aos administradores com sucesso.");
+    } else {
+      // Efetivar cancelamento da reserva
+      await atualizar.mutateAsync({
+        id: reserva.id,
+        patch: { status: "cancelada" },
+      });
+
+      // Notificar especificamente o usuário profissional proprietário da reserva
+      addNotification(
+        reserva.profissional_id,
+        `O cancelamento solicitado para sua reserva no dia ${reserva.data} (${reserva.hora_inicio}-${reserva.hora_fim}) foi realizado com sucesso.`,
+      );
+
+      // Registrar auditoria obrigatoriamente
+      await createAuditLog({
+        action: "CANCELAMENTO_RESERVA",
+        targetType: "RESERVA",
+        targetId: String(reserva.id),
+        targetName: `Reserva #${reserva.id}`,
+        details: `Cancelamento da reserva no dia ${reserva.data} (${reserva.hora_inicio}-${reserva.hora_fim}) executado por ${user?.nome ?? "Sistema"}.`,
+      });
+
+      toast.success("Reserva cancelada com sucesso!");
+    }
+  };
+
   return (
     <>
-      <Button variant="outline" size={size} onClick={() => setOpen(true)}>
-        {label}
+      <Button
+        variant={isSolicitacaoLocatario ? "outline" : "destructive"}
+        size={size}
+        disabled={bloqueadoPor24h}
+        onClick={() => setOpen(true)}
+        title={
+          bloqueadoPor24h
+            ? "Cancelamentos pelo sistema só são permitidos com no mínimo 24h de antecedência. Contate a administração para urgências."
+            : undefined
+        }
+      >
+        {defaultLabel}
       </Button>
       <ConfirmDialog
         open={open}
         onOpenChange={setOpen}
-        title="Cancelar esta reserva?"
-        description="O horário voltará a ficar livre na grade de disponibilidade."
-        confirmLabel="Cancelar reserva"
-        destructive
-        onConfirm={() => atualizar.mutate({ id: reserva.id, patch: { status: "cancelada" } })}
+        title={
+          isSolicitacaoLocatario
+            ? "Solicitar cancelamento ao administrador?"
+            : "Cancelar esta reserva?"
+        }
+        description={
+          isSolicitacaoLocatario
+            ? "Sua solicitação de cancelamento será encaminhada para a equipe de administração analisar e efetivar o cancelamento."
+            : "A reserva será cancelada, liberando a vaga na grade e notificando o profissional solicitante."
+        }
+        confirmLabel={isSolicitacaoLocatario ? "Solicitar cancelamento" : "Efetivar cancelamento"}
+        destructive={!isSolicitacaoLocatario}
+        onConfirm={handleConfirm}
       />
     </>
   );
 }
 
 export function ExcluirReservaButton({ reserva }: { reserva: Reserva }) {
+  const { user } = useAuth();
   const excluir = useDeleteReserva();
   const [open, setOpen] = useState(false);
+
+  const handleExcluir = async () => {
+    await excluir.mutateAsync(reserva.id);
+    await createAuditLog({
+      action: "EXCLUSAO_RESERVA",
+      targetType: "RESERVA",
+      targetId: String(reserva.id),
+      targetName: `Reserva #${reserva.id}`,
+      details: `Exclusão definitiva da reserva realizada por ${user?.nome ?? "Admin"}.`,
+    });
+  };
+
   return (
     <>
       <Button variant="ghost" size="sm" className="text-destructive" onClick={() => setOpen(true)}>
@@ -198,10 +339,10 @@ export function ExcluirReservaButton({ reserva }: { reserva: Reserva }) {
         open={open}
         onOpenChange={setOpen}
         title="Excluir reserva definitivamente?"
-        description="Esta ação não pode ser desfeita."
+        description="Esta ação não pode ser desfeita e o registro será permanentemente removido."
         confirmLabel="Excluir"
         destructive
-        onConfirm={() => excluir.mutate(reserva.id)}
+        onConfirm={handleExcluir}
       />
     </>
   );

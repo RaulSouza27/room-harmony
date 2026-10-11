@@ -7,6 +7,7 @@ import {
   formatarMesAno,
   formatarNomeMes,
   obterGradeDoMes,
+  isReservaComMaisDe24h,
 } from './format';
 
 describe('format.ts utilities', () => {
@@ -47,5 +48,24 @@ describe('format.ts utilities', () => {
     expect(grade.length % 7).toBe(0);
     const setDays = grade.filter((g) => g.eMesAtual);
     expect(setDays.length).toBe(30); // September has 30 days
+  });
+
+  it('isReservaComMaisDe24h returns true only if reservation is at least 24h away', () => {
+    const baseNow = new Date(2026, 9, 10, 10, 0, 0); // 10/10/2026 10:00
+
+    // Reserva 48h no futuro
+    expect(isReservaComMaisDe24h('2026-10-12', '10:00', baseNow)).toBe(true);
+
+    // Reserva exatamente 24h no futuro
+    expect(isReservaComMaisDe24h('2026-10-11', '10:00', baseNow)).toBe(true);
+
+    // Reserva em 23h (menos de 24h)
+    expect(isReservaComMaisDe24h('2026-10-11', '09:00', baseNow)).toBe(false);
+
+    // Reserva no mesmo dia (hoje às 14:00)
+    expect(isReservaComMaisDe24h('2026-10-10', '14:00', baseNow)).toBe(false);
+
+    // Reserva no passado (ontem)
+    expect(isReservaComMaisDe24h('2026-10-09', '10:00', baseNow)).toBe(false);
   });
 });

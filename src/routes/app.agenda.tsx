@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
-import { Calendar, CalendarDays, CalendarRange, Eye } from "lucide-react";
+import { Calendar, CalendarDays, CalendarRange, Eye, Sparkles } from "lucide-react";
 import { AppShell } from "@/components/AppShell";
 import { AvailabilityGrid, type SlotInfo } from "@/components/AvailabilityGrid";
 import { MonthlyCalendarView } from "@/components/MonthlyCalendarView";
@@ -11,6 +11,7 @@ import {
   ExcluirReservaButton,
 } from "@/components/ReservaActions";
 import { ReservaFormDialog } from "@/components/ReservaFormDialog";
+import { ReservaEspecialDialog } from "@/components/ReservaEspecialDialog";
 import { ReceiptViewerDialog } from "@/components/ReceiptViewerDialog";
 import { ReservaDetailDialog } from "@/components/ReservaDetailDialog";
 import { ErrorState, LoadingState, StatusBadge } from "@/components/common";
@@ -101,6 +102,7 @@ function AgendaPage() {
 
   const [preset, setPreset] = useState<SlotInfo | null>(null);
   const [formOpen, setFormOpen] = useState(false);
+  const [especialOpen, setEspecialOpen] = useState(false);
   const [detalhe, setDetalhe] = useState<Reserva | null>(null);
   const [editando, setEditando] = useState<Reserva | null>(null);
   const [detalheCompleto, setDetalheCompleto] = useState<Reserva | null>(null);
@@ -141,6 +143,9 @@ function AgendaPage() {
 
   function handleSlot(slot: SlotInfo) {
     if (slot.tipo === "reserva") {
+      if (!isAdmin && slot.reserva.profissional_id !== user?.id) {
+        return;
+      }
       setDetalhe(slot.reserva);
       return;
     }
@@ -215,6 +220,19 @@ function AgendaPage() {
     <AppShell
       title={isAdmin ? "Agenda geral" : "Disponibilidade"}
       description={descricaoHeader}
+      actions={
+        isAdmin ? (
+          <Button
+            size="sm"
+            variant="outline"
+            className="gap-1.5 border-amber-500/40 text-amber-700 dark:text-amber-300 hover:bg-amber-500/10"
+            onClick={() => setEspecialOpen(true)}
+          >
+            <Sparkles className="size-4 text-amber-500" />
+            Reserva Especial (Admin)
+          </Button>
+        ) : undefined
+      }
     >
       <div className="space-y-5">
         {/* Filtros e Modos de Visão */}
@@ -294,6 +312,7 @@ function AgendaPage() {
             usuarios={usuarios}
             onSlotClick={handleSlot}
             data={data}
+            isAdmin={isAdmin}
           />
         ) : modoVisao === "mensal" ? (
           <MonthlyCalendarView
@@ -472,6 +491,13 @@ function AgendaPage() {
         sala={salas.find((s) => s.id === detalheCompleto?.sala_id)}
         unidade={unidades.find((u) => u.id === detalheCompleto?.unidade_id)}
         usuario={usuarios.find((u) => u.id === detalheCompleto?.profissional_id)}
+      />
+      <ReservaEspecialDialog
+        open={especialOpen}
+        onOpenChange={setEspecialOpen}
+        unidades={unidades}
+        salas={salas}
+        usuarios={usuarios}
       />
     </AppShell>
   );

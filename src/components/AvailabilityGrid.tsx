@@ -3,6 +3,8 @@ import { HORARIOS, toMinutes } from "@/services/db";
 import { cn } from "@/lib/utils";
 import type { Reserva, Sala, Unidade, User } from "@/types";
 import { useHolidays } from "@/hooks/useApi";
+import { useAuth } from "@/contexts/AuthContext";
+import { formatRecorrencia } from "@/lib/format";
 import { CalendarOff } from "lucide-react";
 
 export type SlotInfo =
@@ -17,6 +19,7 @@ interface Props {
   onSlotClick?: (slot: SlotInfo) => void;
   emptyLabel?: string;
   data?: string;
+  isAdmin?: boolean;
 }
 
 function reservaNoSlot(reservas: Reserva[], salaId: string, hora: string) {
@@ -29,12 +32,54 @@ function reservaNoSlot(reservas: Reserva[], salaId: string, hora: string) {
   );
 }
 
-const slotStyles = {
-  livre: "bg-success/10 hover:bg-success/20 text-success-foreground",
-  pendente: "bg-warning/20 hover:bg-warning/30 text-warning-foreground",
-  aprovada: "bg-muted hover:bg-muted/80 text-foreground",
-  indisponivel: "bg-border/40 text-muted-foreground",
-};
+type TipoReserva = "avulsa" | "fixa" | "turno";
+
+function getTipoReserva(reserva: Reserva): TipoReserva {
+  const rec = reserva.recorrencia as string | undefined;
+  if (rec === "semanal_anual" || rec === "turno") {
+    return "turno";
+  }
+  if (rec === "semanal_mensal" || rec === "semanal") {
+    return "fixa";
+  }
+  return "avulsa";
+}
+
+function getTipoLabel(reserva: Reserva): string {
+  const tipo = getTipoReserva(reserva);
+  if (tipo === "turno") return "Turno";
+  if (tipo === "fixa") return "Hora fixa";
+  return "Avulsa";
+}
+
+function getSlotStyle({
+  indisponivel,
+  reserva,
+}: {
+  indisponivel: boolean;
+  reserva?: Reserva | undefined;
+}) {
+  if (indisponivel) {
+    return "bg-red-500/15 text-red-700 dark:text-red-300 border-red-500/30";
+  }
+
+  if (!reserva) {
+    return "bg-white hover:bg-zinc-100 text-zinc-600 dark:bg-card dark:hover:bg-accent/40 dark:text-muted-foreground";
+  }
+
+  if (reserva.status === "pendente") {
+    return "bg-orange-500/20 hover:bg-orange-500/30 text-orange-950 dark:text-orange-200 border-orange-500/40";
+  }
+
+  const tipo = getTipoReserva(reserva);
+  if (tipo === "turno") {
+    return "bg-[#78350f]/20 hover:bg-[#78350f]/30 text-[#451a03] dark:text-[#fde68a] border-[#78350f]/40";
+  }
+  if (tipo === "fixa") {
+    return "bg-yellow-400/25 hover:bg-yellow-400/35 text-yellow-950 dark:text-yellow-200 border-yellow-400/40";
+  }
+  return "bg-emerald-600/20 hover:bg-emerald-600/30 text-emerald-950 dark:text-emerald-200 border-emerald-600/40";
+}
 
 export function AvailabilityGrid({
   salas,
@@ -44,7 +89,10 @@ export function AvailabilityGrid({
   onSlotClick,
   emptyLabel = "Nenhuma sala encontrada para os filtros escolhidos.",
   data,
+  isAdmin: propIsAdmin,
 }: Props) {
+  const auth = useAuth();
+  const isAdmin = propIsAdmin ?? auth.isAdmin;
   const { data: holidays = [] } = useHolidays();
 
   const nomeUnidade = (id: string) => unidades.find((u) => u.id === id)?.nome ?? "—";
@@ -155,13 +203,9 @@ export function AvailabilityGrid({
                   const foraDoHorario = isSlotForaDoHorario(sala, hora);
                   const indisponivel = sala.status !== "ativa" || foraDoHorario;
                   const reserva = indisponivel ? undefined : reservaNoSlot(reservas, sala.id, hora);
-                  const key = indisponivel
-                    ? "indisponivel"
-                    : reserva
-                      ? reserva.status === "pendente"
-                        ? "pendente"
-                        : "aprovada"
-                      : "livre";
+                  const disabled = indisponivel || (!isAdmin && !!reserva);
+                  const styleClass = getSlotStyle({ indisponivel, reserva });
+
                   return (
                     <td
                       key={sala.id}
@@ -169,7 +213,7 @@ export function AvailabilityGrid({
                     >
                       <button
                         type="button"
-                        disabled={indisponivel}
+                        disabled={disabled}
                         onClick={() =>
                           onSlotClick?.(
                             reserva
@@ -177,18 +221,47 @@ export function AvailabilityGrid({
                               : { tipo: "livre", sala, hora },
                           )
                         }
+                        title={
+                          reserva
+                            ? isAdmin
+                              ? `${nomeProf(reserva.profissional_id)} (${reserva.status === "pendente" ? "Aprovação pendente" : formatRecorrencia(reserva.recorrencia)})`
+                              : `Horário reservado (${reserva.status === "pendente" ? "Pendente" : formatRecorrencia(reserva.recorrencia)})`
+                            : foraDoHorario
+                              ? "Unidade fechada / Feriado"
+                              : sala.status !== "ativa"
+                                ? (isAdmin ? "Sala inativa" : "Indisponível")
+                                : "Horário livre para reserva"
+                        }
                         className={cn(
                           "h-11 w-full px-2 text-left text-[11px] transition-colors disabled:cursor-not-allowed",
-                          slotStyles[key],
+                          styleClass,
                         )}
                       >
-                        {sala.status !== "ativa"
-                          ? "Inativa"
-                          : foraDoHorario
-                            ? "Fechado"
-                            : reserva
-                              ? nomeProf(reserva.profissional_id).split(" ")[0]
-                              : "Livre"}
+                        {sala.status !== "ativa" ? (
+                          isAdmin ? "Inativa" : "Indisponível"
+                        ) : foraDoHorario ? (
+                          "Fechado"
+                        ) : reserva ? (
+                          isAdmin ? (
+                            <div className="flex flex-col justify-center leading-tight overflow-hidden">
+                              <span className="truncate font-medium">
+                                {nomeProf(reserva.profissional_id).split(" ")[0]}
+                              </span>
+                              <span className="text-[9px] opacity-80 truncate">
+                                {reserva.status === "pendente" ? "Aprovar" : getTipoLabel(reserva)}
+                              </span>
+                            </div>
+                          ) : (
+                            <div className="flex flex-col justify-center leading-tight overflow-hidden">
+                              <span className="truncate font-medium">Reservado</span>
+                              <span className="text-[9px] opacity-80 truncate">
+                                {reserva.status === "pendente" ? "Pendente" : getTipoLabel(reserva)}
+                              </span>
+                            </div>
+                          )
+                        ) : (
+                          <span>Livre</span>
+                        )}
                       </button>
                     </td>
                   );
@@ -208,26 +281,23 @@ export function AvailabilityGrid({
               <span className="text-xs text-muted-foreground">{nomeUnidade(sala.unidade_id)}</span>
             </div>
             {sala.status !== "ativa" ? (
-              <p className="rounded-md bg-border/40 px-3 py-2 text-xs text-muted-foreground">
-                Sala inativa
+              <p className="rounded-md bg-red-500/15 border border-red-500/30 px-3 py-2 text-xs text-red-700 dark:text-red-300">
+                {isAdmin ? "Sala inativa" : "Indisponível"}
               </p>
             ) : (
               <div className="grid grid-cols-3 gap-1.5">
                 {HORARIOS.map((hora) => {
                   const foraDoHorario = isSlotForaDoHorario(sala, hora);
+                  const indisponivel = foraDoHorario;
                   const reserva = foraDoHorario ? undefined : reservaNoSlot(reservas, sala.id, hora);
-                  const key = foraDoHorario
-                    ? "indisponivel"
-                    : reserva
-                      ? reserva.status === "pendente"
-                        ? "pendente"
-                        : "aprovada"
-                      : "livre";
+                  const disabled = indisponivel || (!isAdmin && !!reserva);
+                  const styleClass = getSlotStyle({ indisponivel, reserva });
+
                   return (
                     <button
                       key={hora}
                       type="button"
-                      disabled={foraDoHorario}
+                      disabled={disabled}
                       onClick={() =>
                         onSlotClick?.(
                           reserva
@@ -235,12 +305,27 @@ export function AvailabilityGrid({
                             : { tipo: "livre", sala, hora },
                         )
                       }
+                      title={
+                        reserva
+                          ? isAdmin
+                            ? `${nomeProf(reserva.profissional_id)} (${reserva.status === "pendente" ? "Aprovação pendente" : formatRecorrencia(reserva.recorrencia)})`
+                            : `Horário reservado (${reserva.status === "pendente" ? "Pendente" : formatRecorrencia(reserva.recorrencia)})`
+                          : foraDoHorario
+                            ? "Unidade fechada / Feriado"
+                            : "Horário livre para reserva"
+                      }
                       className={cn(
-                        "rounded-md px-1 py-2 text-[11px] font-medium transition-colors disabled:cursor-not-allowed",
-                        slotStyles[key],
+                        "rounded-md border border-border/40 px-1 py-2 text-[11px] font-medium transition-colors disabled:cursor-not-allowed",
+                        styleClass,
                       )}
                     >
-                      {foraDoHorario ? `${hora} (Fechado)` : hora}
+                      {foraDoHorario
+                        ? `${hora} (Fechado)`
+                        : reserva
+                          ? isAdmin
+                            ? `${hora} - ${nomeProf(reserva.profissional_id).split(" ")[0]}`
+                            : `${hora} - ${reserva.status === "pendente" ? "Pendente" : getTipoLabel(reserva)}`
+                          : hora}
                     </button>
                   );
                 })}
@@ -255,17 +340,20 @@ export function AvailabilityGrid({
 
 function Legend() {
   const items: Array<[string, string]> = [
-    ["Livre", "bg-success/25"],
-    ["Pendente", "bg-warning/40"],
-    ["Ocupado", "bg-muted"],
-    ["Indisponível / Fechado", "bg-border/60"],
+    ["Livre", "bg-white dark:bg-card border-border"],
+    ["A ser aprovada", "bg-orange-500/40 border-orange-500/60"],
+    ["Hora avulsa", "bg-emerald-600/40 border-emerald-600/60"],
+    ["Hora fixa", "bg-yellow-400/60 border-yellow-400/70"],
+    ["Turno", "bg-[#78350f]/50 border-[#78350f]/70"],
+    ["Fechado / Feriado", "bg-red-500/40 border-red-500/60"],
   ];
+
   return (
     <div className="flex flex-wrap items-center gap-4 text-xs text-muted-foreground">
       {items.map(([label, color]) => (
         <Fragment key={label}>
           <span className="flex items-center gap-1.5">
-            <span className={cn("size-3 rounded-sm border border-border", color)} />
+            <span className={cn("size-3 rounded-xs border", color)} />
             {label}
           </span>
         </Fragment>

@@ -77,9 +77,9 @@ function AuditoriaPage() {
       const res = await fetchAuditLogs({
         page,
         size: 15,
-        search: debouncedSearch || undefined,
-        action: actionFilter !== "ALL" ? actionFilter : undefined,
-        targetType: targetTypeFilter !== "ALL" ? targetTypeFilter : undefined,
+        ...(debouncedSearch ? { search: debouncedSearch } : {}),
+        ...(actionFilter !== "ALL" ? { action: actionFilter } : {}),
+        ...(targetTypeFilter !== "ALL" ? { targetType: targetTypeFilter } : {}),
       });
       setLogs(res.content || []);
       setTotalPages(res.totalPages || 1);
@@ -100,6 +100,12 @@ function AuditoriaPage() {
     switch (action) {
       case "SOLICITACAO_RESERVA":
         return <Badge className="bg-blue-600 text-white hover:bg-blue-700">Solicitação Reserva</Badge>;
+      case "RESERVA_ESPECIAL_CRIADA":
+        return <Badge className="bg-purple-600 text-white hover:bg-purple-700">Reserva Especial (Admin)</Badge>;
+      case "SOLICITACAO_CANCELAMENTO_RESERVA":
+        return <Badge className="bg-amber-600 text-white hover:bg-amber-700">Solicitação Cancelamento</Badge>;
+      case "CANCELAMENTO_RESERVA":
+        return <Badge className="bg-slate-600 text-white hover:bg-slate-700">Cancelamento Reserva</Badge>;
       case "APROVACAO_RESERVA":
         return <Badge className="bg-emerald-600 text-white hover:bg-emerald-700">Aprovação Reserva</Badge>;
       case "REJEICAO_RESERVA":
@@ -254,6 +260,9 @@ function AuditoriaPage() {
               <SelectContent>
                 <SelectItem value="ALL">Todas as Ações</SelectItem>
                 <SelectItem value="SOLICITACAO_RESERVA">Solicitação de Reserva</SelectItem>
+                <SelectItem value="RESERVA_ESPECIAL_CRIADA">Reserva Especial (Admin)</SelectItem>
+                <SelectItem value="SOLICITACAO_CANCELAMENTO_RESERVA">Solicitação de Cancelamento</SelectItem>
+                <SelectItem value="CANCELAMENTO_RESERVA">Cancelamento de Reserva</SelectItem>
                 <SelectItem value="APROVACAO_RESERVA">Aprovação de Reserva</SelectItem>
                 <SelectItem value="REJEICAO_RESERVA">Rejeição de Reserva</SelectItem>
                 <SelectItem value="EXCLUSAO_RESERVA">Exclusão de Reserva</SelectItem>
@@ -271,9 +280,9 @@ function AuditoriaPage() {
 
         {/* Content Table */}
         {loading ? (
-          <LoadingState message="Carregando histórico de auditoria..." />
+          <LoadingState label="Carregando histórico de auditoria..." />
         ) : error ? (
-          <ErrorState message={error} onRetry={loadData} />
+          <ErrorState message={error} />
         ) : logs.length === 0 ? (
           <EmptyState
             title="Nenhum registro encontrado"
