@@ -143,6 +143,9 @@ function AgendaPage() {
 
   function handleSlot(slot: SlotInfo) {
     if (slot.tipo === "reserva") {
+      if (!isAdmin && slot.reserva.profissional_id !== user?.id) {
+        return;
+      }
       setDetalhe(slot.reserva);
       return;
     }
@@ -309,6 +312,7 @@ function AgendaPage() {
             usuarios={usuarios}
             onSlotClick={handleSlot}
             data={data}
+            isAdmin={isAdmin}
           />
         ) : modoVisao === "mensal" ? (
           <MonthlyCalendarView
