@@ -188,6 +188,11 @@ function MinhasReservasPage() {
         open={!!alvoVisualizacaoComprovante}
         onOpenChange={(v) => !v && setAlvoVisualizacaoComprovante(null)}
         reservaId={alvoVisualizacaoComprovante}
+        reservas={minhasReservas}
+        salas={salasQ.data ?? []}
+        unidades={unidadesQ.data ?? []}
+        usuarios={user ? [user] : []}
+        onNavigateReservaId={(id) => setAlvoVisualizacaoComprovante(id)}
       />
     </AppShell>
   );
