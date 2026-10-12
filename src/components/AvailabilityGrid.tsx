@@ -4,7 +4,7 @@ import { cn } from "@/lib/utils";
 import type { Reserva, Sala, Unidade, User } from "@/types";
 import { useHolidays } from "@/hooks/useApi";
 import { useAuth } from "@/contexts/AuthContext";
-import { formatRecorrencia } from "@/lib/format";
+import { formatRecorrencia, isReservaEspecial } from "@/lib/format";
 import { CalendarOff } from "lucide-react";
 
 export type SlotInfo =
@@ -32,9 +32,12 @@ function reservaNoSlot(reservas: Reserva[], salaId: string, hora: string) {
   );
 }
 
-type TipoReserva = "avulsa" | "fixa" | "turno";
+type TipoReserva = "avulsa" | "fixa" | "turno" | "especial";
 
 function getTipoReserva(reserva: Reserva): TipoReserva {
+  if (isReservaEspecial(reserva)) {
+    return "especial";
+  }
   const rec = reserva.recorrencia as string | undefined;
   if (rec === "semanal_anual" || rec === "turno") {
     return "turno";
@@ -47,6 +50,7 @@ function getTipoReserva(reserva: Reserva): TipoReserva {
 
 function getTipoLabel(reserva: Reserva): string {
   const tipo = getTipoReserva(reserva);
+  if (tipo === "especial") return "Especial";
   if (tipo === "turno") return "Turno";
   if (tipo === "fixa") return "Hora fixa";
   return "Avulsa";
@@ -72,7 +76,7 @@ function getSlotStyle({
   }
 
   const tipo = getTipoReserva(reserva);
-  if (tipo === "turno") {
+  if (tipo === "turno" || tipo === "especial") {
     return "bg-[#78350f]/20 hover:bg-[#78350f]/30 text-[#451a03] dark:text-[#fde68a] border-[#78350f]/40";
   }
   if (tipo === "fixa") {
@@ -224,8 +228,8 @@ export function AvailabilityGrid({
                         title={
                           reserva
                             ? isAdmin
-                              ? `${nomeProf(reserva.profissional_id)} (${reserva.status === "pendente" ? "Aprovação pendente" : formatRecorrencia(reserva.recorrencia)})`
-                              : `Horário reservado (${reserva.status === "pendente" ? "Pendente" : formatRecorrencia(reserva.recorrencia)})`
+                              ? `${nomeProf(reserva.profissional_id)} (${reserva.status === "pendente" ? "Aprovação pendente" : isReservaEspecial(reserva) ? "Reserva Especial" : formatRecorrencia(reserva.recorrencia)})`
+                              : `Horário reservado (${reserva.status === "pendente" ? "Pendente" : isReservaEspecial(reserva) ? "Reserva Especial" : formatRecorrencia(reserva.recorrencia)})`
                             : foraDoHorario
                               ? "Unidade fechada / Feriado"
                               : sala.status !== "ativa"
@@ -308,8 +312,8 @@ export function AvailabilityGrid({
                       title={
                         reserva
                           ? isAdmin
-                            ? `${nomeProf(reserva.profissional_id)} (${reserva.status === "pendente" ? "Aprovação pendente" : formatRecorrencia(reserva.recorrencia)})`
-                            : `Horário reservado (${reserva.status === "pendente" ? "Pendente" : formatRecorrencia(reserva.recorrencia)})`
+                            ? `${nomeProf(reserva.profissional_id)} (${reserva.status === "pendente" ? "Aprovação pendente" : isReservaEspecial(reserva) ? "Reserva Especial" : formatRecorrencia(reserva.recorrencia)})`
+                            : `Horário reservado (${reserva.status === "pendente" ? "Pendente" : isReservaEspecial(reserva) ? "Reserva Especial" : formatRecorrencia(reserva.recorrencia)})`
                           : foraDoHorario
                             ? "Unidade fechada / Feriado"
                             : "Horário livre para reserva"
@@ -344,7 +348,7 @@ function Legend() {
     ["A ser aprovada", "bg-orange-500/40 border-orange-500/60"],
     ["Hora avulsa", "bg-emerald-600/40 border-emerald-600/60"],
     ["Hora fixa", "bg-yellow-400/60 border-yellow-400/70"],
-    ["Turno", "bg-[#78350f]/50 border-[#78350f]/70"],
+    ["Turno / Especial", "bg-[#78350f]/50 border-[#78350f]/70"],
     ["Fechado / Feriado", "bg-red-500/40 border-red-500/60"],
   ];
 

@@ -27,7 +27,8 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useReservas, useSalas, useUnidades, useUsuarios, useDeleteReservasBatch } from "@/hooks/useApi";
-import { formatarData } from "@/lib/format";
+import { Badge } from "@/components/ui/badge";
+import { formatarData, isReservaEspecial } from "@/lib/format";
 import type { Reserva } from "@/types";
 
 function getInitials(name?: string) {
@@ -65,6 +66,7 @@ function ReservasPage() {
   const [sala, setSala] = useState("todas");
   const [profissional, setProfissional] = useState("todos");
   const [status, setStatus] = useState("todos");
+  const [tipoFiltro, setTipoFiltro] = useState("todos");
   const [de, setDe] = useState("");
   const [ate, setAte] = useState("");
 
@@ -105,6 +107,15 @@ function ReservasPage() {
     .filter((r) => sala === "todas" || r.sala_id === sala)
     .filter((r) => profissional === "todos" || r.profissional_id === profissional)
     .filter((r) => status === "todos" || r.status === status)
+    .filter((r) => {
+      if (tipoFiltro === "todos") return true;
+      if (tipoFiltro === "especial") return isReservaEspecial(r);
+      if (isReservaEspecial(r)) return false;
+      if (tipoFiltro === "turno") return r.recorrencia === "semanal_anual" || (r.recorrencia as string) === "turno";
+      if (tipoFiltro === "fixa") return r.recorrencia === "semanal_mensal" || (r.recorrencia as string) === "semanal";
+      if (tipoFiltro === "avulsa") return r.recorrencia === "unica";
+      return true;
+    })
     .filter((r) => !de || r.data >= de)
     .filter((r) => !ate || r.data <= ate)
     .sort((a, b) => (b.data + b.hora_inicio).localeCompare(a.data + a.hora_inicio));
@@ -149,7 +160,7 @@ function ReservasPage() {
       }
     >
       <div className="space-y-5">
-        <div className="grid gap-4 rounded-xl border border-border bg-card p-4 shadow-soft md:grid-cols-3 xl:grid-cols-6">
+        <div className="grid gap-4 rounded-xl border border-border bg-card p-4 shadow-soft md:grid-cols-2 lg:grid-cols-4 xl:grid-cols-7">
           <div className="space-y-2">
             <Label>Unidade</Label>
             <Select
@@ -220,6 +231,21 @@ function ReservasPage() {
                 <SelectItem value="aprovada">Aprovada</SelectItem>
                 <SelectItem value="negada">Negada</SelectItem>
                 <SelectItem value="cancelada">Cancelada</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="space-y-2">
+            <Label>Tipo</Label>
+            <Select value={tipoFiltro} onValueChange={setTipoFiltro}>
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="todos">Todos os tipos</SelectItem>
+                <SelectItem value="avulsa">Hora avulsa</SelectItem>
+                <SelectItem value="fixa">Hora fixa</SelectItem>
+                <SelectItem value="turno">Turno</SelectItem>
+                <SelectItem value="especial">Reserva Especial</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -307,6 +333,12 @@ function ReservasPage() {
                                   {prof?.nome ?? "—"}
                                 </p>
                                 <StatusBadge status={r.status} />
+                                {isReservaEspecial(r) && (
+                                  <Badge className="bg-[#78350f]/20 border border-[#78350f]/40 text-[#451a03] dark:text-[#fde68a] text-[11px] font-medium gap-1 hover:bg-[#78350f]/30">
+                                    <Sparkles className="size-3 text-amber-500" />
+                                    Reserva Especial
+                                  </Badge>
+                                )}
                               </div>
 
                               <div className="flex flex-wrap items-center gap-x-2 text-xs text-muted-foreground mt-0.5">

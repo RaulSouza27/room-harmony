@@ -29,7 +29,7 @@ import { ReceiptViewerDialog } from "@/components/ReceiptViewerDialog";
 import { AprovacaoActions } from "@/components/ReservaActions";
 import { useAuth } from "@/contexts/AuthContext";
 import { useUsuarioDetail } from "@/hooks/useApi";
-import { formatarDataLonga, formatRecorrencia } from "@/lib/format";
+import { formatarDataLonga, formatRecorrencia, isReservaEspecial } from "@/lib/format";
 import type { Reserva, Sala, Unidade, User as UserType } from "@/types";
 
 interface ReservaDetailDialogProps {
@@ -207,7 +207,7 @@ export function ReservaDetailDialog({
                 <div className="space-y-1">
                   <span className="text-muted-foreground font-medium">Recorrência</span>
                   <p className="font-medium text-foreground">
-                    {formatRecorrencia(reserva.recorrencia)}
+                    {isReservaEspecial(reserva) ? "Reserva Especial (Admin)" : formatRecorrencia(reserva.recorrencia)}
                   </p>
                 </div>
 
