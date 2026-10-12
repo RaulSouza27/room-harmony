@@ -482,6 +482,12 @@ function AgendaPage() {
         open={!!alvoVisualizacaoComprovante}
         onOpenChange={(v) => !v && setAlvoVisualizacaoComprovante(null)}
         receiptUrl={alvoVisualizacaoComprovante}
+        reservaId={alvoVisualizacaoComprovante}
+        reservas={reservasDoDia}
+        salas={salas}
+        unidades={unidades}
+        usuarios={usuarios}
+        onNavigateReservaId={(id) => setAlvoVisualizacaoComprovante(id)}
       />
 
       <ReservaDetailDialog

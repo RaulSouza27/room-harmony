@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
-import { AlertTriangle, Eye, FileText, XCircle } from "lucide-react";
+import { AlertTriangle, Eye, FileText, Images, XCircle } from "lucide-react";
 import { AppShell } from "@/components/AppShell";
 import { AprovacaoActions, CancelarReservaButton } from "@/components/ReservaActions";
 import { EmptyState, ErrorState, LoadingState, StatusBadge } from "@/components/common";
@@ -66,6 +66,16 @@ function AprovacoesPage() {
     .filter((r) => r.status === "solicitacao_cancelamento")
     .sort((a, b) => (a.data + a.hora_inicio).localeCompare(b.data + b.hora_inicio));
 
+  const pendentesComComprovante = reservas
+    .filter(
+      (r) =>
+        r.status === "pendente" &&
+        r.comprovante &&
+        r.comprovante !== "empty" &&
+        r.comprovante !== "reserva_especial_admin",
+    )
+    .sort((a, b) => (a.data + a.hora_inicio).localeCompare(b.data + b.hora_inicio));
+
   const nomeSala = (id: string) => salasQ.data?.find((s) => s.id === id)?.nome ?? "—";
   const nomeUnidade = (id: string) => unidadesQ.data?.find((u) => u.id === id)?.nome ?? "—";
   const prof = (id: string) => usuariosQ.data?.find((u) => u.id === id);
@@ -78,26 +88,40 @@ function AprovacoesPage() {
       description={`${totalPendencias} solicitação(ões) aguardando análise do administrador`}
     >
       <div className="space-y-5">
-        <Tabs value={tab} onValueChange={(v) => setTab(v as "reservas" | "cancelamentos")}>
-          <TabsList>
-            <TabsTrigger value="reservas" className="gap-2">
-              Solicitações de Reserva
-              {pendentesReserva.length > 0 && (
-                <Badge variant="secondary" className="px-1.5 py-0.2 text-[10px]">
-                  {pendentesReserva.length}
-                </Badge>
-              )}
-            </TabsTrigger>
-            <TabsTrigger value="cancelamentos" className="gap-2">
-              Solicitações de Cancelamento
-              {pendentesCancelamento.length > 0 && (
-                <Badge variant="destructive" className="px-1.5 py-0.2 text-[10px]">
-                  {pendentesCancelamento.length}
-                </Badge>
-              )}
-            </TabsTrigger>
-          </TabsList>
-        </Tabs>
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <Tabs value={tab} onValueChange={(v) => setTab(v as "reservas" | "cancelamentos")}>
+            <TabsList>
+              <TabsTrigger value="reservas" className="gap-2">
+                Solicitações de Reserva
+                {pendentesReserva.length > 0 && (
+                  <Badge variant="secondary" className="px-1.5 py-0.2 text-[10px]">
+                    {pendentesReserva.length}
+                  </Badge>
+                )}
+              </TabsTrigger>
+              <TabsTrigger value="cancelamentos" className="gap-2">
+                Solicitações de Cancelamento
+                {pendentesCancelamento.length > 0 && (
+                  <Badge variant="destructive" className="px-1.5 py-0.2 text-[10px]">
+                    {pendentesCancelamento.length}
+                  </Badge>
+                )}
+              </TabsTrigger>
+            </TabsList>
+          </Tabs>
+
+          {tab === "reservas" && pendentesComComprovante.length > 0 && (
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => setAlvoComprovante(pendentesComComprovante[0]!.id)}
+              className="gap-2 text-primary border-primary/30 hover:bg-primary/10 shadow-xs"
+            >
+              <Images className="size-4" />
+              Navegar Comprovantes ({pendentesComComprovante.length})
+            </Button>
+          )}
+        </div>
 
         {reservasQ.isLoading ? (
           <LoadingState />
@@ -286,6 +310,11 @@ function AprovacoesPage() {
         open={!!alvoComprovante}
         onOpenChange={(v) => !v && setAlvoComprovante(null)}
         reservaId={alvoComprovante}
+        reservas={pendentesReserva}
+        salas={salasQ.data ?? []}
+        unidades={unidadesQ.data ?? []}
+        usuarios={usuariosQ.data ?? []}
+        onNavigateReservaId={(id) => setAlvoComprovante(id)}
       />
 
       <ReservaDetailDialog

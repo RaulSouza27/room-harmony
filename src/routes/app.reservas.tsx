@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
-import { Eye, FileText, Sparkles } from "lucide-react";
+import { Eye, FileText, Images, Sparkles } from "lucide-react";
 import { AppShell } from "@/components/AppShell";
 import {
   AprovacaoActions,
@@ -126,6 +126,17 @@ function ReservasPage() {
     setConfirmBatchDelete(false);
   };
 
+  const listaComComprovante = useMemo(
+    () =>
+      lista.filter(
+        (r) =>
+          r.comprovante &&
+          r.comprovante !== "empty" &&
+          r.comprovante !== "reserva_especial_admin",
+      ),
+    [lista],
+  );
+
   return (
     <AppShell
       title="Todas as reservas"
@@ -140,6 +151,17 @@ function ReservasPage() {
               disabled={excluirLote.isPending}
             >
               Excluir {selectedIds.length} selecionada(s)
+            </Button>
+          )}
+          {listaComComprovante.length > 0 && (
+            <Button
+              size="sm"
+              variant="outline"
+              className="gap-1.5 text-foreground border-border hover:bg-muted/30"
+              onClick={() => setAlvoVisualizacaoComprovante(listaComComprovante[0]!.id)}
+            >
+              <Images className="size-4 text-primary" />
+              Comprovantes ({listaComComprovante.length})
             </Button>
           )}
           {isAdmin && (
@@ -441,6 +463,11 @@ function ReservasPage() {
         open={!!alvoVisualizacaoComprovante}
         onOpenChange={(v) => !v && setAlvoVisualizacaoComprovante(null)}
         reservaId={alvoVisualizacaoComprovante}
+        reservas={lista}
+        salas={salas}
+        unidades={unidades}
+        usuarios={usuarios}
+        onNavigateReservaId={(id) => setAlvoVisualizacaoComprovante(id)}
       />
 
       <ReservaDetailDialog
