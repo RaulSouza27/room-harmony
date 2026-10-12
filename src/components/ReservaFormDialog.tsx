@@ -26,6 +26,7 @@ import type { Reserva, Sala, Unidade, User, Recorrencia } from "@/types";
 import { CalendarOff, Loader2, Sparkles } from "lucide-react";
 import { isReservaEspecial } from "@/lib/format";
 import { createAuditLog } from "@/services/auditService";
+import { toast } from "sonner";
 
 interface Props {
   open: boolean;
@@ -70,6 +71,7 @@ export function ReservaFormDialog({
   const [unidadeId, setUnidadeId] = useState("");
   const [salaId, setSalaId] = useState("");
   const [data, setData] = useState(hojeISO());
+  const [dataFim, setDataFim] = useState(hojeISO());
   const [inicio, setInicio] = useState("08:00");
   const [fim, setFim] = useState("09:00");
   const [profissionalId, setProfissionalId] = useState("");
@@ -78,6 +80,7 @@ export function ReservaFormDialog({
   const [tipoReserva, setTipoReserva] = useState<TipoReservaOpcao>("unica");
   const [comprovante, setComprovante] = useState("");
   const [selectedPhotoIndex, setSelectedPhotoIndex] = useState<number | null>(null);
+  const [submittingLocal, setSubmittingLocal] = useState(false);
 
   const isEspecial = tipoReserva === "especial";
 
@@ -87,6 +90,7 @@ export function ReservaFormDialog({
     setUnidadeId(base?.unidade_id ?? unidadesDisponiveis[0]?.id ?? "");
     setSalaId(reserva?.sala_id ?? preset?.sala_id ?? "");
     setData(base?.data ?? hojeISO());
+    setDataFim(base?.data ?? hojeISO());
     setInicio(reserva?.hora_inicio ?? preset?.hora_inicio ?? "08:00");
     setFim(
       reserva?.hora_fim ??
@@ -124,8 +128,11 @@ export function ReservaFormDialog({
         const endHour = Math.min(startHour + 1, 22);
         setFim(`${String(endHour).padStart(2, "0")}:00`);
       }
+      if (dataFim < data) {
+        setDataFim(data);
+      }
     }
-  }, [tipoReserva, inicio, fim]);
+  }, [tipoReserva, inicio, fim, data, dataFim]);
 
   const salasDaUnidade = salas.filter((s) => s.unidade_id === unidadeId && s.status === "ativa");
   const profissionais = useMemo(() => {
@@ -211,18 +218,33 @@ export function ReservaFormDialog({
     !isEspecial &&
     (!comprovante || comprovante.trim() === "" || comprovante === "empty");
 
-  const isSubmitting = criar.isPending || atualizar.isPending;
+  const dataInvalida = isEspecial && dataFim < data;
+  const isSubmitting = submittingLocal || criar.isPending || atualizar.isPending;
 
   const podeSalvar =
     !!unidadeId &&
     !!salaId &&
     !!profissionalId &&
     !horarioInvalido &&
+    !dataInvalida &&
     (isEspecial || (!foraDoHorario && !feriadoDaData && conflitos.length === 0)) &&
     !comprovanteFaltando &&
     !isSubmitting;
 
+  const gerarDatasIntervalo = (startStr: string, endStr: string): string[] => {
+    const list: string[] = [];
+    let current = new Date(startStr + "T00:00:00");
+    const end = new Date(endStr + "T00:00:00");
+    while (current <= end) {
+      list.push(current.toISOString().slice(0, 10));
+      current.setDate(current.getDate() + 1);
+    }
+    return list;
+  };
+
   async function handleSubmit() {
+    if (!podeSalvar || isSubmitting) return;
+
     const recorrenciaFinal: Recorrencia = isEspecial ? "unica" : (tipoReserva as Recorrencia);
     const comprovanteFinal = isEspecial ? "reserva_especial_admin" : comprovante;
     const observacoesFinal = isEspecial
@@ -235,10 +257,82 @@ export function ReservaFormDialog({
     const salaObj = salas.find((s) => s.id === salaId);
     const profObj = usuarios.find((u) => u.id === profissionalId);
 
-    if (reserva) {
-      await atualizar.mutateAsync({
-        id: reserva.id,
-        patch: {
+    try {
+      setSubmittingLocal(true);
+
+      if (reserva) {
+        await atualizar.mutateAsync({
+          id: reserva.id,
+          patch: {
+            unidade_id: unidadeId,
+            sala_id: salaId,
+            data,
+            hora_inicio: inicio,
+            hora_fim: fim,
+            profissional_id: profissionalId,
+            observacoes: observacoesFinal,
+            recorrencia: recorrenciaFinal,
+            comprovante: comprovanteFinal,
+          },
+        });
+
+        if (isEspecial && dataFim > data) {
+          const datas = gerarDatasIntervalo(data, dataFim).slice(1);
+          for (const d of datas) {
+            const res = await criar.mutateAsync({
+              unidade_id: unidadeId,
+              sala_id: salaId,
+              data: d,
+              hora_inicio: inicio,
+              hora_fim: fim,
+              profissional_id: profissionalId,
+              observacoes: observacoesFinal,
+              recorrencia: "unica",
+              status: "aprovada",
+              comprovante: comprovanteFinal,
+            });
+
+            await createAuditLog({
+              action: "RESERVA_ESPECIAL_CRIADA",
+              targetType: "RESERVA",
+              targetId: res.id,
+              targetName: `Reserva Especial - ${salaObj?.nome ?? salaId}`,
+              details: `Reserva Especial (Admin) criada pelo administrador ${user?.nome ?? "Admin"} em nome do profissional admin ${profObj?.nome ?? profissionalId}. Unidade: ${unidadeObj?.nome ?? unidadeId}, Sala: ${salaObj?.nome ?? salaId}, Data: ${d}, Horário: ${inicio} às ${fim}. Sem necessidade de aprovação ou comprovante.`,
+            });
+          }
+        }
+      } else if (isEspecial) {
+        const datas = gerarDatasIntervalo(data, dataFim);
+        for (const d of datas) {
+          const res = await criar.mutateAsync({
+            unidade_id: unidadeId,
+            sala_id: salaId,
+            data: d,
+            hora_inicio: inicio,
+            hora_fim: fim,
+            profissional_id: profissionalId,
+            observacoes: observacoesFinal,
+            recorrencia: "unica",
+            status: "aprovada",
+            comprovante: comprovanteFinal,
+          });
+
+          await createAuditLog({
+            action: "RESERVA_ESPECIAL_CRIADA",
+            targetType: "RESERVA",
+            targetId: res.id,
+            targetName: `Reserva Especial - ${salaObj?.nome ?? salaId}`,
+            details: `Reserva Especial (Admin) criada pelo administrador ${user?.nome ?? "Admin"} em nome do profissional admin ${profObj?.nome ?? profissionalId}. Unidade: ${unidadeObj?.nome ?? unidadeId}, Sala: ${salaObj?.nome ?? salaId}, Data: ${d}, Horário: ${inicio} às ${fim}. Sem necessidade de aprovação ou comprovante.`,
+          });
+        }
+
+        toast.success(
+          datas.length > 1
+            ? `${datas.length} Reservas Especiais criadas com sucesso!`
+            : "Reserva Especial criada com sucesso!",
+        );
+      } else {
+        await criar.mutateAsync({
           unidade_id: unidadeId,
           sala_id: salaId,
           data,
@@ -247,34 +341,17 @@ export function ReservaFormDialog({
           profissional_id: profissionalId,
           observacoes: observacoesFinal,
           recorrencia: recorrenciaFinal,
+          status: "aprovada",
           comprovante: comprovanteFinal,
-        },
-      });
-    } else {
-      const res = await criar.mutateAsync({
-        unidade_id: unidadeId,
-        sala_id: salaId,
-        data,
-        hora_inicio: inicio,
-        hora_fim: fim,
-        profissional_id: profissionalId,
-        observacoes: observacoesFinal,
-        recorrencia: recorrenciaFinal,
-        status: "aprovada",
-        comprovante: comprovanteFinal,
-      });
-
-      if (isEspecial) {
-        await createAuditLog({
-          action: "RESERVA_ESPECIAL_CRIADA",
-          targetType: "RESERVA",
-          targetId: res.id,
-          targetName: `Reserva Especial - ${salaObj?.nome ?? salaId}`,
-          details: `Reserva Especial (Admin) criada pelo administrador ${user?.nome ?? "Admin"} em nome do profissional admin ${profObj?.nome ?? profissionalId}. Unidade: ${unidadeObj?.nome ?? unidadeId}, Sala: ${salaObj?.nome ?? salaId}, Data: ${data}, Horário: ${inicio} às ${fim}. Sem necessidade de aprovação ou comprovante.`,
         });
       }
+      onOpenChange(false);
+    } catch (err: any) {
+      console.error(err);
+      toast.error(err.message || "Erro ao salvar reserva.");
+    } finally {
+      setSubmittingLocal(false);
     }
-    onOpenChange(false);
   }
 
   return (
@@ -389,47 +466,6 @@ export function ReservaFormDialog({
             </div>
           ) : null}
 
-          <div className="grid gap-4 sm:grid-cols-3">
-            <div className="space-y-2">
-              <Label htmlFor="data">Data</Label>
-              <Input id="data" type="date" value={data} onChange={(e) => setData(e.target.value)} />
-            </div>
-            <div className="space-y-2">
-              <Label>Início</Label>
-              <Select value={inicio} onValueChange={setInicio}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {horariosInicioDisponiveis.map((h) => (
-                    <SelectItem key={h} value={h}>
-                      {h}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-2">
-              <Label>Fim</Label>
-              <Select value={fim} onValueChange={setFim} disabled={!isEspecial}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {[...HORARIOS.slice(1), "22:00"].map((h) => (
-                    <SelectItem
-                      key={h}
-                      value={h}
-                      disabled={isEspecial && toMinutes(h) <= toMinutes(inicio)}
-                    >
-                      {h}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-
           <div className="space-y-2">
             <Label>Tipo / Recorrência</Label>
             <Select value={tipoReserva} onValueChange={(v) => setTipoReserva(v as TipoReservaOpcao)}>
@@ -455,8 +491,111 @@ export function ReservaFormDialog({
               <div>
                 <p className="font-semibold">Modo Reserva Especial (Exclusivo Administradores)</p>
                 <p className="opacity-90">
-                  Horário flexível, sem obrigatoriedade de comprovante e com auditoria registrada.
+                  Período flexível com data de início e fim, horários customizados, sem necessidade de comprovante e com auditoria registrada.
                 </p>
+              </div>
+            </div>
+          )}
+
+          {isEspecial ? (
+            <div className="space-y-4">
+              <div className="grid gap-4 sm:grid-cols-2">
+                <div className="space-y-2">
+                  <Label htmlFor="dataInicio">Data de Início</Label>
+                  <Input
+                    id="dataInicio"
+                    type="date"
+                    value={data}
+                    onChange={(e) => {
+                      setData(e.target.value);
+                      if (e.target.value > dataFim) setDataFim(e.target.value);
+                    }}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="dataFim">Data de Fim</Label>
+                  <Input
+                    id="dataFim"
+                    type="date"
+                    min={data}
+                    value={dataFim}
+                    onChange={(e) => setDataFim(e.target.value)}
+                  />
+                </div>
+              </div>
+
+              <div className="grid gap-4 sm:grid-cols-2">
+                <div className="space-y-2">
+                  <Label>Início</Label>
+                  <Select value={inicio} onValueChange={setInicio}>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {horariosInicioDisponiveis.map((h) => (
+                        <SelectItem key={h} value={h}>
+                          {h}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label>Fim</Label>
+                  <Select value={fim} onValueChange={setFim}>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {[...HORARIOS.slice(1), "22:00"].map((h) => (
+                        <SelectItem
+                          key={h}
+                          value={h}
+                          disabled={toMinutes(h) <= toMinutes(inicio)}
+                        >
+                          {h}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+            </div>
+          ) : (
+            <div className="grid gap-4 sm:grid-cols-3">
+              <div className="space-y-2">
+                <Label htmlFor="data">Data</Label>
+                <Input id="data" type="date" value={data} onChange={(e) => setData(e.target.value)} />
+              </div>
+              <div className="space-y-2">
+                <Label>Início</Label>
+                <Select value={inicio} onValueChange={setInicio}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {horariosInicioDisponiveis.map((h) => (
+                      <SelectItem key={h} value={h}>
+                        {h}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label>Fim</Label>
+                <Select value={fim} onValueChange={setFim} disabled={true}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {[...HORARIOS.slice(1), "22:00"].map((h) => (
+                      <SelectItem key={h} value={h}>
+                        {h}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
             </div>
           )}
@@ -541,7 +680,12 @@ export function ReservaFormDialog({
             </div>
           )}
 
-          {feriadoDaData ? (
+          {dataInvalida ? (
+            <p className="rounded-md border border-destructive/30 bg-destructive/5 px-3 py-2 text-sm text-destructive">
+              A data de término deve ser igual ou posterior à data de início.
+            </p>
+          ) : null}
+          {feriadoDaData && !isEspecial ? (
             <div className="flex items-center gap-2 rounded-md border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-sm text-amber-700 dark:text-amber-300">
               <CalendarOff className="size-4 shrink-0 text-amber-600 dark:text-amber-400" />
               <span>
@@ -552,7 +696,7 @@ export function ReservaFormDialog({
               </span>
             </div>
           ) : null}
-          {foraDoHorario ? (
+          {foraDoHorario && !isEspecial ? (
             <p className="rounded-md border border-destructive/30 bg-destructive/5 px-3 py-2 text-sm text-destructive">
               {!daySchedule || !daySchedule.ativo
                 ? "A unidade selecionada está fechada neste dia da semana."
