@@ -19,8 +19,9 @@ import {
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { useAuth } from "@/contexts/AuthContext";
+import { statusInicialNovaReserva } from "@/lib/reservaStatus";
 import { useCreateReserva, useUpdateReserva, useHolidays, useSala } from "@/hooks/useApi";
-import { findConflitos } from "@/services/api";
+import { findConflitos, getReservaReceipt } from "@/services/api";
 import { HORARIOS, toMinutes } from "@/services/db";
 import type { Reserva, Sala, Unidade, User, Recorrencia } from "@/types";
 import { CalendarOff, Loader2, Sparkles } from "lucide-react";
@@ -108,7 +109,15 @@ export function ReservaFormDialog({
       const rec = (reserva?.recorrencia === "semanal") ? "semanal_mensal" : (reserva?.recorrencia ?? "unica");
       setTipoReserva(rec as TipoReservaOpcao);
     }
-    setComprovante(reserva?.comprovante ?? "");
+    if (reserva?.comprovante === "has_receipt" && reserva?.id) {
+      getReservaReceipt(reserva.id).then((img: string) => {
+        if (img && img !== "empty") {
+          setComprovante(img);
+        }
+      }).catch(() => {});
+    } else {
+      setComprovante(reserva?.comprovante ?? "");
+    }
   }, [open, reserva, preset, unidadesDisponiveis, isAdmin, user]);
 
   // Enforce automatic reservation duration set: 1h for avulsa, 4h for shift (turno)
@@ -272,7 +281,7 @@ export function ReservaFormDialog({
             profissional_id: profissionalId,
             observacoes: observacoesFinal,
             recorrencia: recorrenciaFinal,
-            comprovante: comprovanteFinal,
+            ...(comprovanteFinal !== "has_receipt" ? { comprovante: comprovanteFinal } : {}),
           },
         });
 
@@ -341,7 +350,7 @@ export function ReservaFormDialog({
           profissional_id: profissionalId,
           observacoes: observacoesFinal,
           recorrencia: recorrenciaFinal,
-          status: "aprovada",
+          status: statusInicialNovaReserva(isAdmin),
           comprovante: comprovanteFinal,
         });
       }

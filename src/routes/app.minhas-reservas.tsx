@@ -69,8 +69,8 @@ function MinhasReservasPage() {
 
   const salas = salasQ.data ?? [];
   const unidades = unidadesQ.data ?? [];
-  const lista = (reservasQ.data ?? [])
-    .filter((r) => r.profissional_id === user?.id)
+  const minhasReservas = (reservasQ.data ?? []).filter((r) => r.profissional_id === user?.id);
+  const lista = minhasReservas
     .filter((r) => {
       if (filtro === "ativas") return r.status !== "cancelada";
       return r.status === filtro;

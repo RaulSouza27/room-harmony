@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
-import { Calendar, CalendarDays, CalendarRange, Eye, Sparkles } from "lucide-react";
+import { Calendar, CalendarDays, CalendarRange, Eye, FileText, Sparkles } from "lucide-react";
 import { AppShell } from "@/components/AppShell";
 import { AvailabilityGrid, type SlotInfo } from "@/components/AvailabilityGrid";
 import { MonthlyCalendarView } from "@/components/MonthlyCalendarView";
@@ -405,20 +405,22 @@ function AgendaPage() {
                 ) : null}
               </dl>
               {detalhe.comprovante && detalhe.comprovante !== "empty" ? (
-                <div className="mt-3 border-t border-border pt-3 space-y-1">
-                  <dt className="text-xs font-semibold text-muted-foreground font-medium">
-                    Comprovante de pagamento:
-                  </dt>
-                  <div className="relative aspect-video rounded overflow-hidden bg-black flex items-center justify-center h-40 border border-border">
-                    <img
-                      src={detalhe.comprovante}
-                      alt="Comprovante de pagamento"
-                      className="max-w-full max-h-full object-contain cursor-pointer hover:opacity-90 transition-opacity"
-                      onClick={() => {
-                        setAlvoVisualizacaoComprovante(detalhe.comprovante!);
-                      }}
-                    />
-                  </div>
+                <div className="mt-3 border-t border-border pt-3 flex items-center justify-between">
+                  <span className="text-xs font-medium text-muted-foreground">
+                    Comprovante de pagamento anexado
+                  </span>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    onClick={() => {
+                      setAlvoVisualizacaoComprovante(detalhe.id);
+                    }}
+                    className="gap-1.5 text-xs font-medium text-primary border-primary/30 hover:bg-primary/10"
+                  >
+                    <FileText className="size-3.5" />
+                    Ver comprovante
+                  </Button>
                 </div>
               ) : null}
 
@@ -481,7 +483,6 @@ function AgendaPage() {
       <ReceiptViewerDialog
         open={!!alvoVisualizacaoComprovante}
         onOpenChange={(v) => !v && setAlvoVisualizacaoComprovante(null)}
-        receiptUrl={alvoVisualizacaoComprovante}
         reservaId={alvoVisualizacaoComprovante}
         reservas={reservasDoDia}
         salas={salas}
