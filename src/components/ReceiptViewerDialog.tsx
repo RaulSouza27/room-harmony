@@ -244,7 +244,7 @@ export function ReceiptViewerDialog({
 
   const receiptQuery = useReservaReceipt(targetId);
 
-  const displayUrl =
+  const rawUrl =
     receiptUrl &&
     receiptUrl !== "has_receipt" &&
     receiptUrl !== "empty" &&
@@ -252,6 +252,12 @@ export function ReceiptViewerDialog({
     (!activeReservaId || activeReservaId === reservaId)
       ? receiptUrl
       : receiptQuery.data || null;
+
+  const displayUrl = useMemo(() => {
+    if (!rawUrl || rawUrl === "empty" || rawUrl === "has_receipt") return null;
+    if (rawUrl.startsWith("data:") || rawUrl.startsWith("http") || rawUrl.startsWith("/")) return rawUrl;
+    return `data:image/png;base64,${rawUrl}`;
+  }, [rawUrl]);
 
   const downloadFilename = useMemo(() => {
     const profSafe = (profObj?.nome ?? "reserva").replace(/\s+/g, "_").toLowerCase();
