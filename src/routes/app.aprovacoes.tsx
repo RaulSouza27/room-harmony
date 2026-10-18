@@ -1,8 +1,9 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
-import { AlertTriangle, Eye, FileText, Images, XCircle } from "lucide-react";
+import { AlertTriangle, Calendar as CalendarIcon, Eye, FileText, Images, XCircle } from "lucide-react";
 import { AppShell } from "@/components/AppShell";
 import { AprovacaoActions, CancelarReservaButton } from "@/components/ReservaActions";
+import { ReservaFormDialog } from "@/components/ReservaFormDialog";
 import { EmptyState, ErrorState, LoadingState, StatusBadge } from "@/components/common";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -53,9 +54,10 @@ function AprovacoesPage() {
   const usuariosQ = useUsuarios();
   const atualizar = useUpdateReserva();
 
-  const [tab, setTab] = useState<"reservas" | "cancelamentos">("reservas");
+  const [tab, setTab] = useState<"reservas" | "cancelamentos" | "reagendar">("reservas");
   const [alvoComprovante, setAlvoComprovante] = useState<string | null>(null);
   const [detalheReserva, setDetalheReserva] = useState<Reserva | null>(null);
+  const [reservaParaReagendar, setReservaParaReagendar] = useState<Reserva | null>(null);
 
   const reservas = reservasQ.data ?? [];
   const pendentesReserva = reservas
@@ -64,6 +66,10 @@ function AprovacoesPage() {
 
   const pendentesCancelamento = reservas
     .filter((r) => r.status === "solicitacao_cancelamento")
+    .sort((a, b) => (a.data + a.hora_inicio).localeCompare(b.data + b.hora_inicio));
+
+  const pendentesReagendar = reservas
+    .filter((r) => r.status === "reagendar")
     .sort((a, b) => (a.data + a.hora_inicio).localeCompare(b.data + b.hora_inicio));
 
   const pendentesComComprovante = reservas
@@ -80,7 +86,7 @@ function AprovacoesPage() {
   const nomeUnidade = (id: string) => unidadesQ.data?.find((u) => u.id === id)?.nome ?? "—";
   const prof = (id: string) => usuariosQ.data?.find((u) => u.id === id);
 
-  const totalPendencias = pendentesReserva.length + pendentesCancelamento.length;
+  const totalPendencias = pendentesReserva.length + pendentesCancelamento.length + pendentesReagendar.length;
 
   return (
     <AppShell
@@ -89,13 +95,21 @@ function AprovacoesPage() {
     >
       <div className="space-y-5">
         <div className="flex flex-wrap items-center justify-between gap-3">
-          <Tabs value={tab} onValueChange={(v) => setTab(v as "reservas" | "cancelamentos")}>
+          <Tabs value={tab} onValueChange={(v) => setTab(v as "reservas" | "cancelamentos" | "reagendar")}>
             <TabsList>
               <TabsTrigger value="reservas" className="gap-2">
                 Solicitações de Reserva
                 {pendentesReserva.length > 0 && (
                   <Badge variant="secondary" className="px-1.5 py-0.2 text-[10px]">
                     {pendentesReserva.length}
+                  </Badge>
+                )}
+              </TabsTrigger>
+              <TabsTrigger value="reagendar" className="gap-2">
+                A Reagendar (Feriado)
+                {pendentesReagendar.length > 0 && (
+                  <Badge variant="outline" className="px-1.5 py-0.2 text-[10px] border-purple-500/40 bg-purple-500/15 text-purple-700 dark:text-purple-300">
+                    {pendentesReagendar.length}
                   </Badge>
                 )}
               </TabsTrigger>
@@ -236,6 +250,71 @@ function AprovacoesPage() {
               })}
             </ul>
           )
+        ) : tab === "reagendar" ? (
+          pendentesReagendar.length === 0 ? (
+            <EmptyState
+              title="Nenhuma reserva para reagendar"
+              description="Quando feriados ou bloqueios atingirem reservas existentes, elas aparecerão aqui para reagendamento ou cancelamento."
+            />
+          ) : (
+            <ul className="space-y-3">
+              {pendentesReagendar.map((r) => {
+                const p = prof(r.profissional_id);
+                return (
+                  <li key={r.id} className="rounded-xl border border-purple-500/30 bg-purple-500/5 p-4 shadow-soft">
+                    <div className="flex flex-wrap items-start justify-between gap-4">
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-start gap-3">
+                          <Avatar className="size-11 border border-border shrink-0 mt-0.5">
+                            <AvatarImage src={p?.foto} alt={p?.nome ?? "Profissional"} />
+                            <AvatarFallback className="bg-purple-500/10 text-purple-700 font-semibold">
+                              {getInitials(p?.nome)}
+                            </AvatarFallback>
+                          </Avatar>
+                          <div className="min-w-0 flex-1">
+                            <div className="flex items-center gap-2">
+                              <p className="text-sm font-semibold text-card-foreground">{p?.nome ?? "—"}</p>
+                              <StatusBadge status={r.status} />
+                            </div>
+                            <p className="text-xs text-purple-700 dark:text-purple-300 font-medium mt-1">
+                              Esta reserva coincidiu com feriado/bloqueio cadastrado na unidade. Reagende para nova data/hora ou cancele.
+                            </p>
+
+                            <div className="mt-3 pt-2 border-t border-border/60">
+                              <p className="text-sm font-medium text-card-foreground">
+                                {nomeSala(r.sala_id)} · {nomeUnidade(r.unidade_id)}
+                              </p>
+                              <p className="text-xs text-muted-foreground mt-0.5">
+                                {formatarData(r.data)} · {r.hora_inicio}–{r.hora_fim} ·{" "}
+                                <span>{formatRecorrencia(r.recorrencia)}</span>
+                              </p>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-2">
+                        <Button
+                          variant="default"
+                          size="sm"
+                          className="bg-purple-600 hover:bg-purple-700 text-white gap-1.5"
+                          onClick={() => setReservaParaReagendar(r)}
+                        >
+                          <CalendarIcon className="size-3.5" />
+                          Reagendar Reserva
+                        </Button>
+                        <CancelarReservaButton
+                          reserva={r}
+                          label="Cancelar"
+                          size="sm"
+                        />
+                      </div>
+                    </div>
+                  </li>
+                );
+              })}
+            </ul>
+          )
         ) : pendentesCancelamento.length === 0 ? (
           <EmptyState
             title="Nenhuma solicitação de cancelamento pendente"
@@ -325,6 +404,18 @@ function AprovacoesPage() {
         unidade={unidadesQ.data?.find((u) => u.id === detalheReserva?.unidade_id)}
         usuario={usuariosQ.data?.find((u) => u.id === detalheReserva?.profissional_id)}
       />
+
+      {reservaParaReagendar && (
+        <ReservaFormDialog
+          open={!!reservaParaReagendar}
+          onOpenChange={(v) => !v && setReservaParaReagendar(null)}
+          unidades={unidadesQ.data ?? []}
+          salas={salasQ.data ?? []}
+          usuarios={usuariosQ.data ?? []}
+          reservas={reservas}
+          reserva={reservaParaReagendar}
+        />
+      )}
     </AppShell>
   );
 }

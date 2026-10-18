@@ -1,5 +1,5 @@
-export type Role = "LOCADOR" | "ADMINISTRADOR";
-export type UserStatus = "ativo" | "inativo";
+export type Role = 'LOCADOR'|'ADMINISTRADOR';
+export type UserStatus = 'ativo'|'inativo';
 
 export interface Profession {
   id: number;
@@ -14,10 +14,10 @@ export interface User {
   papel: Role;
   status: UserStatus;
   telefone: string;
-  especialidade?: string | undefined;
-  foto?: string | undefined;
+  especialidade?: string|undefined;
+  foto?: string|undefined;
   unidades: string[];
-  professionId?: number | null;
+  professionId?: number|null;
   mustCompleteTour?: boolean;
   cpf: string;
   endereco: string;
@@ -28,8 +28,8 @@ export interface User {
 
 export interface HorarioDia {
   ativo: boolean;
-  abertura: string | null;
-  fechamento: string | null;
+  abertura: string|null;
+  fechamento: string|null;
 }
 
 export type BusinessHours = Record<string, HorarioDia>;
@@ -38,11 +38,11 @@ export interface Unidade {
   id: string;
   nome: string;
   endereco: string;
-  status: "ativa" | "inativa";
+  status: 'ativa'|'inativa';
   business_hours?: BusinessHours;
 }
 
-export type SalaStatus = "ativa" | "inativa";
+export type SalaStatus = 'ativa'|'inativa';
 
 export interface Sala {
   id: string;
@@ -54,22 +54,23 @@ export interface Sala {
   photoCount?: number;
 }
 
-export type ReservaStatus = "pendente" | "aprovada" | "negada" | "cancelada" | "solicitacao_cancelamento";
-export type Recorrencia = "unica" | "semanal_mensal" | "semanal_anual" | "semanal";
+export type ReservaStatus = 'pendente'|'aprovada'|'negada'|'cancelada'|
+    'solicitacao_cancelamento'|'reagendar';
+export type Recorrencia = 'unica'|'semanal_mensal'|'semanal_anual'|'semanal';
 
 export interface Reserva {
   id: string;
   sala_id: string;
   unidade_id: string;
   profissional_id: string;
-  data: string; // yyyy-MM-dd
-  hora_inicio: string; // HH:mm
-  hora_fim: string; // HH:mm
+  data: string;         // yyyy-MM-dd
+  hora_inicio: string;  // HH:mm
+  hora_fim: string;     // HH:mm
   status: ReservaStatus;
   criado_em: string;
-  observacoes?: string | undefined;
-  motivo_negacao?: string | undefined;
-  aprovado_por?: string | undefined;
+  observacoes?: string|undefined;
+  motivo_negacao?: string|undefined;
+  aprovado_por?: string|undefined;
   recorrencia: Recorrencia;
   comprovante?: string;
 }
@@ -81,20 +82,19 @@ export interface NovaReserva {
   data: string;
   hora_inicio: string;
   hora_fim: string;
-  observacoes?: string | undefined;
-  recorrencia?: Recorrencia | undefined;
-  status?: ReservaStatus | undefined;
+  observacoes?: string|undefined;
+  recorrencia?: Recorrencia|undefined;
+  status?: ReservaStatus|undefined;
   comprovante?: string;
 }
 
 export interface Holiday {
   id: number;
   name: string;
-  startDate: string; // yyyy-MM-dd
-  endDate: string; // yyyy-MM-dd
-  unitId?: number | null;
+  startDate: string;  // yyyy-MM-dd
+  endDate: string;    // yyyy-MM-dd
+  unitId?: number|null;
   unitName?: string;
   description?: string;
   status: boolean;
 }
-

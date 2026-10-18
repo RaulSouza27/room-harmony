@@ -76,8 +76,14 @@ export const useUsuarioDetail = (id: string | null) =>
   });
 
 export const useReservasPendentesCount = () => {
-  const { data } = useReservas({ status: "pendente" });
-  return data?.length ?? 0;
+  const { data } = useReservas();
+  if (!data) return 0;
+  return data.filter(
+    (r) =>
+      r.status === "pendente" ||
+      r.status === "solicitacao_cancelamento" ||
+      r.status === "reagendar",
+  ).length;
 };
 
 function useInvalidate(key: readonly unknown[]) {
@@ -351,6 +357,7 @@ export function useSaveHoliday() {
     }) => api.saveHoliday(input),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["holidays"] });
+      queryClient.invalidateQueries({ queryKey: ["reservas"] });
       toast.success("Feriado/bloqueio salvo com sucesso.");
     },
     onError: (e: Error) => toast.error(e.message),
@@ -363,6 +370,7 @@ export function useDeleteHoliday() {
     mutationFn: (id: number) => api.deleteHoliday(id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["holidays"] });
+      queryClient.invalidateQueries({ queryKey: ["reservas"] });
       toast.success("Feriado/bloqueio removido.");
     },
     onError: (e: Error) => toast.error(e.message),

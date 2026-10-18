@@ -8,9 +8,11 @@ import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useAuth } from "@/contexts/AuthContext";
 import { useReservas, useSalas, useUnidades } from "@/hooks/useApi";
 import { formatarData, formatRecorrencia, isReservaComMaisDe24h } from "@/lib/format";
-import type { ReservaStatus } from "@/types";
+import type { Reserva, ReservaStatus } from "@/types";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { AlertCircle, FileText, BellRing } from "lucide-react";
+import { AlertCircle, FileText, BellRing, Calendar as CalendarIcon } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { ReservaFormDialog } from "@/components/ReservaFormDialog";
 import { getNotifications, markNotificationsAsRead, type UserNotification } from "@/services/notificationService";
 import { toast } from "sonner";
 
@@ -36,6 +38,7 @@ export const Route = createFileRoute("/app/minhas-reservas")({
 
 const filtros: Array<{ value: "ativas" | ReservaStatus; label: string }> = [
   { value: "ativas", label: "Ativas" },
+  { value: "reagendar", label: "A Reagendar (Feriado)" },
   { value: "pendente", label: "Pendentes" },
   { value: "aprovada", label: "Aprovadas" },
   { value: "solicitacao_cancelamento", label: "Solicitado Cancelamento" },
@@ -52,6 +55,7 @@ function MinhasReservasPage() {
   const [alvoVisualizacaoComprovante, setAlvoVisualizacaoComprovante] = useState<string | null>(
     null,
   );
+  const [reservaParaReagendar, setReservaParaReagendar] = useState<Reserva | null>(null);
   const [notifications, setNotifications] = useState<UserNotification[]>([]);
 
   useEffect(() => {
@@ -147,6 +151,11 @@ function MinhasReservasPage() {
                       {r.observacoes ? (
                         <p className="mt-2 text-xs text-muted-foreground">{r.observacoes}</p>
                       ) : null}
+                      {r.status === "reagendar" ? (
+                        <p className="mt-2 rounded-md border border-purple-500/30 bg-purple-500/10 px-3 py-2 text-xs text-purple-700 dark:text-purple-300 font-medium">
+                          Data atingida por feriado/fechamento da unidade. Esta reserva precisa ser reagendada junto à administração ou cancelada.
+                        </p>
+                      ) : null}
                       {r.status === "negada" && r.motivo_negacao ? (
                         <p className="mt-2 rounded-md border border-destructive/25 bg-destructive/5 px-3 py-2 text-xs text-destructive">
                           Motivo da negação: {r.motivo_negacao}
@@ -166,6 +175,17 @@ function MinhasReservasPage() {
                     <div className="flex flex-col items-end gap-1">
                       <div className="flex flex-wrap items-center gap-2">
                         <StatusBadge status={r.status} />
+                        {r.status === "reagendar" && (
+                          <Button
+                            variant="default"
+                            size="sm"
+                            className="bg-purple-600 hover:bg-purple-700 text-white gap-1.5 h-8 text-xs"
+                            onClick={() => setReservaParaReagendar(r)}
+                          >
+                            <CalendarIcon className="size-3.5" />
+                            Reagendar Reserva
+                          </Button>
+                        )}
                         {podeSolicitarCancelamento && (
                           <CancelarReservaButton reserva={r} size="sm" />
                         )}
@@ -194,6 +214,19 @@ function MinhasReservasPage() {
         usuarios={user ? [user] : []}
         onNavigateReservaId={(id) => setAlvoVisualizacaoComprovante(id)}
       />
+
+      {reservaParaReagendar && (
+        <ReservaFormDialog
+          open={!!reservaParaReagendar}
+          onOpenChange={(v) => !v && setReservaParaReagendar(null)}
+          unidades={unidades}
+          salas={salas}
+          usuarios={user ? [user] : []}
+          reservas={reservasQ.data ?? []}
+          reserva={reservaParaReagendar}
+          modoReagendamento={true}
+        />
+      )}
     </AppShell>
   );
 }

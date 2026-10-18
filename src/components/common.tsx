@@ -48,6 +48,7 @@ const statusStyles: Record<ReservaStatus, string> = {
   negada: "border-destructive/30 bg-destructive/10 text-destructive",
   cancelada: "border-border bg-muted text-muted-foreground",
   solicitacao_cancelamento: "border-amber-500/40 bg-amber-500/15 text-amber-700 dark:text-amber-300",
+  reagendar: "border-purple-500/40 bg-purple-500/15 text-purple-700 dark:text-purple-300",
 };
 
 const statusLabel: Record<ReservaStatus, string> = {
@@ -56,6 +57,7 @@ const statusLabel: Record<ReservaStatus, string> = {
   negada: "Negada",
   cancelada: "Cancelada",
   solicitacao_cancelamento: "Solicitação de Cancelamento",
+  reagendar: "A Reagendar (Feriado)",
 };
 
 export function StatusBadge({ status }: { status: ReservaStatus }) {
