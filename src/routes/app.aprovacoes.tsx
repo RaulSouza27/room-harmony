@@ -1,12 +1,24 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useState } from "react";
-import { AlertTriangle, Calendar as CalendarIcon, Eye, FileText, Images, XCircle } from "lucide-react";
+import { useMemo, useState } from "react";
+import {
+  AlertTriangle,
+  Calendar as CalendarIcon,
+  ChevronLeft,
+  ChevronRight,
+  Eye,
+  FileText,
+  Images,
+  Search,
+  X,
+} from "lucide-react";
 import { AppShell } from "@/components/AppShell";
 import { AprovacaoActions, CancelarReservaButton } from "@/components/ReservaActions";
 import { ReservaFormDialog } from "@/components/ReservaFormDialog";
 import { EmptyState, ErrorState, LoadingState, StatusBadge } from "@/components/common";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { ReceiptViewerDialog } from "@/components/ReceiptViewerDialog";
 import { ReservaDetailDialog } from "@/components/ReservaDetailDialog";
@@ -55,38 +67,133 @@ function AprovacoesPage() {
   const atualizar = useUpdateReserva();
 
   const [tab, setTab] = useState<"reservas" | "cancelamentos" | "reagendar">("reservas");
+  const [searchQuery, setSearchQuery] = useState("");
+  const [de, setDe] = useState("");
+  const [ate, setAte] = useState("");
+  const [currentPage, setCurrentPage] = useState(1);
+  const pageSize = 10;
+
   const [alvoComprovante, setAlvoComprovante] = useState<string | null>(null);
   const [detalheReserva, setDetalheReserva] = useState<Reserva | null>(null);
   const [reservaParaReagendar, setReservaParaReagendar] = useState<Reserva | null>(null);
 
   const reservas = reservasQ.data ?? [];
-  const pendentesReserva = reservas
-    .filter((r) => r.status === "pendente")
-    .sort((a, b) => (a.data + a.hora_inicio).localeCompare(b.data + b.hora_inicio));
+  const salas = salasQ.data ?? [];
+  const unidades = unidadesQ.data ?? [];
+  const usuarios = usuariosQ.data ?? [];
 
-  const pendentesCancelamento = reservas
-    .filter((r) => r.status === "solicitacao_cancelamento")
-    .sort((a, b) => (a.data + a.hora_inicio).localeCompare(b.data + b.hora_inicio));
+  const nomeSala = (id: string) => salas.find((s) => s.id === id)?.nome ?? "—";
+  const nomeUnidade = (id: string, salaId?: string) => {
+    const u = unidades.find(
+      (un) => un.id === id || (salaId && un.id === salas.find((s) => s.id === salaId)?.unidade_id),
+    );
+    return u?.nome ?? "—";
+  };
+  const prof = (id: string) => usuarios.find((u) => u.id === id);
 
-  const pendentesReagendar = reservas
-    .filter((r) => r.status === "reagendar")
-    .sort((a, b) => (a.data + a.hora_inicio).localeCompare(b.data + b.hora_inicio));
+  // Filtra por busca textual e intervalo de datas
+  const reservasFiltradas = useMemo(() => {
+    const query = searchQuery.toLowerCase().trim();
+    const cleanDigits = query.replace(/\D/g, "");
 
-  const pendentesComComprovante = reservas
-    .filter(
-      (r) =>
-        r.status === "pendente" &&
-        r.comprovante &&
-        r.comprovante !== "empty" &&
-        r.comprovante !== "reserva_especial_admin",
-    )
-    .sort((a, b) => (a.data + a.hora_inicio).localeCompare(b.data + b.hora_inicio));
+    return reservas
+      .filter((r) => !de || r.data >= de)
+      .filter((r) => !ate || r.data <= ate)
+      .filter((r) => {
+        if (!query) return true;
+        const p = usuarios.find((u) => u.id === r.profissional_id);
+        const s = salas.find((sa) => sa.id === r.sala_id);
+        const u = unidades.find((un) => un.id === r.unidade_id || un.id === s?.unidade_id);
 
-  const nomeSala = (id: string) => salasQ.data?.find((s) => s.id === id)?.nome ?? "—";
-  const nomeUnidade = (id: string) => unidadesQ.data?.find((u) => u.id === id)?.nome ?? "—";
-  const prof = (id: string) => usuariosQ.data?.find((u) => u.id === id);
+        const matchProfNome = (p?.nome || "").toLowerCase().includes(query);
+        const matchProfEmail = (p?.email || "").toLowerCase().includes(query);
+        const matchProfBoard = (p?.boardNumber || "").toLowerCase().includes(query);
+        const matchProfTel =
+          cleanDigits.length > 0
+            ? (p?.telefone || "").replace(/\D/g, "").includes(cleanDigits)
+            : (p?.telefone || "").toLowerCase().includes(query);
+        const matchProfCpf =
+          cleanDigits.length > 0
+            ? (p?.cpf || "").replace(/\D/g, "").includes(cleanDigits)
+            : (p?.cpf || "").toLowerCase().includes(query);
 
-  const totalPendencias = pendentesReserva.length + pendentesCancelamento.length + pendentesReagendar.length;
+        const matchSala = (s?.nome || "").toLowerCase().includes(query);
+        const matchUnidade = (u?.nome || "").toLowerCase().includes(query);
+        const matchObs = (r.observacoes || "").toLowerCase().includes(query);
+        const matchData = formatarData(r.data).toLowerCase().includes(query) || r.data.includes(query);
+        const matchHora = `${r.hora_inicio} ${r.hora_fim}`.toLowerCase().includes(query);
+        const matchRecorrencia = formatRecorrencia(r.recorrencia).toLowerCase().includes(query);
+
+        return (
+          matchProfNome ||
+          matchProfEmail ||
+          matchProfBoard ||
+          matchProfTel ||
+          matchProfCpf ||
+          matchSala ||
+          matchUnidade ||
+          matchObs ||
+          matchData ||
+          matchHora ||
+          matchRecorrencia
+        );
+      });
+  }, [reservas, de, ate, searchQuery, usuarios, salas, unidades]);
+
+  const pendentesReserva = useMemo(
+    () =>
+      reservasFiltradas
+        .filter((r) => r.status === "pendente")
+        .sort((a, b) => (a.data + a.hora_inicio).localeCompare(b.data + b.hora_inicio)),
+    [reservasFiltradas],
+  );
+
+  const pendentesCancelamento = useMemo(
+    () =>
+      reservasFiltradas
+        .filter((r) => r.status === "solicitacao_cancelamento")
+        .sort((a, b) => (a.data + a.hora_inicio).localeCompare(b.data + b.hora_inicio)),
+    [reservasFiltradas],
+  );
+
+  const pendentesReagendar = useMemo(
+    () =>
+      reservasFiltradas
+        .filter((r) => r.status === "reagendar")
+        .sort((a, b) => (a.data + a.hora_inicio).localeCompare(b.data + b.hora_inicio)),
+    [reservasFiltradas],
+  );
+
+  const pendentesComComprovante = useMemo(
+    () =>
+      pendentesReserva.filter(
+        (r) =>
+          r.comprovante &&
+          r.comprovante !== "empty" &&
+          r.comprovante !== "reserva_especial_admin",
+      ),
+    [pendentesReserva],
+  );
+
+  const listaAtiva =
+    tab === "reservas"
+      ? pendentesReserva
+      : tab === "reagendar"
+        ? pendentesReagendar
+        : pendentesCancelamento;
+
+  const totalItems = listaAtiva.length;
+  const totalPages = Math.max(1, Math.ceil(totalItems / pageSize));
+  const safePage = Math.min(Math.max(currentPage, 1), totalPages);
+
+  const paginatedLista = useMemo(() => {
+    const startIndex = (safePage - 1) * pageSize;
+    return listaAtiva.slice(startIndex, startIndex + pageSize);
+  }, [listaAtiva, safePage, pageSize]);
+
+  const totalPendencias =
+    pendentesReserva.length + pendentesCancelamento.length + pendentesReagendar.length;
+  const temFiltroAtivo = searchQuery.trim() !== "" || de !== "" || ate !== "";
 
   return (
     <AppShell
@@ -95,7 +202,13 @@ function AprovacoesPage() {
     >
       <div className="space-y-5">
         <div className="flex flex-wrap items-center justify-between gap-3">
-          <Tabs value={tab} onValueChange={(v) => setTab(v as "reservas" | "cancelamentos" | "reagendar")}>
+          <Tabs
+            value={tab}
+            onValueChange={(v) => {
+              setTab(v as "reservas" | "cancelamentos" | "reagendar");
+              setCurrentPage(1);
+            }}
+          >
             <TabsList>
               <TabsTrigger value="reservas" className="gap-2">
                 Solicitações de Reserva
@@ -137,6 +250,68 @@ function AprovacoesPage() {
           )}
         </div>
 
+        {/* Barra de Pesquisa e Filtro por Datas */}
+        <div className="grid gap-4 rounded-xl border border-border bg-card p-4 shadow-soft md:grid-cols-12 items-end">
+          <div className="space-y-2 md:col-span-6">
+            <Label htmlFor="search-aprovacoes">Pesquisar</Label>
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
+              <Input
+                id="search-aprovacoes"
+                placeholder="Buscar por profissional, CRP, sala, unidade, data ou observação..."
+                value={searchQuery}
+                onChange={(e) => {
+                  setSearchQuery(e.target.value);
+                  setCurrentPage(1);
+                }}
+                className="pl-9 pr-4 text-sm"
+              />
+            </div>
+          </div>
+
+          <div className="space-y-2 md:col-span-3">
+            <Label htmlFor="de-aprovacoes">De</Label>
+            <Input
+              id="de-aprovacoes"
+              type="date"
+              value={de}
+              onChange={(e) => {
+                setDe(e.target.value);
+                setCurrentPage(1);
+              }}
+            />
+          </div>
+
+          <div className="space-y-2 md:col-span-3">
+            <div className="flex items-center justify-between">
+              <Label htmlFor="ate-aprovacoes">Até</Label>
+              {temFiltroAtivo && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSearchQuery("");
+                    setDe("");
+                    setAte("");
+                    setCurrentPage(1);
+                  }}
+                  className="inline-flex items-center gap-1 text-xs text-primary hover:underline font-medium"
+                >
+                  <X className="size-3" /> Limpar filtros
+                </button>
+              )}
+            </div>
+            <Input
+              id="ate-aprovacoes"
+              type="date"
+              value={ate}
+              onChange={(e) => {
+                setAte(e.target.value);
+                setCurrentPage(1);
+              }}
+            />
+          </div>
+        </div>
+
         {reservasQ.isLoading ? (
           <LoadingState />
         ) : reservasQ.error ? (
@@ -145,11 +320,15 @@ function AprovacoesPage() {
           pendentesReserva.length === 0 ? (
             <EmptyState
               title="Nenhuma solicitação de reserva pendente"
-              description="Novas solicitações de reserva por profissionais aparecerão aqui automaticamente."
+              description={
+                temFiltroAtivo
+                  ? "Nenhuma solicitação corresponde aos filtros aplicados."
+                  : "Novas solicitações de reserva por profissionais aparecerão aqui automaticamente."
+              }
             />
           ) : (
             <ul className="space-y-3">
-              {pendentesReserva.map((r) => {
+              {paginatedLista.map((r) => {
                 const conflitos = findConflitos(reservas, {
                   sala_id: r.sala_id,
                   data: r.data,
@@ -195,7 +374,7 @@ function AprovacoesPage() {
 
                             <div className="mt-3 pt-2 border-t border-border/60">
                               <p className="text-sm font-medium text-card-foreground">
-                                {nomeSala(r.sala_id)} · {nomeUnidade(r.unidade_id)}
+                                {nomeSala(r.sala_id)} · {nomeUnidade(r.unidade_id, r.sala_id)}
                               </p>
                               <p className="text-xs text-muted-foreground mt-0.5">
                                 {formatarData(r.data)} · {r.hora_inicio}–{r.hora_fim} ·{" "}
@@ -254,11 +433,15 @@ function AprovacoesPage() {
           pendentesReagendar.length === 0 ? (
             <EmptyState
               title="Nenhuma reserva para reagendar"
-              description="Quando feriados ou bloqueios atingirem reservas existentes, elas aparecerão aqui para reagendamento ou cancelamento."
+              description={
+                temFiltroAtivo
+                  ? "Nenhuma reserva corresponde aos filtros aplicados."
+                  : "Quando feriados ou bloqueios atingirem reservas existentes, elas aparecerão aqui para reagendamento ou cancelamento."
+              }
             />
           ) : (
             <ul className="space-y-3">
-              {pendentesReagendar.map((r) => {
+              {paginatedLista.map((r) => {
                 const p = prof(r.profissional_id);
                 return (
                   <li key={r.id} className="rounded-xl border border-purple-500/30 bg-purple-500/5 p-4 shadow-soft">
@@ -282,7 +465,7 @@ function AprovacoesPage() {
 
                             <div className="mt-3 pt-2 border-t border-border/60">
                               <p className="text-sm font-medium text-card-foreground">
-                                {nomeSala(r.sala_id)} · {nomeUnidade(r.unidade_id)}
+                                {nomeSala(r.sala_id)} · {nomeUnidade(r.unidade_id, r.sala_id)}
                               </p>
                               <p className="text-xs text-muted-foreground mt-0.5">
                                 {formatarData(r.data)} · {r.hora_inicio}–{r.hora_fim} ·{" "}
@@ -318,11 +501,15 @@ function AprovacoesPage() {
         ) : pendentesCancelamento.length === 0 ? (
           <EmptyState
             title="Nenhuma solicitação de cancelamento pendente"
-            description="Solicitações de cancelamento enviadas por locatários aparecerão nesta aba."
+            description={
+              temFiltroAtivo
+                ? "Nenhuma solicitação corresponde aos filtros aplicados."
+                : "Solicitações de cancelamento enviadas por locatários aparecerão nesta aba."
+            }
           />
         ) : (
           <ul className="space-y-3">
-            {pendentesCancelamento.map((r) => {
+            {paginatedLista.map((r) => {
               const p = prof(r.profissional_id);
               return (
                 <li key={r.id} className="rounded-xl border border-amber-500/30 bg-amber-500/5 p-4 shadow-soft">
@@ -346,7 +533,7 @@ function AprovacoesPage() {
 
                           <div className="mt-3 pt-2 border-t border-border/60">
                             <p className="text-sm font-medium text-card-foreground">
-                              {nomeSala(r.sala_id)} · {nomeUnidade(r.unidade_id)}
+                              {nomeSala(r.sala_id)} · {nomeUnidade(r.unidade_id, r.sala_id)}
                             </p>
                             <p className="text-xs text-muted-foreground mt-0.5">
                               {formatarData(r.data)} · {r.hora_inicio}–{r.hora_fim} ·{" "}
@@ -383,6 +570,43 @@ function AprovacoesPage() {
             })}
           </ul>
         )}
+
+        {/* Controles de Paginação */}
+        {!reservasQ.isLoading && !reservasQ.error && totalPages > 1 && (
+          <div className="mt-4 flex flex-wrap items-center justify-between gap-3 border-t border-border pt-4 text-xs text-muted-foreground">
+            <div>
+              Exibindo <strong>{(safePage - 1) * pageSize + 1}</strong> a{" "}
+              <strong>{Math.min(safePage * pageSize, totalItems)}</strong> de{" "}
+              <strong>{totalItems}</strong> solicitação(ões)
+            </div>
+
+            <div className="flex items-center gap-1">
+              <Button
+                size="sm"
+                variant="outline"
+                disabled={safePage === 1}
+                onClick={() => setCurrentPage((p) => Math.max(p - 1, 1))}
+                className="h-8 px-2.5"
+              >
+                <ChevronLeft className="size-4 mr-1" /> Anterior
+              </Button>
+
+              <span className="px-2 font-medium text-foreground">
+                Página {safePage} de {totalPages}
+              </span>
+
+              <Button
+                size="sm"
+                variant="outline"
+                disabled={safePage >= totalPages}
+                onClick={() => setCurrentPage((p) => Math.min(p + 1, totalPages))}
+                className="h-8 px-2.5"
+              >
+                Próxima <ChevronRight className="size-4 ml-1" />
+              </Button>
+            </div>
+          </div>
+        )}
       </div>
 
       <ReceiptViewerDialog
@@ -390,9 +614,9 @@ function AprovacoesPage() {
         onOpenChange={(v) => !v && setAlvoComprovante(null)}
         reservaId={alvoComprovante}
         reservas={pendentesReserva}
-        salas={salasQ.data ?? []}
-        unidades={unidadesQ.data ?? []}
-        usuarios={usuariosQ.data ?? []}
+        salas={salas}
+        unidades={unidades}
+        usuarios={usuarios}
         onNavigateReservaId={(id) => setAlvoComprovante(id)}
       />
 
@@ -400,18 +624,22 @@ function AprovacoesPage() {
         open={!!detalheReserva}
         onOpenChange={(v) => !v && setDetalheReserva(null)}
         reserva={detalheReserva}
-        sala={salasQ.data?.find((s) => s.id === detalheReserva?.sala_id)}
-        unidade={unidadesQ.data?.find((u) => u.id === detalheReserva?.unidade_id)}
-        usuario={usuariosQ.data?.find((u) => u.id === detalheReserva?.profissional_id)}
+        sala={salas.find((s) => s.id === detalheReserva?.sala_id)}
+        unidade={unidades.find(
+          (u) =>
+            u.id === detalheReserva?.unidade_id ||
+            u.id === salas.find((s) => s.id === detalheReserva?.sala_id)?.unidade_id,
+        )}
+        usuario={usuarios.find((u) => u.id === detalheReserva?.profissional_id)}
       />
 
       {reservaParaReagendar && (
         <ReservaFormDialog
           open={!!reservaParaReagendar}
           onOpenChange={(v) => !v && setReservaParaReagendar(null)}
-          unidades={unidadesQ.data ?? []}
-          salas={salasQ.data ?? []}
-          usuarios={usuariosQ.data ?? []}
+          unidades={unidades}
+          salas={salas}
+          usuarios={usuarios}
           reservas={reservas}
           reserva={reservaParaReagendar}
         />
