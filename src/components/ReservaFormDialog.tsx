@@ -26,7 +26,6 @@ import { HORARIOS, toMinutes } from "@/services/db";
 import type { Reserva, Sala, Unidade, User, Recorrencia, ReservaStatus } from "@/types";
 import { CalendarOff, Loader2, Sparkles } from "lucide-react";
 import { isReservaEspecial } from "@/lib/format";
-import { createAuditLog } from "@/services/auditService";
 import { toast } from "sonner";
 
 interface Props {
@@ -306,7 +305,7 @@ export function ReservaFormDialog({
         if (isEspecial && dataFim > data) {
           const datas = gerarDatasIntervalo(data, dataFim).slice(1);
           for (const d of datas) {
-            const res = await criar.mutateAsync({
+            await criar.mutateAsync({
               unidade_id: unidadeId,
               sala_id: salaId,
               data: d,
@@ -318,20 +317,12 @@ export function ReservaFormDialog({
               status: "aprovada",
               comprovante: comprovanteFinal,
             });
-
-            await createAuditLog({
-              action: "RESERVA_ESPECIAL_CRIADA",
-              targetType: "RESERVA",
-              targetId: res.id,
-              targetName: `Reserva Especial - ${salaObj?.nome ?? salaId}`,
-              details: `Reserva Especial (Admin) criada pelo administrador ${user?.nome ?? "Admin"} em nome do profissional admin ${profObj?.nome ?? profissionalId}. Unidade: ${unidadeObj?.nome ?? unidadeId}, Sala: ${salaObj?.nome ?? salaId}, Data: ${d}, Horário: ${inicio} às ${fim}. Sem necessidade de aprovação ou comprovante.`,
-            });
           }
         }
       } else if (isEspecial) {
         const datas = gerarDatasIntervalo(data, dataFim);
         for (const d of datas) {
-          const res = await criar.mutateAsync({
+          await criar.mutateAsync({
             unidade_id: unidadeId,
             sala_id: salaId,
             data: d,
@@ -342,14 +333,6 @@ export function ReservaFormDialog({
             recorrencia: "unica",
             status: "aprovada",
             comprovante: comprovanteFinal,
-          });
-
-          await createAuditLog({
-            action: "RESERVA_ESPECIAL_CRIADA",
-            targetType: "RESERVA",
-            targetId: res.id,
-            targetName: `Reserva Especial - ${salaObj?.nome ?? salaId}`,
-            details: `Reserva Especial (Admin) criada pelo administrador ${user?.nome ?? "Admin"} em nome do profissional admin ${profObj?.nome ?? profissionalId}. Unidade: ${unidadeObj?.nome ?? unidadeId}, Sala: ${salaObj?.nome ?? salaId}, Data: ${d}, Horário: ${inicio} às ${fim}. Sem necessidade de aprovação ou comprovante.`,
           });
         }
 

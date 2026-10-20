@@ -14,7 +14,6 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { useAuth } from "@/contexts/AuthContext";
 import { useDeleteReserva, useUpdateReserva } from "@/hooks/useApi";
-import { createAuditLog } from "@/services/auditService";
 import { addNotification } from "@/services/notificationService";
 import { findConflitos } from "@/services/api";
 import { Loader2 } from "lucide-react";
@@ -136,13 +135,6 @@ export function AprovacaoActions({
             id: reserva.id,
             patch: { status: "aprovada", aprovado_por: user?.id, motivo_negacao: undefined },
           });
-          await createAuditLog({
-            action: "APROVACAO_RESERVA",
-            targetType: "RESERVA",
-            targetId: String(reserva.id),
-            targetName: `Reserva #${reserva.id}`,
-            details: `Reserva para ${reserva.data} (${reserva.hora_inicio}-${reserva.hora_fim}) aprovada pelo administrador ${user?.nome ?? ""}.`,
-          });
         }}
       />
 
@@ -179,13 +171,6 @@ export function AprovacaoActions({
                       motivo_negacao: motivo.trim(),
                       aprovado_por: user?.id,
                     },
-                  });
-                  await createAuditLog({
-                    action: "REJEICAO_RESERVA",
-                    targetType: "RESERVA",
-                    targetId: String(reserva.id),
-                    targetName: `Reserva #${reserva.id}`,
-                    details: `Reserva para ${reserva.data} negada por ${user?.nome ?? ""}. Motivo: ${motivo.trim()}`,
                   });
                   setNegar(false);
                 } finally {
@@ -243,14 +228,6 @@ export function CancelarReservaButton({
         patch: { status: "solicitacao_cancelamento" },
       });
 
-      await createAuditLog({
-        action: "SOLICITACAO_CANCELAMENTO_RESERVA",
-        targetType: "RESERVA",
-        targetId: String(reserva.id),
-        targetName: `Reserva #${reserva.id}`,
-        details: `Profissional ${user?.nome ?? ""} solicitou cancelamento da reserva aprovada do dia ${reserva.data} (${reserva.hora_inicio}-${reserva.hora_fim}).`,
-      });
-
       toast.success("Solicitação de cancelamento enviada aos administradores com sucesso.");
     } else {
       // Efetivar cancelamento da reserva
@@ -264,15 +241,6 @@ export function CancelarReservaButton({
         reserva.profissional_id,
         `O cancelamento solicitado para sua reserva no dia ${reserva.data} (${reserva.hora_inicio}-${reserva.hora_fim}) foi realizado com sucesso.`,
       );
-
-      // Registrar auditoria obrigatoriamente
-      await createAuditLog({
-        action: "CANCELAMENTO_RESERVA",
-        targetType: "RESERVA",
-        targetId: String(reserva.id),
-        targetName: `Reserva #${reserva.id}`,
-        details: `Cancelamento da reserva no dia ${reserva.data} (${reserva.hora_inicio}-${reserva.hora_fim}) executado por ${user?.nome ?? "Sistema"}.`,
-      });
 
       toast.success("Reserva cancelada com sucesso!");
     }
@@ -321,13 +289,6 @@ export function ExcluirReservaButton({ reserva }: { reserva: Reserva }) {
 
   const handleExcluir = async () => {
     await excluir.mutateAsync(reserva.id);
-    await createAuditLog({
-      action: "EXCLUSAO_RESERVA",
-      targetType: "RESERVA",
-      targetId: String(reserva.id),
-      targetName: `Reserva #${reserva.id}`,
-      details: `Exclusão definitiva da reserva realizada por ${user?.nome ?? "Admin"}.`,
-    });
   };
 
   return (

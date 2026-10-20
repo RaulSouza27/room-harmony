@@ -20,7 +20,6 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 import { useAuth } from "@/contexts/AuthContext";
 import { useCreateReserva, useHolidays, useReservas } from "@/hooks/useApi";
-import { createAuditLog } from "@/services/auditService";
 import { HORARIOS, toMinutes } from "@/services/db";
 import type { Sala, Unidade, User } from "@/types";
 import { cn } from "@/lib/utils";
@@ -303,7 +302,7 @@ export function ReservaEspecialDialog({
           const dataEfetiva = somarSemanas(slot.dataBase, w);
 
           try {
-            const res = await criar.mutateAsync({
+            await criar.mutateAsync({
               unidade_id: unidadeId,
               sala_id: salaId,
               data: dataEfetiva,
@@ -316,15 +315,6 @@ export function ReservaEspecialDialog({
               recorrencia: "unica",
               status: "aprovada",
               comprovante: "reserva_especial_admin",
-            });
-
-            // Registrar log de auditoria
-            await createAuditLog({
-              action: "RESERVA_ESPECIAL_CRIADA",
-              targetType: "RESERVA",
-              targetId: res.id,
-              targetName: `Reserva Especial - ${salaAtual?.nome ?? salaId}`,
-              details: `Reserva Especial (Admin) criada pelo administrador ${user?.nome ?? "Admin"} em nome do profissional admin ${profissionalAtual?.nome ?? profissionalId}. Unidade: ${unidadeAtual?.nome ?? unidadeId}, Sala: ${salaAtual?.nome ?? salaId}, Data: ${formatarDataBR(dataEfetiva)}, Horário: ${slot.horaInicio} às ${slot.horaFim} (Semana ${w + 1}/${numSemanas}).`,
             });
 
             criadasCount++;

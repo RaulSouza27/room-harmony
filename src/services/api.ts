@@ -453,12 +453,12 @@ export async function softDeleteUsuario(
 
   // Registrar na auditoria
   await createAuditLog({
-    action: isAtivo ? 'USER_ACTIVATED' : 'USER_INACTIVATED',
-    targetType: 'USER',
+    action: isAtivo ? 'ATIVACAO_USUARIO' : 'INATIVACAO_USUARIO',
+    targetType: 'USUARIO',
     targetId: String(id),
     targetName: usuario?.nome || `Profissional #${id}`,
     details:
-        `Status do profissional alterado para ${novoStatus.toUpperCase()}.`,
+        `Status do profissional ${usuario?.nome || `#${id}`} alterado para ${novoStatus.toUpperCase()}.`,
   });
 }
 
