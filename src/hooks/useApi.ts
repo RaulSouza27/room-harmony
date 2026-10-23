@@ -13,6 +13,8 @@ export const keys = {
   profissoes: ["profissoes"] as const,
   reservaReceipt: (id: string) => ["reservaReceipt", id] as const,
   holidays: (unitId?: string | number) => ["holidays", unitId ?? "all"] as const,
+  complaints: ["complaints"] as const,
+  complaintQuota: ["complaintQuota"] as const,
 };
 
 export const useUnidades = () =>
@@ -372,6 +374,54 @@ export function useDeleteHoliday() {
       queryClient.invalidateQueries({ queryKey: ["holidays"] });
       queryClient.invalidateQueries({ queryKey: ["reservas"] });
       toast.success("Feriado/bloqueio removido.");
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+}
+
+export function useComplaintQuota(enabled = true) {
+  return useQuery({
+    queryKey: keys.complaintQuota,
+    queryFn: api.getComplaintQuota,
+    enabled,
+    staleTime: 1000 * 30,
+  });
+}
+
+export function useCreateComplaint() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (input: { complaints: string; anonymous: boolean }) =>
+      api.createComplaint(input),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: keys.complaintQuota });
+      toast.success("Manifestação enviada à Ouvidoria com sucesso!");
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+}
+
+export function useComplaints(enabled = true) {
+  return useQuery({
+    queryKey: keys.complaints,
+    queryFn: api.listComplaints,
+    enabled,
+    staleTime: 1000 * 30,
+  });
+}
+
+export function useUpdateComplaintSolved() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, solved }: { id: number; solved: boolean }) =>
+      api.updateComplaintSolved(id, solved),
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: keys.complaints });
+      toast.success(
+        variables.solved
+          ? "Manifestação marcada como resolvida."
+          : "Manifestação marcada como não resolvida."
+      );
     },
     onError: (e: Error) => toast.error(e.message),
   });
