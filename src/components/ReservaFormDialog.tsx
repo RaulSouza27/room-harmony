@@ -23,10 +23,9 @@ import { statusInicialNovaReserva } from "@/lib/reservaStatus";
 import { useCreateReserva, useUpdateReserva, useHolidays, useSala } from "@/hooks/useApi";
 import { findConflitos, getReservaReceipt } from "@/services/api";
 import { HORARIOS, toMinutes } from "@/services/db";
-import type { Reserva, Sala, Unidade, User, Recorrencia } from "@/types";
+import type { Reserva, Sala, Unidade, User, Recorrencia, ReservaStatus } from "@/types";
 import { CalendarOff, Loader2, Sparkles } from "lucide-react";
 import { isReservaEspecial } from "@/lib/format";
-import { createAuditLog } from "@/services/auditService";
 import { toast } from "sonner";
 
 interface Props {
@@ -38,6 +37,7 @@ interface Props {
   reservas: Reserva[];
   reserva?: Reserva | null;
   preset?: { unidade_id?: string; sala_id?: string; data?: string; hora_inicio?: string };
+  modoReagendamento?: boolean;
 }
 
 const hojeISO = () => new Date().toISOString().slice(0, 10);
@@ -51,6 +51,7 @@ export function ReservaFormDialog({
   reservas,
   reserva,
   preset,
+  modoReagendamento = false,
 }: Props) {
   const { user, isAdmin } = useAuth();
   const criar = useCreateReserva();
@@ -88,8 +89,12 @@ export function ReservaFormDialog({
   useEffect(() => {
     if (!open) return;
     const base = reserva ?? preset;
-    setUnidadeId(base?.unidade_id ?? unidadesDisponiveis[0]?.id ?? "");
-    setSalaId(reserva?.sala_id ?? preset?.sala_id ?? "");
+    const targetSalaId = reserva?.sala_id ?? preset?.sala_id ?? "";
+    const salaObj = salas.find((s) => s.id === targetSalaId);
+    const resolvedUnidadeId = base?.unidade_id || salaObj?.unidade_id || unidadesDisponiveis[0]?.id || "";
+
+    setUnidadeId(resolvedUnidadeId);
+    setSalaId(targetSalaId);
     setData(base?.data ?? hojeISO());
     setDataFim(base?.data ?? hojeISO());
     setInicio(reserva?.hora_inicio ?? preset?.hora_inicio ?? "08:00");
@@ -118,7 +123,7 @@ export function ReservaFormDialog({
     } else {
       setComprovante(reserva?.comprovante ?? "");
     }
-  }, [open, reserva, preset, unidadesDisponiveis, isAdmin, user]);
+  }, [open, reserva, preset, unidadesDisponiveis, salas, isAdmin, user]);
 
   // Enforce automatic reservation duration set: 1h for avulsa, 4h for shift (turno)
   useEffect(() => {
@@ -225,6 +230,8 @@ export function ReservaFormDialog({
   const comprovanteFaltando =
     !isAdmin &&
     !isEspecial &&
+    !modoReagendamento &&
+    !reserva &&
     (!comprovante || comprovante.trim() === "" || comprovante === "empty");
 
   const dataInvalida = isEspecial && dataFim < data;
@@ -270,6 +277,15 @@ export function ReservaFormDialog({
       setSubmittingLocal(true);
 
       if (reserva) {
+        // Para admins editando, define explicitamente status ("aprovada" se reagendando).
+        // Para locatários reagendando, o status NÃO deve ser enviado no payload:
+        // o backend automaticamente detecta a alteração de data/horário feita pelo locatário
+        // e transiciona a reserva para "pendente" (evitando erro 403 de locatário alterando status).
+        const statusAposEdicao: ReservaStatus | undefined =
+          isAdmin && (modoReagendamento || reserva.status === "reagendar")
+            ? "aprovada"
+            : undefined;
+
         await atualizar.mutateAsync({
           id: reserva.id,
           patch: {
@@ -281,6 +297,7 @@ export function ReservaFormDialog({
             profissional_id: profissionalId,
             observacoes: observacoesFinal,
             recorrencia: recorrenciaFinal,
+            ...(statusAposEdicao ? { status: statusAposEdicao } : {}),
             ...(comprovanteFinal !== "has_receipt" ? { comprovante: comprovanteFinal } : {}),
           },
         });
@@ -288,7 +305,7 @@ export function ReservaFormDialog({
         if (isEspecial && dataFim > data) {
           const datas = gerarDatasIntervalo(data, dataFim).slice(1);
           for (const d of datas) {
-            const res = await criar.mutateAsync({
+            await criar.mutateAsync({
               unidade_id: unidadeId,
               sala_id: salaId,
               data: d,
@@ -300,20 +317,12 @@ export function ReservaFormDialog({
               status: "aprovada",
               comprovante: comprovanteFinal,
             });
-
-            await createAuditLog({
-              action: "RESERVA_ESPECIAL_CRIADA",
-              targetType: "RESERVA",
-              targetId: res.id,
-              targetName: `Reserva Especial - ${salaObj?.nome ?? salaId}`,
-              details: `Reserva Especial (Admin) criada pelo administrador ${user?.nome ?? "Admin"} em nome do profissional admin ${profObj?.nome ?? profissionalId}. Unidade: ${unidadeObj?.nome ?? unidadeId}, Sala: ${salaObj?.nome ?? salaId}, Data: ${d}, Horário: ${inicio} às ${fim}. Sem necessidade de aprovação ou comprovante.`,
-            });
           }
         }
       } else if (isEspecial) {
         const datas = gerarDatasIntervalo(data, dataFim);
         for (const d of datas) {
-          const res = await criar.mutateAsync({
+          await criar.mutateAsync({
             unidade_id: unidadeId,
             sala_id: salaId,
             data: d,
@@ -324,14 +333,6 @@ export function ReservaFormDialog({
             recorrencia: "unica",
             status: "aprovada",
             comprovante: comprovanteFinal,
-          });
-
-          await createAuditLog({
-            action: "RESERVA_ESPECIAL_CRIADA",
-            targetType: "RESERVA",
-            targetId: res.id,
-            targetName: `Reserva Especial - ${salaObj?.nome ?? salaId}`,
-            details: `Reserva Especial (Admin) criada pelo administrador ${user?.nome ?? "Admin"} em nome do profissional admin ${profObj?.nome ?? profissionalId}. Unidade: ${unidadeObj?.nome ?? unidadeId}, Sala: ${salaObj?.nome ?? salaId}, Data: ${d}, Horário: ${inicio} às ${fim}. Sem necessidade de aprovação ou comprovante.`,
           });
         }
 
@@ -369,14 +370,24 @@ export function ReservaFormDialog({
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             {isEspecial && <Sparkles className="size-5 text-amber-500" />}
-            {reserva ? "Editar reserva" : isEspecial ? "Nova Reserva Especial (Admin)" : isAdmin ? "Nova reserva" : "Solicitar reserva"}
+            {modoReagendamento
+              ? "Reagendar reserva"
+              : reserva
+                ? "Editar reserva"
+                : isEspecial
+                  ? "Nova Reserva Especial (Admin)"
+                  : isAdmin
+                    ? "Nova reserva"
+                    : "Solicitar reserva"}
           </DialogTitle>
           <DialogDescription>
-            {isEspecial
-              ? "Reserva especial administrativa aprovada de forma imediata e auditada."
-              : isAdmin
-                ? "Reservas criadas pelo administrador já entram como aprovadas."
-                : "Sua solicitação ficará pendente até a aprovação da coordenação."}
+            {modoReagendamento
+              ? "Escolha a nova data e horário para reagendamento. A solicitação será enviada para aprovação do administrador."
+              : isEspecial
+                ? "Reserva especial administrativa aprovada de forma imediata e auditada."
+                : isAdmin
+                  ? "Reservas criadas pelo administrador já entram como aprovadas."
+                  : "Sua solicitação ficará pendente até a aprovação da coordenação."}
           </DialogDescription>
         </DialogHeader>
 
@@ -386,6 +397,7 @@ export function ReservaFormDialog({
               <Label>Unidade</Label>
               <Select
                 value={unidadeId}
+                disabled={modoReagendamento}
                 onValueChange={(v) => {
                   setUnidadeId(v);
                   setSalaId("");
@@ -405,7 +417,7 @@ export function ReservaFormDialog({
             </div>
             <div className="space-y-2">
               <Label>Sala</Label>
-              <Select value={salaId} onValueChange={setSalaId} disabled={!unidadeId}>
+              <Select value={salaId} onValueChange={setSalaId} disabled={!unidadeId || modoReagendamento}>
                 <SelectTrigger>
                   <SelectValue placeholder="Selecione" />
                 </SelectTrigger>
@@ -460,7 +472,7 @@ export function ReservaFormDialog({
           {isAdmin ? (
             <div className="space-y-2">
               <Label>Profissional</Label>
-              <Select value={profissionalId} onValueChange={setProfissionalId}>
+              <Select value={profissionalId} onValueChange={setProfissionalId} disabled={modoReagendamento}>
                 <SelectTrigger>
                   <SelectValue placeholder="Em nome de..." />
                 </SelectTrigger>
@@ -477,7 +489,7 @@ export function ReservaFormDialog({
 
           <div className="space-y-2">
             <Label>Tipo / Recorrência</Label>
-            <Select value={tipoReserva} onValueChange={(v) => setTipoReserva(v as TipoReservaOpcao)}>
+            <Select value={tipoReserva} onValueChange={(v) => setTipoReserva(v as TipoReservaOpcao)} disabled={modoReagendamento}>
               <SelectTrigger>
                 <SelectValue />
               </SelectTrigger>
@@ -614,6 +626,7 @@ export function ReservaFormDialog({
             <Textarea
               id="obs"
               value={observacoes}
+              disabled={modoReagendamento}
               onChange={(e) => setObservacoes(e.target.value)}
               placeholder="Informações adicionais (opcional)"
               maxLength={500}
@@ -625,6 +638,13 @@ export function ReservaFormDialog({
               <span>Comprovante de pagamento dispensado para Reserva Especial.</span>
               <span className="text-[10px] font-semibold text-amber-600 dark:text-amber-400 bg-amber-500/10 px-2 py-0.5 rounded border border-amber-500/20">
                 Dispensado
+              </span>
+            </div>
+          ) : modoReagendamento ? (
+            <div className="rounded-lg border border-purple-500/30 bg-purple-500/10 p-3 text-xs text-purple-700 dark:text-purple-300 flex items-center justify-between">
+              <span>Comprovante original de pagamento mantido para esta reserva.</span>
+              <span className="text-[10px] font-semibold text-purple-700 dark:text-purple-300 bg-purple-500/20 px-2 py-0.5 rounded border border-purple-500/30">
+                Mantido
               </span>
             </div>
           ) : (
@@ -730,6 +750,22 @@ export function ReservaFormDialog({
               <span>{reserva ? "Salvando alterações da reserva..." : "Processando reserva, por favor aguarde..."}</span>
             </div>
           ) : null}
+          {!podeSalvar && !isSubmitting ? (
+            <div className="rounded-md border border-destructive/20 bg-destructive/5 p-3 text-xs text-destructive space-y-1">
+              <span className="font-semibold block">Para habilitar o envio, verifique:</span>
+              <ul className="list-disc pl-4 space-y-0.5">
+                {!unidadeId && <li>Unidade não informada.</li>}
+                {!salaId && <li>Sala não informada.</li>}
+                {!profissionalId && <li>Profissional não informado.</li>}
+                {horarioInvalido && <li>Horário final deve ser maior que o inicial.</li>}
+                {dataInvalida && <li>Data final inválida.</li>}
+                {foraDoHorario && !isEspecial && <li>Horário selecionado está fora do funcionamento da unidade ou dia fechado.</li>}
+                {feriadoDaData && !isEspecial && <li>A data selecionada coincide com um feriado/bloqueio ({feriadoDaData.name}).</li>}
+                {conflitos.length > 0 && !isEspecial && <li>Conflito: já existe reserva no mesmo horário nesta sala.</li>}
+                {comprovanteFaltando && <li>Comprovante de pagamento obrigatório.</li>}
+              </ul>
+            </div>
+          ) : null}
         </div>
 
         <DialogFooter>
@@ -746,11 +782,13 @@ export function ReservaFormDialog({
               ? reserva
                 ? "Salvando..."
                 : "Processando..."
-              : reserva
-                ? "Salvar alterações"
-                : isAdmin
-                  ? "Criar reserva"
-                  : "Enviar solicitação"}
+              : modoReagendamento
+                ? "Enviar solicitação de reagendamento"
+                : reserva
+                  ? "Salvar alterações"
+                  : isAdmin
+                    ? "Criar reserva"
+                    : "Enviar solicitação"}
           </Button>
         </DialogFooter>
       </DialogContent>

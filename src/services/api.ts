@@ -1,16 +1,17 @@
-import { BACKEND_URL } from "@/config/api";
-import { overlaps, readDB, uid, writeDB } from "./db";
-import { createAuditLog } from "./auditService";
-import type { BusinessHours, Holiday, NovaReserva, Profession, Reserva, ReservaStatus, Sala, Unidade, User } from "@/types";
+import {BACKEND_URL} from '@/config/api';
+import type {BusinessHours, Holiday, NovaReserva, Profession, Reserva, ReservaStatus, Sala, Unidade, User} from '@/types';
+
+import {createAuditLog} from './auditService';
+import {overlaps, readDB, uid, writeDB} from './db';
 
 export const defaultBusinessHours = (): BusinessHours => ({
-  "0": { ativo: false, abertura: null, fechamento: null },
-  "1": { ativo: true, abertura: "08:00", fechamento: "18:00" },
-  "2": { ativo: true, abertura: "08:00", fechamento: "18:00" },
-  "3": { ativo: true, abertura: "08:00", fechamento: "18:00" },
-  "4": { ativo: true, abertura: "08:00", fechamento: "18:00" },
-  "5": { ativo: true, abertura: "08:00", fechamento: "18:00" },
-  "6": { ativo: true, abertura: "08:00", fechamento: "12:00" },
+  '0': {ativo: false, abertura: null, fechamento: null},
+  '1': {ativo: true, abertura: '08:00', fechamento: '18:00'},
+  '2': {ativo: true, abertura: '08:00', fechamento: '18:00'},
+  '3': {ativo: true, abertura: '08:00', fechamento: '18:00'},
+  '4': {ativo: true, abertura: '08:00', fechamento: '18:00'},
+  '5': {ativo: true, abertura: '08:00', fechamento: '18:00'},
+  '6': {ativo: true, abertura: '08:00', fechamento: '12:00'},
 });
 
 /**
@@ -21,11 +22,12 @@ export const defaultBusinessHours = (): BusinessHours => ({
 const delay = (ms = 260) => new Promise((r) => setTimeout(r, ms));
 
 function getHeaders(): HeadersInit {
-  const token =
-    typeof window !== "undefined" ? window.localStorage.getItem("clinica-salas-jwt") : null;
+  const token = typeof window !== 'undefined' ?
+      window.localStorage.getItem('clinica-salas-jwt') :
+      null;
   return {
-    "Content-Type": "application/json",
-    ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    'Content-Type': 'application/json',
+    ...(token ? {Authorization: `Bearer ${token}`} : {}),
   };
 }
 
@@ -34,79 +36,82 @@ export async function login(email: string, senha: string): Promise<User> {
   let response: Response;
   try {
     response = await fetch(`${BACKEND_URL}/auth/login`, {
-      method: "POST",
+      method: 'POST',
       headers: {
-        "Content-Type": "application/json",
+        'Content-Type': 'application/json',
       },
-      body: JSON.stringify({ email, password: senha }),
+      body: JSON.stringify({email, password: senha}),
     });
   } catch (error) {
-    console.error("Erro de conexão com o backend:", error);
+    console.error('Erro de conexão com o backend:', error);
     throw new Error(
-      "Não foi possível conectar ao servidor. Por favor, verifique se o backend está ativo e rodando.",
+        'Não foi possível conectar ao servidor. Por favor, verifique se o backend está ativo e rodando.',
     );
   }
 
   if (response.status === 403) {
-    throw new Error("Usuário inativo. Procure o administrador.");
+    throw new Error('Usuário inativo. Procure o administrador.');
   }
   if (response.status === 401) {
-    throw new Error("E-mail ou senha inválidos.");
+    throw new Error('E-mail ou senha inválidos.');
   }
   if (!response.ok) {
-    throw new Error("Erro no servidor ao realizar login. Tente novamente mais tarde.");
+    throw new Error(
+        'Erro no servidor ao realizar login. Tente novamente mais tarde.');
   }
 
   let data;
   try {
     data = await response.json();
   } catch (error) {
-    console.error("Erro ao analisar resposta JSON:", error);
-    throw new Error("Resposta inválida recebida do servidor.");
+    console.error('Erro ao analisar resposta JSON:', error);
+    throw new Error('Resposta inválida recebida do servidor.');
   }
 
   if (!data || !data.token) {
-    throw new Error(data?.message || "Credenciais ou resposta do servidor incorretas.");
+    throw new Error(
+        data?.message || 'Credenciais ou resposta do servidor incorretas.');
   }
 
-  const papel = data.accessLevel === "admin" ? "ADMINISTRADOR" : "LOCADOR";
+  const papel = data.accessLevel === 'admin' ? 'ADMINISTRADOR' : 'LOCADOR';
 
   const user: User = {
     id: data.id ? String(data.id) : data.username || email,
-    nome: data.username || "Usuário",
+    nome: data.username || 'Usuário',
     email: data.email || email,
-    senha: "",
+    senha: '',
     papel,
-    status: "ativo",
-    telefone: data.phone || "",
-    foto: data.photo || "",
+    status: 'ativo',
+    telefone: data.phone || '',
+    foto: data.photo || '',
     unidades: [],
     professionId: data.professionId,
     mustCompleteTour: data.mustCompleteTour || false,
     firstLogin: data.firstLogin || false,
-    cpf: data.cpf || "",
-    endereco: data.address || "",
-    cep: data.cep || "",
-    boardNumber: data.boardNumber || "",
+    cpf: data.cpf || '',
+    endereco: data.address || '',
+    cep: data.cep || '',
+    boardNumber: data.boardNumber || '',
   };
 
   const db = readDB();
   const index = db.users.findIndex(
-    (u) => u.email && user.email && u.email.toLowerCase() === user.email.toLowerCase(),
+      (u) => u.email && user.email &&
+          u.email.toLowerCase() === user.email.toLowerCase(),
   );
   if (index > -1) {
-    db.users[index] = { ...db.users[index], ...user };
+    db.users[index] = {...db.users[index], ...user};
   } else {
     db.users.push(user);
   }
   writeDB(db);
 
-  window.localStorage.setItem("clinica-salas-jwt", data.token);
+  window.localStorage.setItem('clinica-salas-jwt', data.token);
 
   return user;
 }
 
-export async function getUser(id: string): Promise<User | undefined> {
+export async function getUser(id: string): Promise<User|undefined> {
   await delay(80);
   return readDB().users.find((u) => u.id === id);
 }
@@ -117,28 +122,31 @@ export async function listUnidades(): Promise<Unidade[]> {
     headers: getHeaders(),
   });
   if (!response.ok) {
-    throw new Error("Falha ao carregar unidades.");
+    throw new Error('Falha ao carregar unidades.');
   }
   const data = await response.json();
-  return data.map((item: any) => ({
-    id: String(item.id),
-    nome: item.name,
-    endereco: item.address,
-    status: item.status ? "ativa" : "inativa",
-    business_hours: item.businessHours || defaultBusinessHours(),
-  }));
+  return data.map(
+      (item: any) => ({
+        id: String(item.id),
+        nome: item.name,
+        endereco: item.address,
+        status: item.status ? 'ativa' : 'inativa',
+        business_hours: item.businessHours || defaultBusinessHours(),
+      }));
 }
 
-export async function saveUnidade(input: Omit<Unidade, "id"> & { id?: string }): Promise<Unidade> {
+export async function saveUnidade(input: Omit<Unidade, 'id'>&
+                                  {id?: string}): Promise<Unidade> {
   const body = {
     name: input.nome,
     address: input.endereco,
-    status: input.status === "ativa",
+    status: input.status === 'ativa',
     businessHours: input.business_hours || defaultBusinessHours(),
   };
 
-  const url = input.id ? `${BACKEND_URL}/units/${input.id}` : `${BACKEND_URL}/units`;
-  const method = input.id ? "PUT" : "POST";
+  const url =
+      input.id ? `${BACKEND_URL}/units/${input.id}` : `${BACKEND_URL}/units`;
+  const method = input.id ? 'PUT' : 'POST';
 
   const response = await fetch(url, {
     method,
@@ -148,7 +156,7 @@ export async function saveUnidade(input: Omit<Unidade, "id"> & { id?: string }):
 
   if (!response.ok) {
     const errorText = await response.text();
-    throw new Error(errorText || "Falha ao salvar unidade.");
+    throw new Error(errorText || 'Falha ao salvar unidade.');
   }
 
   const data = await response.json();
@@ -156,23 +164,24 @@ export async function saveUnidade(input: Omit<Unidade, "id"> & { id?: string }):
     id: String(data.id),
     nome: data.name,
     endereco: data.address,
-    status: data.status ? "ativa" : "inativa",
-    business_hours: data.businessHours || input.business_hours || defaultBusinessHours(),
+    status: data.status ? 'ativa' : 'inativa',
+    business_hours:
+        data.businessHours || input.business_hours || defaultBusinessHours(),
   };
 }
 
 export async function deleteUnidade(id: string): Promise<void> {
   const db = readDB();
   if (db.salas.some((s) => s.unidade_id === id))
-    throw new Error("Existem salas vinculadas a esta unidade.");
+    throw new Error('Existem salas vinculadas a esta unidade.');
 
   const response = await fetch(`${BACKEND_URL}/units/${id}`, {
-    method: "DELETE",
+    method: 'DELETE',
     headers: getHeaders(),
   });
   if (!response.ok) {
     const errorText = await response.text();
-    throw new Error(errorText || "Falha ao excluir unidade.");
+    throw new Error(errorText || 'Falha ao excluir unidade.');
   }
 }
 
@@ -182,18 +191,18 @@ export async function listSalas(): Promise<Sala[]> {
     headers: getHeaders(),
   });
   if (!response.ok) {
-    throw new Error("Falha ao carregar salas.");
+    throw new Error('Falha ao carregar salas.');
   }
   const data = await response.json();
   return data.map((item: any) => ({
-    id: String(item.id),
-    unidade_id: String(item.unitId),
-    nome: item.name,
-    descricao: item.description || "",
-    status: item.status ? "ativa" : "inativa",
-    fotos: item.photos || [],
-    photoCount: item.photoCount ?? (item.photos?.length || 0),
-  }));
+                    id: String(item.id),
+                    unidade_id: String(item.unitId),
+                    nome: item.name,
+                    descricao: item.description || '',
+                    status: item.status ? 'ativa' : 'inativa',
+                    fotos: item.photos || [],
+                    photoCount: item.photoCount ?? (item.photos?.length || 0),
+                  }));
 }
 
 export async function getSala(id: string): Promise<Sala> {
@@ -201,44 +210,46 @@ export async function getSala(id: string): Promise<Sala> {
     headers: getHeaders(),
   });
   if (!response.ok) {
-    throw new Error("Falha ao carregar detalhes da sala.");
+    throw new Error('Falha ao carregar detalhes da sala.');
   }
   const data = await response.json();
   return {
     id: String(data.id),
     unidade_id: String(data.unitId),
     nome: data.name,
-    descricao: data.description || "",
-    status: data.status ? "ativa" : "inativa",
+    descricao: data.description || '',
+    status: data.status ? 'ativa' : 'inativa',
     fotos: data.photos || [],
     photoCount: data.photoCount ?? (data.photos?.length || 0),
   };
 }
 
 export async function getSalaFoto(
-  id: string,
-  index: number,
-): Promise<{ photo: string; index: number; total: number }> {
+    id: string,
+    index: number,
+    ): Promise<{photo: string; index: number; total: number}> {
   const response = await fetch(`${BACKEND_URL}/rooms/${id}/photo/${index}`, {
     headers: getHeaders(),
   });
   if (!response.ok) {
-    throw new Error("Falha ao carregar foto da sala.");
+    throw new Error('Falha ao carregar foto da sala.');
   }
   return response.json();
 }
 
-export async function saveSala(input: Omit<Sala, "id"> & { id?: string }): Promise<Sala> {
+export async function saveSala(input: Omit<Sala, 'id'>&
+                               {id?: string}): Promise<Sala> {
   const isUpdate = !!input.id;
-  const url = isUpdate ? `${BACKEND_URL}/rooms/${input.id}` : `${BACKEND_URL}/rooms`;
-  const method = isUpdate ? "PUT" : "POST";
+  const url =
+      isUpdate ? `${BACKEND_URL}/rooms/${input.id}` : `${BACKEND_URL}/rooms`;
+  const method = isUpdate ? 'PUT' : 'POST';
 
   const body = {
     name: input.nome,
     unitId: Number(input.unidade_id),
-    status: input.status === "ativa",
+    status: input.status === 'ativa',
     description: input.descricao,
-    comments: "",
+    comments: '',
     photos: input.fotos || [],
   };
 
@@ -250,7 +261,7 @@ export async function saveSala(input: Omit<Sala, "id"> & { id?: string }): Promi
 
   if (!response.ok) {
     const errorText = await response.text();
-    throw new Error(errorText || "Falha ao salvar sala.");
+    throw new Error(errorText || 'Falha ao salvar sala.');
   }
 
   const data = await response.json();
@@ -258,8 +269,8 @@ export async function saveSala(input: Omit<Sala, "id"> & { id?: string }): Promi
     id: String(data.id),
     unidade_id: String(data.unitId),
     nome: data.name,
-    descricao: data.description || "",
-    status: data.status ? "ativa" : "inativa",
+    descricao: data.description || '',
+    status: data.status ? 'ativa' : 'inativa',
     fotos: data.photos || [],
     photoCount: data.photoCount ?? (data.photos?.length || 0),
   };
@@ -267,12 +278,12 @@ export async function saveSala(input: Omit<Sala, "id"> & { id?: string }): Promi
 
 export async function deleteSala(id: string): Promise<void> {
   const response = await fetch(`${BACKEND_URL}/rooms/${id}`, {
-    method: "DELETE",
+    method: 'DELETE',
     headers: getHeaders(),
   });
   if (!response.ok) {
     const errorText = await response.text();
-    throw new Error(errorText || "Falha ao excluir sala.");
+    throw new Error(errorText || 'Falha ao excluir sala.');
   }
 
   // Sincronizar reservas no localStorage para evitar inconsistências
@@ -287,28 +298,31 @@ export async function listUsuarios(): Promise<User[]> {
     headers: getHeaders(),
   });
   if (!response.ok) {
-    throw new Error("Falha ao carregar profissionais.");
+    throw new Error('Falha ao carregar profissionais.');
   }
   const data = await response.json();
-  return data.map((item: any) => ({
-    id: String(item.id),
-    nome: item.username,
-    email: item.email,
-    senha: "",
-    papel: item.accessLevel === "admin" ? "ADMINISTRADOR" : "LOCADOR",
-    status: item.status ? "ativo" : "inativo",
-    telefone: item.phone || "",
-    especialidade: item.specialty || "",
-    foto: item.photo || "",
-    unidades: item.units || [],
-    professionId: item.professionId,
-    mustCompleteTour: item.mustCompleteTour || false,
-    firstLogin: item.firstLogin !== undefined ? item.firstLogin : (item.isFirstLogin || false),
-    cpf: item.cpf || "",
-    endereco: item.address || "",
-    cep: item.cep || "",
-    boardNumber: item.boardNumber || "",
-  }));
+  return data.map(
+      (item: any) => ({
+        id: String(item.id),
+        nome: item.username,
+        email: item.email,
+        senha: '',
+        papel: item.accessLevel === 'admin' ? 'ADMINISTRADOR' : 'LOCADOR',
+        status: item.status ? 'ativo' : 'inativo',
+        telefone: item.phone || '',
+        especialidade: item.specialty || '',
+        foto: item.photo || '',
+        unidades: item.units || [],
+        professionId: item.professionId,
+        mustCompleteTour: item.mustCompleteTour || false,
+        firstLogin: item.firstLogin !== undefined ?
+            item.firstLogin :
+            (item.isFirstLogin || false),
+        cpf: item.cpf || '',
+        endereco: item.address || '',
+        cep: item.cep || '',
+        boardNumber: item.boardNumber || '',
+      }));
 }
 
 export async function getUsuarioDetail(id: string): Promise<User> {
@@ -316,46 +330,54 @@ export async function getUsuarioDetail(id: string): Promise<User> {
     headers: getHeaders(),
   });
   if (!response.ok) {
-    throw new Error("Falha ao carregar perfil do usuário.");
+    throw new Error('Falha ao carregar perfil do usuário.');
   }
   const item = await response.json();
   return {
     id: String(item.id),
     nome: item.username,
     email: item.email,
-    senha: "",
-    papel: item.accessLevel === "admin" ? "ADMINISTRADOR" : "LOCADOR",
-    status: item.status ? "ativo" : "inativo",
-    telefone: item.phone || "",
-    especialidade: item.specialty || "",
-    foto: item.photo || "",
+    senha: '',
+    papel: item.accessLevel === 'admin' ? 'ADMINISTRADOR' : 'LOCADOR',
+    status: item.status ? 'ativo' : 'inativo',
+    telefone: item.phone || '',
+    especialidade: item.specialty || '',
+    foto: item.photo || '',
     unidades: item.units || [],
     professionId: item.professionId,
     mustCompleteTour: item.mustCompleteTour || false,
-    firstLogin: item.firstLogin !== undefined ? item.firstLogin : (item.isFirstLogin || false),
-    cpf: item.cpf || "",
-    endereco: item.address || "",
-    cep: item.cep || "",
-    boardNumber: item.boardNumber || "",
+    firstLogin: item.firstLogin !== undefined ? item.firstLogin :
+                                                (item.isFirstLogin || false),
+    cpf: item.cpf || '',
+    endereco: item.address || '',
+    cep: item.cep || '',
+    boardNumber: item.boardNumber || '',
   };
 }
 
-export async function saveUsuario(input: Partial<User> & { id?: string }): Promise<User> {
+export async function saveUsuario(input: Partial<User>&
+                                  {id?: string}): Promise<User> {
   const isUpdate = !!input.id;
-  const url = isUpdate ? `${BACKEND_URL}/users/${input.id}` : `${BACKEND_URL}/users`;
-  const method = isUpdate ? "PUT" : "POST";
+  const url =
+      isUpdate ? `${BACKEND_URL}/users/${input.id}` : `${BACKEND_URL}/users`;
+  const method = isUpdate ? 'PUT' : 'POST';
 
   const body = {
     username: input.nome,
     email: input.email,
     password: input.senha,
-    accessLevel: input.papel ? (input.papel === "ADMINISTRADOR" ? "admin" : "psi") : undefined,
-    status: input.status !== undefined ? input.status === "ativo" : undefined,
+    accessLevel: input.papel ?
+        (input.papel === 'ADMINISTRADOR' ? 'admin' : 'psi') :
+        undefined,
+    status: input.status !== undefined ? input.status === 'ativo' : undefined,
     phone: input.telefone,
     specialty: input.especialidade,
     photo: input.foto,
     units: input.unidades,
-    professionId: input.professionId !== undefined && input.professionId !== null && Number(input.professionId) !== 0 ? Number(input.professionId) : null,
+    professionId: input.professionId !== undefined &&
+            input.professionId !== null && Number(input.professionId) !== 0 ?
+        Number(input.professionId) :
+        null,
     cpf: input.cpf,
     address: input.endereco,
     cep: input.cep,
@@ -370,7 +392,7 @@ export async function saveUsuario(input: Partial<User> & { id?: string }): Promi
 
   if (!response.ok) {
     const errorText = await response.text();
-    throw new Error(errorText || "Falha ao salvar profissional.");
+    throw new Error(errorText || 'Falha ao salvar profissional.');
   }
 
   const data = await response.json();
@@ -378,103 +400,107 @@ export async function saveUsuario(input: Partial<User> & { id?: string }): Promi
     id: String(data.id),
     nome: data.username,
     email: data.email,
-    senha: "",
-    papel: data.accessLevel === "admin" ? "ADMINISTRADOR" : "LOCADOR",
-    status: data.status ? "ativo" : "inativo",
-    telefone: data.phone || "",
-    especialidade: data.specialty || "",
-    foto: data.photo || "",
+    senha: '',
+    papel: data.accessLevel === 'admin' ? 'ADMINISTRADOR' : 'LOCADOR',
+    status: data.status ? 'ativo' : 'inativo',
+    telefone: data.phone || '',
+    especialidade: data.specialty || '',
+    foto: data.photo || '',
     unidades: data.units || [],
     professionId: data.professionId,
     mustCompleteTour: data.mustCompleteTour || false,
-    firstLogin: data.firstLogin !== undefined ? data.firstLogin : (data.isFirstLogin || false),
-    cpf: data.cpf || "",
-    endereco: data.address || "",
-    cep: data.cep || "",
-    boardNumber: data.boardNumber || "",
+    firstLogin: data.firstLogin !== undefined ? data.firstLogin :
+                                                (data.isFirstLogin || false),
+    cpf: data.cpf || '',
+    endereco: data.address || '',
+    cep: data.cep || '',
+    boardNumber: data.boardNumber || '',
   };
 }
 
 export async function softDeleteUsuario(
-  id: string,
-  novoStatus: "ativo" | "inativo",
-  usuario?: User
-): Promise<void> {
-  const isAtivo = novoStatus === "ativo";
+    id: string, novoStatus: 'ativo'|'inativo', usuario?: User): Promise<void> {
+  const isAtivo = novoStatus === 'ativo';
 
   let success = false;
   if (!isAtivo) {
     try {
       const deleteRes = await fetch(`${BACKEND_URL}/users/${id}`, {
-        method: "DELETE",
+        method: 'DELETE',
         headers: getHeaders(),
       });
       if (deleteRes.ok) {
         success = true;
       }
     } catch {
-      // Se falhar o DELETE REST direto, fallback para alteração de status via PUT
+      // Se falhar o DELETE REST direto, fallback para alteração de status via
+      // PUT
     }
   }
 
   if (!success) {
     const response = await fetch(`${BACKEND_URL}/users/${id}`, {
-      method: "PUT",
+      method: 'PUT',
       headers: getHeaders(),
-      body: JSON.stringify({ status: isAtivo }),
+      body: JSON.stringify({status: isAtivo}),
     });
 
     if (!response.ok) {
-      throw new Error(`Falha ao ${isAtivo ? "ativar" : "inativar"} o profissional.`);
+      throw new Error(
+          `Falha ao ${isAtivo ? 'ativar' : 'inativar'} o profissional.`);
     }
   }
 
   // Registrar na auditoria
   await createAuditLog({
-    action: isAtivo ? "USER_ACTIVATED" : "USER_INACTIVATED",
-    targetType: "USER",
+    action: isAtivo ? 'ATIVACAO_USUARIO' : 'INATIVACAO_USUARIO',
+    targetType: 'USUARIO',
     targetId: String(id),
     targetName: usuario?.nome || `Profissional #${id}`,
-    details: `Status do profissional alterado para ${novoStatus.toUpperCase()}.`,
+    details:
+        `Status do profissional ${usuario?.nome || `#${id}`} alterado para ${novoStatus.toUpperCase()}.`,
   });
 }
 
 
 export async function resetPassword(id: string): Promise<void> {
   const response = await fetch(`${BACKEND_URL}/users/${id}/reset-password`, {
-    method: "POST",
+    method: 'POST',
     headers: getHeaders(),
   });
 
   if (!response.ok) {
     const errorText = await response.text();
-    throw new Error(errorText || "Falha ao resetar senha.");
+    throw new Error(errorText || 'Falha ao resetar senha.');
   }
 }
 
-export async function changePassword(id: string, password: string): Promise<void> {
+export async function changePassword(
+    id: string, password: string): Promise<void> {
   const response = await fetch(`${BACKEND_URL}/users/${id}/first-login`, {
-    method: "PUT",
+    method: 'PUT',
     headers: getHeaders(),
-    body: JSON.stringify({ password }),
+    body: JSON.stringify({password}),
   });
 
   if (!response.ok) {
     const errorText = await response.text();
-    throw new Error(errorText || "Falha ao alterar senha.");
+    throw new Error(errorText || 'Falha ao alterar senha.');
   }
 }
 
-export async function changePasswordFirstLogin(id: string, newPassword: string): Promise<void> {
+export async function changePasswordFirstLogin(
+    id: string, newPassword: string): Promise<void> {
   const response = await fetch(`${BACKEND_URL}/users/${id}/first-login`, {
-    method: "PUT",
+    method: 'PUT',
     headers: getHeaders(),
-    body: JSON.stringify({ password: newPassword }),
+    body: JSON.stringify({password: newPassword}),
   });
 
   if (!response.ok) {
     const errorText = await response.text();
-    throw new Error(errorText || "Falha ao redefinir a senha no primeiro login.");
+    throw new Error(
+        errorText || 'Falha ao redefinir a senha no primeiro login.');
   }
 
   // Update in local DB as well so frontend cache/mock stays in sync
@@ -489,53 +515,56 @@ export async function changePasswordFirstLogin(id: string, newPassword: string):
 
 /* ------------------------------ Reservas ---------------------------- */
 export interface ReservaFilters {
-  startDate?: string | undefined;
-  endDate?: string | undefined;
-  userId?: string | undefined;
-  roomId?: string | undefined;
-  unitId?: string | undefined;
-  status?: string | undefined;
-  includeReceipt?: boolean | undefined;
+  startDate?: string|undefined;
+  endDate?: string|undefined;
+  userId?: string|undefined;
+  roomId?: string|undefined;
+  unitId?: string|undefined;
+  status?: string|undefined;
+  includeReceipt?: boolean|undefined;
 }
 
-export async function listReservas(filters?: ReservaFilters): Promise<Reserva[]> {
+export async function listReservas(filters?: ReservaFilters):
+    Promise<Reserva[]> {
   const params = new URLSearchParams();
-  if (filters?.startDate) params.append("startDate", filters.startDate);
-  if (filters?.endDate) params.append("endDate", filters.endDate);
-  if (filters?.userId) params.append("userId", filters.userId);
-  if (filters?.roomId) params.append("roomId", filters.roomId);
-  if (filters?.unitId && filters.unitId !== "todas" && !isNaN(Number(filters.unitId))) {
-    params.append("unitId", filters.unitId);
+  if (filters?.startDate) params.append('startDate', filters.startDate);
+  if (filters?.endDate) params.append('endDate', filters.endDate);
+  if (filters?.userId) params.append('userId', filters.userId);
+  if (filters?.roomId) params.append('roomId', filters.roomId);
+  if (filters?.unitId && filters.unitId !== 'todas' &&
+      !isNaN(Number(filters.unitId))) {
+    params.append('unitId', filters.unitId);
   }
-  if (filters?.status) params.append("status", filters.status);
-  if (filters?.includeReceipt) params.append("includeReceipt", "true");
+  if (filters?.status) params.append('status', filters.status);
+  if (filters?.includeReceipt) params.append('includeReceipt', 'true');
 
   const queryString = params.toString();
-  const url = `${BACKEND_URL}/reservations/readAll${queryString ? `?${queryString}` : ""}`;
+  const url = `${BACKEND_URL}/reservations/readAll${
+      queryString ? `?${queryString}` : ''}`;
 
   const response = await fetch(url, {
     headers: getHeaders(),
   });
   if (!response.ok) {
-    throw new Error("Falha ao carregar reservas.");
+    throw new Error('Falha ao carregar reservas.');
   }
   const data = await response.json();
   return data.map((item: any) => {
     return {
       id: String(item.id),
       sala_id: String(item.roomsId),
-      unidade_id: item.unitId ? String(item.unitId) : "",
+      unidade_id: item.unitId ? String(item.unitId) : '',
       profissional_id: String(item.userId),
       data: item.data,
       hora_inicio: item.horaInicio.slice(0, 5),
       hora_fim: item.horaFim.slice(0, 5),
-      status: item.statusString || "pendente",
+      status: item.statusString || 'pendente',
       criado_em: new Date().toISOString(),
-      observacoes: item.description || "",
-      motivo_negacao: item.motivoNegacao || "",
-      aprovado_por: item.aprovadoPor || "",
-      recorrencia: item.recorrencia || "unica",
-      comprovante: item.depositImage || "",
+      observacoes: item.description || '',
+      motivo_negacao: item.motivoNegacao || '',
+      aprovado_por: item.aprovadoPor || '',
+      recorrencia: item.recorrencia || 'unica',
+      comprovante: item.depositImage || '',
     };
   });
 }
@@ -545,30 +574,26 @@ export async function getReservaReceipt(id: string): Promise<string> {
     headers: getHeaders(),
   });
   if (!response.ok) {
-    throw new Error("Falha ao carregar comprovante.");
+    throw new Error('Falha ao carregar comprovante.');
   }
   const data = await response.json();
-  return data.depositImage || "";
+  return data.depositImage || '';
 }
 
 /** Conflitos que ocupam o horário (aprovadas e pendentes). */
 export function findConflitos(
-  reservas: Reserva[],
-  input: {
-    sala_id: string;
-    data: string;
-    hora_inicio: string;
-    hora_fim: string;
-    ignoreId?: string;
-  },
+    reservas: Reserva[],
+    input: {
+      sala_id: string; data: string; hora_inicio: string; hora_fim: string;
+      ignoreId?: string;
+    },
 ) {
   return reservas.filter(
-    (r) =>
-      r.id !== input.ignoreId &&
-      r.sala_id === input.sala_id &&
-      r.data === input.data &&
-      (r.status === "aprovada" || r.status === "pendente") &&
-      overlaps(input.hora_inicio, input.hora_fim, r.hora_inicio, r.hora_fim),
+      (r) => r.id !== input.ignoreId && r.sala_id === input.sala_id &&
+          r.data === input.data &&
+          (r.status === 'aprovada' || r.status === 'pendente') &&
+          overlaps(
+                 input.hora_inicio, input.hora_fim, r.hora_inicio, r.hora_fim),
   );
 }
 
@@ -577,128 +602,143 @@ export async function createReserva(input: NovaReserva): Promise<Reserva> {
     roomsId: Number(input.sala_id),
     userId: Number(input.profissional_id),
     data: input.data,
-    horaInicio: input.hora_inicio.length === 5 ? `${input.hora_inicio}:00` : input.hora_inicio,
-    horaFim: input.hora_fim.length === 5 ? `${input.hora_fim}:00` : input.hora_fim,
-    depositImage: input.comprovante || "empty",
-    description: input.observacoes || "",
-    statusString: input.status || "pendente",
-    motivoNegacao: "",
-    aprovadoPor: "",
-    recorrencia: input.recorrencia || "unica",
+    horaInicio: input.hora_inicio.length === 5 ? `${input.hora_inicio}:00` :
+                                                 input.hora_inicio,
+    horaFim: input.hora_fim.length === 5 ? `${input.hora_fim}:00` :
+                                           input.hora_fim,
+    depositImage: input.comprovante || 'empty',
+    description: input.observacoes || '',
+    statusString: input.status || 'pendente',
+    motivoNegacao: '',
+    aprovadoPor: '',
+    recorrencia: input.recorrencia || 'unica',
   };
 
   const response = await fetch(`${BACKEND_URL}/reservations`, {
-    method: "POST",
+    method: 'POST',
     headers: getHeaders(),
     body: JSON.stringify(body),
   });
 
   if (!response.ok) {
     const errorText = await response.text();
-    throw new Error(errorText || "Falha ao criar reserva.");
+    throw new Error(errorText || 'Falha ao criar reserva.');
   }
 
   const data = await response.json();
-  const rooms = await listSalas();
-  const room = rooms.find((r) => r.id === String(data.roomsId));
+  let unidadeId = data.unitId ? String(data.unitId) : (input.unidade_id || '');
+  if (!unidadeId) {
+    const rooms = await listSalas();
+    const room = rooms.find((r) => r.id === String(data.roomsId));
+    unidadeId = room ? room.unidade_id : '';
+  }
 
   return {
     id: String(data.id),
     sala_id: String(data.roomsId),
-    unidade_id: room ? room.unidade_id : "",
+    unidade_id: unidadeId,
     profissional_id: String(data.userId),
     data: data.data,
     hora_inicio: data.horaInicio.slice(0, 5),
     hora_fim: data.horaFim.slice(0, 5),
-    status: data.statusString || "pendente",
+    status: data.statusString || 'pendente',
     criado_em: new Date().toISOString(),
-    observacoes: data.description || "",
-    motivo_negacao: data.motivoNegacao || "",
-    aprovado_por: data.aprovadoPor || "",
-    recorrencia: data.recorrencia || "unica",
-    comprovante: data.depositImage || "",
+    observacoes: data.description || '',
+    motivo_negacao: data.motivoNegacao || '',
+    aprovado_por: data.aprovadoPor || '',
+    recorrencia: data.recorrencia || 'unica',
+    comprovante: data.depositImage || '',
   };
 }
 
-export async function updateReserva(id: string, patch: Partial<Reserva>): Promise<Reserva> {
+export async function updateReserva(
+    id: string, patch: Partial<Reserva>): Promise<Reserva> {
   const body: any = {};
   if (patch.sala_id !== undefined) body.roomsId = Number(patch.sala_id);
-  if (patch.profissional_id !== undefined) body.userId = Number(patch.profissional_id);
+  if (patch.profissional_id !== undefined)
+    body.userId = Number(patch.profissional_id);
   if (patch.data !== undefined) body.data = patch.data;
   if (patch.hora_inicio !== undefined) {
-    body.horaInicio =
-      patch.hora_inicio.length === 5 ? `${patch.hora_inicio}:00` : patch.hora_inicio;
+    body.horaInicio = patch.hora_inicio.length === 5 ?
+        `${patch.hora_inicio}:00` :
+        patch.hora_inicio;
   }
   if (patch.hora_fim !== undefined) {
-    body.horaFim = patch.hora_fim.length === 5 ? `${patch.hora_fim}:00` : patch.hora_fim;
+    body.horaFim =
+        patch.hora_fim.length === 5 ? `${patch.hora_fim}:00` : patch.hora_fim;
   }
   if (patch.observacoes !== undefined) body.description = patch.observacoes;
   if (patch.status !== undefined) body.statusString = patch.status;
-  if (patch.motivo_negacao !== undefined) body.motivoNegacao = patch.motivo_negacao;
+  if (patch.motivo_negacao !== undefined)
+    body.motivoNegacao = patch.motivo_negacao;
   if (patch.aprovado_por !== undefined) body.aprovadoPor = patch.aprovado_por;
   if (patch.recorrencia !== undefined) body.recorrencia = patch.recorrencia;
   if (patch.comprovante !== undefined) body.depositImage = patch.comprovante;
 
   const response = await fetch(`${BACKEND_URL}/reservations/${id}`, {
-    method: "PUT",
+    method: 'PUT',
     headers: getHeaders(),
     body: JSON.stringify(body),
   });
 
   if (!response.ok) {
     const errorText = await response.text();
-    throw new Error(errorText || "Falha ao atualizar reserva.");
+    throw new Error(errorText || 'Falha ao atualizar reserva.');
   }
 
   const data = await response.json();
-  const rooms = await listSalas();
-  const room = rooms.find((r) => r.id === String(data.roomsId));
+  let unidadeId = data.unitId ? String(data.unitId) : (patch.unidade_id || '');
+  if (!unidadeId) {
+    const rooms = await listSalas();
+    const room = rooms.find((r) => r.id === String(data.roomsId));
+    unidadeId = room ? room.unidade_id : '';
+  }
 
   return {
     id: String(data.id),
     sala_id: String(data.roomsId),
-    unidade_id: room ? room.unidade_id : "",
+    unidade_id: unidadeId,
     profissional_id: String(data.userId),
     data: data.data,
     hora_inicio: data.horaInicio.slice(0, 5),
     hora_fim: data.horaFim.slice(0, 5),
-    status: data.statusString || "pendente",
+    status: data.statusString || 'pendente',
     criado_em: new Date().toISOString(),
-    observacoes: data.description || "",
-    motivo_negacao: data.motivoNegacao || "",
-    aprovado_por: data.aprovadoPor || "",
-    recorrencia: data.recorrencia || "unica",
-    comprovante: data.depositImage || "",
+    observacoes: data.description || '',
+    motivo_negacao: data.motivoNegacao || '',
+    aprovado_por: data.aprovadoPor || '',
+    recorrencia: data.recorrencia || 'unica',
+    comprovante: data.depositImage || '',
   };
 }
 
 export async function setStatusReserva(
-  id: string,
-  status: ReservaStatus,
-  extra?: { motivo_negacao?: string; aprovado_por?: string },
-): Promise<Reserva> {
-  return updateReserva(id, { status, ...extra });
+    id: string,
+    status: ReservaStatus,
+    extra?: {motivo_negacao?: string; aprovado_por?: string},
+    ): Promise<Reserva> {
+  return updateReserva(id, {status, ...extra});
 }
 
 export async function deleteReserva(id: string): Promise<void> {
   const response = await fetch(`${BACKEND_URL}/reservations/${id}`, {
-    method: "DELETE",
+    method: 'DELETE',
     headers: getHeaders(),
   });
   if (!response.ok) {
-    throw new Error("Falha ao excluir reserva.");
+    throw new Error('Falha ao excluir reserva.');
   }
 }
 
 export async function deleteReservasBatch(ids: string[]): Promise<void> {
   const response = await fetch(`${BACKEND_URL}/reservations/delete-batch`, {
-    method: "POST",
+    method: 'POST',
     headers: getHeaders(),
     body: JSON.stringify(ids.map(Number)),
   });
   if (!response.ok) {
     const errorText = await response.text();
-    throw new Error(errorText || "Falha ao excluir reservas em lote.");
+    throw new Error(errorText || 'Falha ao excluir reservas em lote.');
   }
 }
 
@@ -708,18 +748,20 @@ export async function listProfessions(): Promise<Profession[]> {
     headers: getHeaders(),
   });
   if (!response.ok) {
-    throw new Error("Falha ao carregar profissões.");
+    throw new Error('Falha ao carregar profissões.');
   }
   const data = await response.json();
   return data.map((item: any) => ({
-    id: item.id,
-    profission: item.profission,
-  }));
+                    id: item.id,
+                    profission: item.profission,
+                  }));
 }
 
-export async function saveProfession(input: { id?: number; profission: string }): Promise<Profession> {
-  const url = input.id ? `${BACKEND_URL}/profissions/${input.id}` : `${BACKEND_URL}/profissions`;
-  const method = input.id ? "PUT" : "POST";
+export async function saveProfession(input: {id?: number; profission: string}):
+    Promise<Profession> {
+  const url = input.id ? `${BACKEND_URL}/profissions/${input.id}` :
+                         `${BACKEND_URL}/profissions`;
+  const method = input.id ? 'PUT' : 'POST';
 
   const response = await fetch(url, {
     method,
@@ -732,12 +774,12 @@ export async function saveProfession(input: { id?: number; profission: string })
 
   if (!response.ok) {
     const errorText = await response.text();
-    throw new Error(errorText || "Falha ao salvar profissão.");
+    throw new Error(errorText || 'Falha ao salvar profissão.');
   }
 
-  // Se for PUT (update), o backend retorna status 200 OK sem corpo (ResponseEntity.ok().build())
-  // Se for POST (save), retorna a entidade criada
-  if (method === "PUT") {
+  // Se for PUT (update), o backend retorna status 200 OK sem corpo
+  // (ResponseEntity.ok().build()) Se for POST (save), retorna a entidade criada
+  if (method === 'PUT') {
     return {
       id: input.id!,
       profission: input.profission,
@@ -753,23 +795,23 @@ export async function saveProfession(input: { id?: number; profission: string })
 
 export async function deleteProfession(id: number): Promise<void> {
   const response = await fetch(`${BACKEND_URL}/profissions/${id}`, {
-    method: "DELETE",
+    method: 'DELETE',
     headers: getHeaders(),
   });
   if (!response.ok) {
-    throw new Error("Falha ao excluir profissão.");
+    throw new Error('Falha ao excluir profissão.');
   }
 }
 
 export async function completeTour(id: string): Promise<void> {
   const response = await fetch(`${BACKEND_URL}/users/${id}/completed-tour`, {
-    method: "PUT",
+    method: 'PUT',
     headers: getHeaders(),
   });
 
   if (!response.ok) {
     const errorText = await response.text();
-    throw new Error(errorText || "Falha ao concluir o tour.");
+    throw new Error(errorText || 'Falha ao concluir o tour.');
   }
 
   // Update in local DB as well so frontend cache stays in sync
@@ -782,27 +824,29 @@ export async function completeTour(id: string): Promise<void> {
 }
 
 /* ------------------------------- Holidays ------------------------------- */
-export async function listHolidays(unitId?: string | number): Promise<Holiday[]> {
+export async function listHolidays(unitId?: string|number): Promise<Holiday[]> {
   try {
-    const url = unitId ? `${BACKEND_URL}/holidays?unitId=${unitId}` : `${BACKEND_URL}/holidays`;
+    const url = unitId ? `${BACKEND_URL}/holidays?unitId=${unitId}` :
+                         `${BACKEND_URL}/holidays`;
     const response = await fetch(url, {
       headers: getHeaders(),
     });
     if (response.ok) {
       const data = await response.json();
       return data.map((item: any) => ({
-        id: item.id,
-        name: item.name,
-        startDate: item.startDate,
-        endDate: item.endDate,
-        unitId: item.unitId,
-        unitName: item.unitName,
-        description: item.description,
-        status: item.status !== undefined ? item.status : true,
-      }));
+                        id: item.id,
+                        name: item.name,
+                        startDate: item.startDate,
+                        endDate: item.endDate,
+                        unitId: item.unitId,
+                        unitName: item.unitName,
+                        description: item.description,
+                        status: item.status !== undefined ? item.status : true,
+                      }));
     }
   } catch (error) {
-    console.warn("Falha ao buscar feriados do backend, usando DB local fallback", error);
+    console.warn(
+        'Falha ao buscar feriados do backend, usando DB local fallback', error);
   }
 
   const db = readDB();
@@ -813,16 +857,15 @@ export async function listHolidays(unitId?: string | number): Promise<Holiday[]>
 }
 
 export async function saveHoliday(input: {
-  id?: number;
-  name: string;
-  startDate: string;
+  id?: number; name: string; startDate: string;
   endDate?: string;
   unitId?: number | null;
   description?: string;
   status?: boolean;
 }): Promise<Holiday> {
-  const url = input.id ? `${BACKEND_URL}/holidays/${input.id}` : `${BACKEND_URL}/holidays`;
-  const method = input.id ? "PUT" : "POST";
+  const url = input.id ? `${BACKEND_URL}/holidays/${input.id}` :
+                         `${BACKEND_URL}/holidays`;
+  const method = input.id ? 'PUT' : 'POST';
 
   const response = await fetch(url, {
     method,
@@ -833,14 +876,14 @@ export async function saveHoliday(input: {
       startDate: input.startDate,
       endDate: input.endDate || input.startDate,
       unitId: input.unitId ?? null,
-      description: input.description ?? "",
+      description: input.description ?? '',
       status: input.status ?? true,
     }),
   });
 
   if (!response.ok) {
     const errorText = await response.text();
-    throw new Error(errorText || "Falha ao salvar feriado.");
+    throw new Error(errorText || 'Falha ao salvar feriado.');
   }
 
   const data = await response.json();
@@ -861,13 +904,13 @@ export async function saveHoliday(input: {
 
 export async function deleteHoliday(id: number): Promise<void> {
   const response = await fetch(`${BACKEND_URL}/holidays/${id}`, {
-    method: "DELETE",
+    method: 'DELETE',
     headers: getHeaders(),
   });
 
   if (!response.ok) {
     const errorText = await response.text();
-    throw new Error(errorText || "Falha ao excluir feriado.");
+    throw new Error(errorText || 'Falha ao excluir feriado.');
   }
 
   const db = readDB();
@@ -876,4 +919,3 @@ export async function deleteHoliday(id: number): Promise<void> {
     writeDB(db);
   }
 }
-

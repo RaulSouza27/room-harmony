@@ -102,6 +102,8 @@ function AuditoriaPage() {
         return <Badge className="bg-blue-600 text-white hover:bg-blue-700">Solicitação Reserva</Badge>;
       case "RESERVA_ESPECIAL_CRIADA":
         return <Badge className="bg-purple-600 text-white hover:bg-purple-700">Reserva Especial (Admin)</Badge>;
+      case "ALTERACAO_RESERVA":
+        return <Badge className="bg-sky-600 text-white hover:bg-sky-700">Alteração / Reagendamento</Badge>;
       case "SOLICITACAO_CANCELAMENTO_RESERVA":
         return <Badge className="bg-amber-600 text-white hover:bg-amber-700">Solicitação Cancelamento</Badge>;
       case "CANCELAMENTO_RESERVA":
@@ -117,6 +119,12 @@ function AuditoriaPage() {
         return <Badge className="bg-purple-600 text-white hover:bg-purple-700">Geração Licença</Badge>;
       case "ALTERACAO_USUARIO":
         return <Badge className="bg-indigo-600 text-white hover:bg-indigo-700">Alteração Usuário</Badge>;
+      case "ATIVACAO_USUARIO":
+      case "USER_ACTIVATED":
+        return <Badge className="bg-emerald-600 text-white hover:bg-emerald-700">Ativação Usuário</Badge>;
+      case "INATIVACAO_USUARIO":
+      case "USER_INACTIVATED":
+        return <Badge className="bg-rose-600 text-white hover:bg-rose-700">Inativação Usuário</Badge>;
       case "RESET_SENHA_USUARIO":
       case "PRIMEIRO_ACESSO_SENHA":
         return <Badge className="bg-cyan-600 text-white hover:bg-cyan-700">Reset de Senha</Badge>;
@@ -128,6 +136,14 @@ function AuditoriaPage() {
       case "ALTERACAO_UNIDADE":
       case "DESATIVACAO_UNIDADE":
         return <Badge className="bg-teal-600 text-white hover:bg-teal-700">Gestão de Unidade</Badge>;
+      case "CRIACAO_FERIADO":
+      case "ALTERACAO_FERIADO":
+      case "EXCLUSAO_FERIADO":
+        return <Badge className="bg-fuchsia-600 text-white hover:bg-fuchsia-700">Gestão de Feriado</Badge>;
+      case "CRIACAO_PROFISSAO":
+      case "ALTERACAO_PROFISSAO":
+      case "EXCLUSAO_PROFISSAO":
+        return <Badge className="bg-violet-600 text-white hover:bg-violet-700">Gestão de Profissão</Badge>;
       default:
         return <Badge variant="outline">{action}</Badge>;
     }
@@ -154,6 +170,13 @@ function AuditoriaPage() {
     if (!rawName) return targetType || "-";
     const cleaned = rawName.replace(/\s*\(\s*ID:\s*null\s*\)/gi, "").trim();
     return cleaned || targetType || "-";
+  };
+
+  const extractDetailField = (details: string | null | undefined, label: string): string | null => {
+    if (!details) return null;
+    const regex = new RegExp(`^${label}:\\s*(.+)$`, "mi");
+    const match = details.match(regex);
+    return match && match[1] ? match[1].trim() : null;
   };
 
   return (
@@ -244,6 +267,8 @@ function AuditoriaPage() {
                 <SelectItem value="USUARIO">Usuários / Licenças</SelectItem>
                 <SelectItem value="SALA">Salas</SelectItem>
                 <SelectItem value="UNIDADE">Unidades</SelectItem>
+                <SelectItem value="FERIADO">Feriados / Bloqueios</SelectItem>
+                <SelectItem value="PROFISSAO">Profissões</SelectItem>
               </SelectContent>
             </Select>
 
@@ -261,18 +286,29 @@ function AuditoriaPage() {
                 <SelectItem value="ALL">Todas as Ações</SelectItem>
                 <SelectItem value="SOLICITACAO_RESERVA">Solicitação de Reserva</SelectItem>
                 <SelectItem value="RESERVA_ESPECIAL_CRIADA">Reserva Especial (Admin)</SelectItem>
+                <SelectItem value="ALTERACAO_RESERVA">Alteração / Reagendamento</SelectItem>
                 <SelectItem value="SOLICITACAO_CANCELAMENTO_RESERVA">Solicitação de Cancelamento</SelectItem>
                 <SelectItem value="CANCELAMENTO_RESERVA">Cancelamento de Reserva</SelectItem>
                 <SelectItem value="APROVACAO_RESERVA">Aprovação de Reserva</SelectItem>
                 <SelectItem value="REJEICAO_RESERVA">Rejeição de Reserva</SelectItem>
                 <SelectItem value="EXCLUSAO_RESERVA">Exclusão de Reserva</SelectItem>
+                <SelectItem value="EXCLUSAO_LOTE_RESERVA">Exclusão em Lote</SelectItem>
                 <SelectItem value="GERACAO_LICENCA_USUARIO">Geração de Licença</SelectItem>
                 <SelectItem value="ALTERACAO_USUARIO">Alteração de Usuário</SelectItem>
+                <SelectItem value="ATIVACAO_USUARIO">Ativação de Usuário</SelectItem>
+                <SelectItem value="INATIVACAO_USUARIO">Inativação de Usuário</SelectItem>
+                <SelectItem value="RESET_SENHA_USUARIO">Reset de Senha</SelectItem>
                 <SelectItem value="CRIACAO_SALA">Criação de Sala</SelectItem>
                 <SelectItem value="ALTERACAO_SALA">Alteração de Sala</SelectItem>
                 <SelectItem value="DESATIVACAO_SALA">Desativação de Sala</SelectItem>
                 <SelectItem value="CRIACAO_UNIDADE">Criação de Unidade</SelectItem>
                 <SelectItem value="ALTERACAO_UNIDADE">Alteração de Unidade</SelectItem>
+                <SelectItem value="CRIACAO_FERIADO">Criação de Feriado</SelectItem>
+                <SelectItem value="ALTERACAO_FERIADO">Alteração de Feriado</SelectItem>
+                <SelectItem value="EXCLUSAO_FERIADO">Exclusão de Feriado</SelectItem>
+                <SelectItem value="CRIACAO_PROFISSAO">Criação de Profissão</SelectItem>
+                <SelectItem value="ALTERACAO_PROFISSAO">Alteração de Profissão</SelectItem>
+                <SelectItem value="EXCLUSAO_PROFISSAO">Exclusão de Profissão</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -324,8 +360,24 @@ function AuditoriaPage() {
                         {formatActionBadge(log.action)}
                       </td>
                       <td className="py-3.5 px-4">
-                        <div className="flex items-center gap-1.5">
+                        <div className="flex flex-col gap-0.5">
                           <span className="font-medium">{formatTargetName(log.targetName, log.targetType)}</span>
+                          {log.targetType === "RESERVA" && log.details && (
+                            <div className="flex flex-wrap gap-x-3 gap-y-0.5 text-xs text-muted-foreground">
+                              {extractDetailField(log.details, "Profissional \\(Quem reservou\\)") && (
+                                <span>
+                                  <strong>Reservado por:</strong>{" "}
+                                  {extractDetailField(log.details, "Profissional \\(Quem reservou\\)")}
+                                </span>
+                              )}
+                              {extractDetailField(log.details, "Aprovado por") && (
+                                <span>
+                                  <strong>Aprovado por:</strong>{" "}
+                                  {extractDetailField(log.details, "Aprovado por")}
+                                </span>
+                              )}
+                            </div>
+                          )}
                         </div>
                       </td>
                       <td className="py-3.5 px-4 text-right">
@@ -439,6 +491,26 @@ function AuditoriaPage() {
                       <span className="text-muted-foreground">Recurso Atingido:</span>
                       <span className="font-medium">{formatTargetName(selectedLog.targetName, selectedLog.targetType)}</span>
                     </div>
+                    {selectedLog.targetType === "RESERVA" && selectedLog.details && (
+                      <>
+                        {extractDetailField(selectedLog.details, "Profissional \\(Quem reservou\\)") && (
+                          <div className="flex justify-between pt-1 border-t border-border/60">
+                            <span className="text-muted-foreground">Quem fez a reserva:</span>
+                            <span className="font-medium text-primary">
+                              {extractDetailField(selectedLog.details, "Profissional \\(Quem reservou\\)")}
+                            </span>
+                          </div>
+                        )}
+                        {extractDetailField(selectedLog.details, "Aprovado por") && (
+                          <div className="flex justify-between">
+                            <span className="text-muted-foreground">Quem aprovou:</span>
+                            <span className="font-medium text-emerald-600 dark:text-emerald-400">
+                              {extractDetailField(selectedLog.details, "Aprovado por")}
+                            </span>
+                          </div>
+                        )}
+                      </>
+                    )}
                   </div>
                 </div>
 

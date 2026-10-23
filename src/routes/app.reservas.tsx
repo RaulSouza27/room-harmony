@@ -251,6 +251,8 @@ function ReservasPage() {
                 <SelectItem value="todos">Todos</SelectItem>
                 <SelectItem value="pendente">Pendente</SelectItem>
                 <SelectItem value="aprovada">Aprovada</SelectItem>
+                <SelectItem value="solicitacao_cancelamento">Solicitação de Cancelamento</SelectItem>
+                <SelectItem value="reagendar">A Reagendar (Feriado)</SelectItem>
                 <SelectItem value="negada">Negada</SelectItem>
                 <SelectItem value="cancelada">Cancelada</SelectItem>
               </SelectContent>
