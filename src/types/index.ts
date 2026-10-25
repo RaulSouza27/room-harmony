@@ -98,3 +98,20 @@ export interface Holiday {
   description?: string;
   status: boolean;
 }
+
+export interface Complaint {
+  id: number;
+  userId?: number|null;
+  userName: string;
+  userEmail?: string|null;
+  anonymous: boolean;
+  complaints: string;
+  solved: boolean;
+  createdAt: string;
+}
+
+export interface ComplaintQuota {
+  used: number;
+  limit: number;
+  remaining: number;
+}

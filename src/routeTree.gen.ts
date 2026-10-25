@@ -18,6 +18,7 @@ import { Route as AppAuditoriaRouteImport } from './routes/app.auditoria'
 import { Route as AppDashboardRouteImport } from './routes/app.dashboard'
 import { Route as AppFeriadosRouteImport } from './routes/app.feriados'
 import { Route as AppMinhasReservasRouteImport } from './routes/app.minhas-reservas'
+import { Route as AppOuvidoriaRouteImport } from './routes/app.ouvidoria'
 import { Route as AppPerfilRouteImport } from './routes/app.perfil'
 import { Route as AppProfissionaisRouteImport } from './routes/app.profissionais'
 import { Route as AppProfissoesRouteImport } from './routes/app.profissoes'
@@ -72,6 +73,11 @@ const AppMinhasReservasRoute = AppMinhasReservasRouteImport.update({
   path: '/minhas-reservas',
   getParentRoute: () => AppRoute,
 } as any)
+const AppOuvidoriaRoute = AppOuvidoriaRouteImport.update({
+  id: '/ouvidoria',
+  path: '/ouvidoria',
+  getParentRoute: () => AppRoute,
+} as any)
 const AppPerfilRoute = AppPerfilRouteImport.update({
   id: '/perfil',
   path: '/perfil',
@@ -122,6 +128,7 @@ export interface FileRoutesByFullPath {
   '/app/dashboard': typeof AppDashboardRoute
   '/app/feriados': typeof AppFeriadosRoute
   '/app/minhas-reservas': typeof AppMinhasReservasRoute
+  '/app/ouvidoria': typeof AppOuvidoriaRoute
   '/app/perfil': typeof AppPerfilRoute
   '/app/profissionais': typeof AppProfissionaisRoute
   '/app/profissoes': typeof AppProfissoesRoute
@@ -140,6 +147,7 @@ export interface FileRoutesByTo {
   '/app/dashboard': typeof AppDashboardRoute
   '/app/feriados': typeof AppFeriadosRoute
   '/app/minhas-reservas': typeof AppMinhasReservasRoute
+  '/app/ouvidoria': typeof AppOuvidoriaRoute
   '/app/perfil': typeof AppPerfilRoute
   '/app/profissionais': typeof AppProfissionaisRoute
   '/app/profissoes': typeof AppProfissoesRoute
@@ -160,6 +168,7 @@ export interface FileRoutesById {
   '/app/dashboard': typeof AppDashboardRoute
   '/app/feriados': typeof AppFeriadosRoute
   '/app/minhas-reservas': typeof AppMinhasReservasRoute
+  '/app/ouvidoria': typeof AppOuvidoriaRoute
   '/app/perfil': typeof AppPerfilRoute
   '/app/profissionais': typeof AppProfissionaisRoute
   '/app/profissoes': typeof AppProfissoesRoute
@@ -181,6 +190,7 @@ export interface FileRouteTypes {
     | '/app/dashboard'
     | '/app/feriados'
     | '/app/minhas-reservas'
+    | '/app/ouvidoria'
     | '/app/perfil'
     | '/app/profissionais'
     | '/app/profissoes'
@@ -199,6 +209,7 @@ export interface FileRouteTypes {
     | '/app/dashboard'
     | '/app/feriados'
     | '/app/minhas-reservas'
+    | '/app/ouvidoria'
     | '/app/perfil'
     | '/app/profissionais'
     | '/app/profissoes'
@@ -218,6 +229,7 @@ export interface FileRouteTypes {
     | '/app/dashboard'
     | '/app/feriados'
     | '/app/minhas-reservas'
+    | '/app/ouvidoria'
     | '/app/perfil'
     | '/app/profissionais'
     | '/app/profissoes'
@@ -299,6 +311,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppMinhasReservasRouteImport
       parentRoute: typeof AppRoute
     }
+    '/app/ouvidoria': {
+      id: '/app/ouvidoria'
+      path: '/ouvidoria'
+      fullPath: '/app/ouvidoria'
+      preLoaderRoute: typeof AppOuvidoriaRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/app/perfil': {
       id: '/app/perfil'
       path: '/perfil'
@@ -365,6 +384,7 @@ interface AppRouteChildren {
   AppDashboardRoute: typeof AppDashboardRoute
   AppFeriadosRoute: typeof AppFeriadosRoute
   AppMinhasReservasRoute: typeof AppMinhasReservasRoute
+  AppOuvidoriaRoute: typeof AppOuvidoriaRoute
   AppPerfilRoute: typeof AppPerfilRoute
   AppProfissionaisRoute: typeof AppProfissionaisRoute
   AppProfissoesRoute: typeof AppProfissoesRoute
@@ -383,6 +403,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppDashboardRoute: AppDashboardRoute,
   AppFeriadosRoute: AppFeriadosRoute,
   AppMinhasReservasRoute: AppMinhasReservasRoute,
+  AppOuvidoriaRoute: AppOuvidoriaRoute,
   AppPerfilRoute: AppPerfilRoute,
   AppProfissionaisRoute: AppProfissionaisRoute,
   AppProfissoesRoute: AppProfissoesRoute,

@@ -1,5 +1,5 @@
 import {BACKEND_URL} from '@/config/api';
-import type {BusinessHours, Holiday, NovaReserva, Profession, Reserva, ReservaStatus, Sala, Unidade, User} from '@/types';
+import type {BusinessHours, Complaint, ComplaintQuota, Holiday, NovaReserva, Profession, Reserva, ReservaStatus, Sala, Unidade, User} from '@/types';
 
 import {createAuditLog} from './auditService';
 import {overlaps, readDB, uid, writeDB} from './db';
@@ -918,4 +918,94 @@ export async function deleteHoliday(id: number): Promise<void> {
     db.holidays = db.holidays.filter((h) => h.id !== id);
     writeDB(db);
   }
+}
+
+/* ------------------------------- Ouvidoria ------------------------------ */
+export async function getComplaintQuota(): Promise<ComplaintQuota> {
+  const response = await fetch(`${BACKEND_URL}/complaints/quota`, {
+    headers: getHeaders(),
+  });
+  if (!response.ok) {
+    throw new Error('Falha ao consultar limite diário da Ouvidoria.');
+  }
+  const data = await response.json();
+  return {
+    used: Number(data.used ?? 0),
+    limit: Number(data.limit ?? 3),
+    remaining: Number(data.remaining ?? 3),
+  };
+}
+
+export async function createComplaint(input: {
+  complaints: string;
+  anonymous: boolean;
+}): Promise<ComplaintQuota & {success: boolean}> {
+  const response = await fetch(`${BACKEND_URL}/complaints`, {
+    method: 'POST',
+    headers: getHeaders(),
+    body: JSON.stringify({
+      complaints: input.complaints.trim(),
+      anonymous: input.anonymous,
+    }),
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    throw new Error(errorText || 'Falha ao enviar manifestação para a Ouvidoria.');
+  }
+
+  const data = await response.json();
+  return {
+    success: Boolean(data.success ?? true),
+    used: Number(data.used ?? 0),
+    limit: Number(data.limit ?? 3),
+    remaining: Number(data.remaining ?? 0),
+  };
+}
+
+export async function listComplaints(): Promise<Complaint[]> {
+  const response = await fetch(`${BACKEND_URL}/complaints/readAll`, {
+    headers: getHeaders(),
+  });
+  if (!response.ok) {
+    const errorText = await response.text();
+    throw new Error(errorText || 'Falha ao carregar registros da Ouvidoria.');
+  }
+  const data = await response.json();
+  return data.map((item: any) => ({
+    id: item.id,
+    userId: item.userId ?? null,
+    userName: item.userName || (item.userId ? `Profissional #${item.userId}` : 'Anônimo'),
+    userEmail: item.userEmail ?? null,
+    anonymous: item.anonymous ?? item.userId == null,
+    complaints: item.complaints || '',
+    solved: Boolean(item.solved),
+    createdAt: item.createdAt || '',
+  }));
+}
+
+export async function updateComplaintSolved(
+  id: number,
+  solved: boolean,
+): Promise<Complaint> {
+  const response = await fetch(`${BACKEND_URL}/complaints/${id}/solved`, {
+    method: 'PUT',
+    headers: getHeaders(),
+    body: JSON.stringify({solved}),
+  });
+  if (!response.ok) {
+    const errorText = await response.text();
+    throw new Error(errorText || 'Falha ao atualizar status da manifestação.');
+  }
+  const item = await response.json();
+  return {
+    id: item.id,
+    userId: item.userId ?? null,
+    userName: item.userName || (item.userId ? `Profissional #${item.userId}` : 'Anônimo'),
+    userEmail: item.userEmail ?? null,
+    anonymous: item.anonymous ?? item.userId == null,
+    complaints: item.complaints || '',
+    solved: Boolean(item.solved),
+    createdAt: item.createdAt || '',
+  };
 }

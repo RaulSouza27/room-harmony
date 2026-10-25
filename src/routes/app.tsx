@@ -11,6 +11,7 @@ const ADMIN_ONLY = [
   "/app/unidades",
   "/app/profissoes",
   "/app/feriados",
+  "/app/auditoria",
 ];
 const LOCADOR_ONLY = ["/app/solicitar", "/app/minhas-reservas"];
 
