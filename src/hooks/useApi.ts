@@ -308,6 +308,18 @@ export function useDeleteReservasBatch() {
   });
 }
 
+export function useCancelReservasBatch() {
+  const invalidate = useInvalidate(["reservas"]);
+  return useMutation({
+    mutationFn: (ids: string[]) => api.cancelReservasBatch(ids),
+    onSuccess: () => {
+      invalidate();
+      toast.success("Reservas canceladas com sucesso.");
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+}
+
 export function useSaveProfession() {
   const invalidate = useInvalidate(keys.profissoes);
   return useMutation({

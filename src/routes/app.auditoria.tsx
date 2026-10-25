@@ -107,6 +107,7 @@ function AuditoriaPage() {
       case "SOLICITACAO_CANCELAMENTO_RESERVA":
         return <Badge className="bg-amber-600 text-white hover:bg-amber-700">Solicitação Cancelamento</Badge>;
       case "CANCELAMENTO_RESERVA":
+      case "CANCELAMENTO_LOTE_RESERVA":
         return <Badge className="bg-slate-600 text-white hover:bg-slate-700">Cancelamento Reserva</Badge>;
       case "APROVACAO_RESERVA":
         return <Badge className="bg-emerald-600 text-white hover:bg-emerald-700">Aprovação Reserva</Badge>;
@@ -292,6 +293,7 @@ function AuditoriaPage() {
                 <SelectItem value="ALTERACAO_RESERVA">Alteração / Reagendamento</SelectItem>
                 <SelectItem value="SOLICITACAO_CANCELAMENTO_RESERVA">Solicitação de Cancelamento</SelectItem>
                 <SelectItem value="CANCELAMENTO_RESERVA">Cancelamento de Reserva</SelectItem>
+                <SelectItem value="CANCELAMENTO_LOTE_RESERVA">Cancelamento em Lote</SelectItem>
                 <SelectItem value="APROVACAO_RESERVA">Aprovação de Reserva</SelectItem>
                 <SelectItem value="REJEICAO_RESERVA">Rejeição de Reserva</SelectItem>
                 <SelectItem value="EXCLUSAO_RESERVA">Exclusão de Reserva</SelectItem>

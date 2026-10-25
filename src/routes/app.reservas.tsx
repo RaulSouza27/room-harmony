@@ -26,7 +26,14 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { useReservas, useSalas, useUnidades, useUsuarios, useDeleteReservasBatch } from "@/hooks/useApi";
+import {
+  useReservas,
+  useSalas,
+  useUnidades,
+  useUsuarios,
+  useDeleteReservasBatch,
+  useCancelReservasBatch,
+} from "@/hooks/useApi";
 import { Badge } from "@/components/ui/badge";
 import { formatarData, isReservaEspecial } from "@/lib/format";
 import type { Reserva } from "@/types";
@@ -95,7 +102,9 @@ function ReservasPage() {
   );
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [confirmBatchDelete, setConfirmBatchDelete] = useState(false);
+  const [confirmBatchCancel, setConfirmBatchCancel] = useState(false);
   const excluirLote = useDeleteReservasBatch();
+  const cancelarLote = useCancelReservasBatch();
 
   const reservas = reservasQ.data ?? [];
   const salas = salasQ.data ?? [];
@@ -120,10 +129,25 @@ function ReservasPage() {
     .filter((r) => !ate || r.data <= ate)
     .sort((a, b) => (b.data + b.hora_inicio).localeCompare(a.data + a.hora_inicio));
 
+  const selectedCancelableIds = useMemo(
+    () =>
+      selectedIds.filter((id) => {
+        const res = reservas.find((r) => r.id === id);
+        return res && res.status !== "cancelada";
+      }),
+    [selectedIds, reservas],
+  );
+
   const handleBatchDelete = async () => {
     await excluirLote.mutateAsync(selectedIds);
     setSelectedIds([]);
     setConfirmBatchDelete(false);
+  };
+
+  const handleBatchCancel = async () => {
+    await cancelarLote.mutateAsync(selectedCancelableIds);
+    setSelectedIds([]);
+    setConfirmBatchCancel(false);
   };
 
   const listaComComprovante = useMemo(
@@ -143,12 +167,23 @@ function ReservasPage() {
       description={`${lista.length} registro(s)`}
       actions={
         <div className="flex flex-wrap gap-2">
+          {isAdmin && selectedCancelableIds.length > 0 && (
+            <Button
+              size="sm"
+              variant="outline"
+              className="border-amber-500/40 text-amber-700 dark:text-amber-300 hover:bg-amber-500/10"
+              onClick={() => setConfirmBatchCancel(true)}
+              disabled={cancelarLote.isPending || excluirLote.isPending}
+            >
+              Cancelar {selectedCancelableIds.length} selecionada(s)
+            </Button>
+          )}
           {selectedIds.length > 0 && (
             <Button
               size="sm"
               variant="destructive"
               onClick={() => setConfirmBatchDelete(true)}
-              disabled={excluirLote.isPending}
+              disabled={excluirLote.isPending || cancelarLote.isPending}
             >
               Excluir {selectedIds.length} selecionada(s)
             </Button>
@@ -479,6 +514,15 @@ function ReservasPage() {
         sala={salas.find((s) => s.id === detalheReserva?.sala_id)}
         unidade={unidades.find((u) => u.id === detalheReserva?.unidade_id)}
         usuario={usuarios.find((u) => u.id === detalheReserva?.profissional_id)}
+      />
+      <ConfirmDialog
+        open={confirmBatchCancel}
+        onOpenChange={setConfirmBatchCancel}
+        title={`Cancelar ${selectedCancelableIds.length} reserva(s) selecionada(s)?`}
+        description="As reservas selecionadas terão seu status alterado para cancelada e os horários correspondentes serão liberados na agenda."
+        confirmLabel="Confirmar cancelamento"
+        destructive
+        onConfirm={handleBatchCancel}
       />
       <ConfirmDialog
         open={confirmBatchDelete}
