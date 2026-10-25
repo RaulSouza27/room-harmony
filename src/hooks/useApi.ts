@@ -14,6 +14,7 @@ export const keys = {
   reservaReceipt: (id: string) => ["reservaReceipt", id] as const,
   holidays: (unitId?: string | number) => ["holidays", unitId ?? "all"] as const,
   complaints: ["complaints"] as const,
+  myComplaints: ["myComplaints"] as const,
   complaintQuota: ["complaintQuota"] as const,
 };
 
@@ -395,9 +396,19 @@ export function useCreateComplaint() {
       api.createComplaint(input),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: keys.complaintQuota });
+      queryClient.invalidateQueries({ queryKey: keys.myComplaints });
       toast.success("Manifestação enviada à Ouvidoria com sucesso!");
     },
     onError: (e: Error) => toast.error(e.message),
+  });
+}
+
+export function useMyComplaints(enabled = true) {
+  return useQuery({
+    queryKey: keys.myComplaints,
+    queryFn: api.listMyComplaints,
+    enabled,
+    staleTime: 1000 * 30,
   });
 }
 
@@ -413,14 +424,21 @@ export function useComplaints(enabled = true) {
 export function useUpdateComplaintSolved() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({ id, solved }: { id: number; solved: boolean }) =>
-      api.updateComplaintSolved(id, solved),
+    mutationFn: ({
+      id,
+      solved,
+      resolutionNotes,
+    }: {
+      id: number;
+      solved: boolean;
+      resolutionNotes?: string;
+    }) => api.updateComplaintSolved(id, solved, resolutionNotes),
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: keys.complaints });
       toast.success(
         variables.solved
-          ? "Manifestação marcada como resolvida."
-          : "Manifestação marcada como não resolvida."
+          ? "Manifestação marcada como resolvida com parecer registrado."
+          : "Manifestação reaberta como não resolvida."
       );
     },
     onError: (e: Error) => toast.error(e.message),

@@ -6,7 +6,9 @@ import {
   ChevronRight,
   Clock,
   EyeOff,
+  FileCheck2,
   Info,
+  MessageCircle,
   MessageSquareWarning,
   RotateCcw,
   Search,
@@ -21,6 +23,15 @@ import { EmptyState, ErrorState, LoadingState } from "@/components/common";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Checkbox } from "@/components/ui/checkbox";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
@@ -30,11 +41,41 @@ import {
   useComplaintQuota,
   useComplaints,
   useCreateComplaint,
+  useMyComplaints,
   useUpdateComplaintSolved,
 } from "@/hooks/useApi";
+import type { Complaint } from "@/types";
+import { openWhatsApp } from "@/utils/whatsapp";
 
 const MAX_LENGTH = 255;
+const MIN_RESOLUTION_LENGTH = 5;
+const MAX_RESOLUTION_LENGTH = 500;
 const ITEMS_PER_PAGE = 10;
+
+function formatDataHora(iso?: string | null) {
+  if (!iso) return "Data não informada";
+  try {
+    const d = new Date(iso);
+    return d.toLocaleString("pt-BR", {
+      day: "2-digit",
+      month: "2-digit",
+      year: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+  } catch {
+    return iso;
+  }
+}
+
+function buildWhatsAppResolutionMessage(item: Complaint, notes: string) {
+  return (
+    `Olá, ${item.userName}! Tudo bem?\n\n` +
+    `Sobre sua manifestação *#${item.id}* registrada na Ouvidoria da Clínica Escuta:\n` +
+    `_"${item.complaints}"_\n\n` +
+    `✅ *Parecer da Administração:*\n${notes}`
+  );
+}
 
 export const Route = createFileRoute("/app/ouvidoria")({
   ssr: false,
@@ -68,6 +109,7 @@ function OuvidoriaPage() {
 function LocadorOuvidoriaView() {
   const { user } = useAuth();
   const quotaQ = useComplaintQuota(true);
+  const minhasQ = useMyComplaints(true);
   const criar = useCreateComplaint();
 
   const [texto, setTexto] = useState("");
@@ -78,6 +120,7 @@ function LocadorOuvidoriaView() {
   const used = quotaQ.data?.used ?? 0;
   const limit = quotaQ.data?.limit ?? 3;
   const remaining = quotaQ.data?.remaining ?? Math.max(0, limit - used);
+  const minhasIdentificadas = minhasQ.data ?? [];
 
   const textoLimpo = texto.trim();
   const podeEnviar =
@@ -102,7 +145,7 @@ function LocadorOuvidoriaView() {
       title="Ouvidoria — Canal de Escuta"
       description="Espaço dedicado para relatos, reclamações ou sugestões sobre a clínica, administração, salas ou sistema."
     >
-      <div className="mx-auto max-w-2xl space-y-6">
+      <div className="mx-auto max-w-3xl space-y-6">
         {/* Card de Regras e Cota Diária */}
         <Card className="border-border bg-card shadow-soft">
           <CardHeader className="pb-3">
@@ -127,11 +170,19 @@ function LocadorOuvidoriaView() {
             </p>
             <div className="flex items-start gap-2.5 rounded-lg border border-amber-500/30 bg-amber-500/10 p-3 text-xs text-amber-900 dark:text-amber-200">
               <Info className="mt-0.5 size-4 shrink-0 text-amber-600 dark:text-amber-400" />
-              <span>
-                <strong>Importante:</strong> Para garantir o sigilo e a integridade
-                do canal, uma vez enviada a manifestação,{" "}
-                <strong>você não poderá mais visualizá-la ou editá-la</strong>.
-              </span>
+              <div className="space-y-1">
+                <p>
+                  <strong>Envio Identificado:</strong> Você acompanha o andamento
+                  abaixo e recebe de volta o{" "}
+                  <strong>Parecer da Administração</strong> assim que sua
+                  manifestação for resolvida.
+                </p>
+                <p>
+                  <strong>Envio Anônimo:</strong> Para garantir sigilo absoluto,
+                  nenhum vínculo com sua conta é salvo e a mensagem{" "}
+                  <strong>não poderá mais ser visualizada</strong> após o envio.
+                </p>
+              </div>
             </div>
           </CardContent>
         </Card>
@@ -199,8 +250,8 @@ function LocadorOuvidoriaView() {
                   </div>
                   <p className="text-xs text-muted-foreground">
                     {anonimo
-                      ? "Sua identidade será ocultada (nenhum vínculo com seu usuário será salvo na reclamação)."
-                      : `Sua manifestação será identificada como ${user?.nome ?? "você"} (${user?.email ?? ""}).`}
+                      ? "Sua identidade será 100% ocultada (por sigilo, envios anônimos não aparecem no seu histórico)."
+                      : `Identificada como ${user?.nome ?? "você"} (${user?.email ?? ""}) — você receberá o parecer da solução abaixo.`}
                   </p>
                 </div>
                 <Switch
@@ -255,6 +306,97 @@ function LocadorOuvidoriaView() {
             </CardContent>
           </Card>
         )}
+
+        {/* Histórico de Manifestações Identificadas do Locatário */}
+        <div className="space-y-3 pt-2">
+          <div className="flex items-center justify-between">
+            <div>
+              <h2 className="text-base font-semibold text-foreground">
+                Minhas Manifestações Identificadas
+              </h2>
+              <p className="text-xs text-muted-foreground">
+                Acompanhe aqui o retorno da administração para os relatos em que
+                você optou por se identificar.
+              </p>
+            </div>
+            <Badge variant="outline" className="text-xs">
+              {minhasIdentificadas.length} registro(s)
+            </Badge>
+          </div>
+
+          {minhasQ.isLoading ? (
+            <LoadingState label="Carregando suas manifestações identificadas..." />
+          ) : minhasQ.error ? (
+            <ErrorState message={(minhasQ.error as Error).message} />
+          ) : minhasIdentificadas.length === 0 ? (
+            <Card className="border-dashed bg-card/50">
+              <CardContent className="py-8 text-center text-sm text-muted-foreground">
+                Você ainda não possui manifestações identificadas. (Lembre-se:
+                manifestações enviadas no modo anônimo não ficam vinculadas à sua
+                conta).
+              </CardContent>
+            </Card>
+          ) : (
+            <ul className="space-y-3">
+              {minhasIdentificadas.map((item) => (
+                <li
+                  key={item.id}
+                  className="rounded-xl border border-border bg-card p-4 shadow-soft"
+                >
+                  <div className="min-w-0 space-y-3">
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span className="text-xs font-semibold text-muted-foreground">
+                          #{item.id}
+                        </span>
+                        {item.solved ? (
+                          <Badge className="gap-1 bg-emerald-600 text-white hover:bg-emerald-700">
+                            <CheckCircle2 className="size-3" />
+                            Resolvida pela Administração
+                          </Badge>
+                        ) : (
+                          <Badge className="gap-1 bg-amber-600 text-white hover:bg-amber-700">
+                            <Clock className="size-3" />
+                            Em análise pela Administração
+                          </Badge>
+                        )}
+                      </div>
+                      <span className="text-xs text-muted-foreground">
+                        Enviada em {formatDataHora(item.createdAt)}
+                      </span>
+                    </div>
+
+                    <p className="whitespace-pre-wrap break-words [overflow-wrap:anywhere] rounded-lg bg-muted/40 p-3 text-sm text-card-foreground">
+                      {item.complaints}
+                    </p>
+
+                    {item.solved && (
+                      <div className="min-w-0 rounded-lg border border-emerald-500/30 bg-emerald-500/10 p-3 text-xs text-emerald-950 dark:text-emerald-100">
+                        <div className="mb-1 flex flex-wrap items-center justify-between gap-2 font-semibold text-emerald-800 dark:text-emerald-300">
+                          <span className="flex items-center gap-1.5">
+                            <FileCheck2 className="size-3.5" />
+                            Resposta / Parecer da Administração
+                          </span>
+                          <span>
+                            Respondido por{" "}
+                            <strong>{item.resolvedBy || "Administração"}</strong>
+                            {item.resolvedAt
+                              ? ` em ${formatDataHora(item.resolvedAt)}`
+                              : ""}
+                          </span>
+                        </div>
+                        <p className="whitespace-pre-wrap break-words [overflow-wrap:anywhere] text-sm text-emerald-900 dark:text-emerald-100">
+                          {item.resolutionNotes ||
+                            "Sua manifestação foi analisada e concluída pela administração."}
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
       </div>
 
       <ConfirmDialog
@@ -263,8 +405,8 @@ function LocadorOuvidoriaView() {
         title="Confirmar envio à Ouvidoria?"
         description={
           anonimo
-            ? "Sua mensagem será enviada de forma 100% ANÔNIMA. Após o envio, você não poderá mais visualizá-la ou editá-la."
-            : `Sua mensagem será enviada identificada com seu nome (${user?.nome}). Após o envio, você não poderá mais visualizá-la ou editá-la.`
+            ? "Sua mensagem será enviada de forma 100% ANÔNIMA. Por segurança e sigilo, você não poderá mais visualizá-la após o envio."
+            : `Sua mensagem será enviada identificada com seu nome (${user?.nome}). Você poderá acompanhar o status e ver a resposta da administração nesta página.`
         }
         confirmLabel={criar.isPending ? "Enviando..." : "Confirmar e Enviar"}
         onConfirm={handleConfirmSend}
@@ -286,6 +428,14 @@ function AdminOuvidoriaView() {
     "todas"
   );
   const [page, setPage] = useState(1);
+
+  // Modal para registrar parecer de resolução obrigatório
+  const [alvoResolver, setAlvoResolver] = useState<Complaint | null>(null);
+  const [parecerResolucao, setParecerResolucao] = useState("");
+  const [notificarWhatsAppAoSalvar, setNotificarWhatsAppAoSalvar] = useState(false);
+
+  // Modal para confirmar reabertura
+  const [alvoReabrir, setAlvoReabrir] = useState<Complaint | null>(null);
 
   const lista = complaintsQ.data ?? [];
 
@@ -309,8 +459,17 @@ function AdminOuvidoriaView() {
       const matchTexto = item.complaints.toLowerCase().includes(termo);
       const matchAutor = (item.userName || "").toLowerCase().includes(termo);
       const matchEmail = (item.userEmail || "").toLowerCase().includes(termo);
+      const matchParecer = (item.resolutionNotes || "").toLowerCase().includes(termo);
+      const matchResolvidoPor = (item.resolvedBy || "").toLowerCase().includes(termo);
       const matchId = `#${item.id}`.includes(termo) || String(item.id) === termo;
-      return matchTexto || matchAutor || matchEmail || matchId;
+      return (
+        matchTexto ||
+        matchAutor ||
+        matchEmail ||
+        matchParecer ||
+        matchResolvidoPor ||
+        matchId
+      );
     });
   }, [lista, busca, filtroStatus]);
 
@@ -325,26 +484,54 @@ function AdminOuvidoriaView() {
     return filtradas.slice(start, start + ITEMS_PER_PAGE);
   }, [filtradas, currentPage]);
 
-  const formatDataHora = (iso: string) => {
-    if (!iso) return "Data não informada";
-    try {
-      const d = new Date(iso);
-      return d.toLocaleString("pt-BR", {
-        day: "2-digit",
-        month: "2-digit",
-        year: "numeric",
-        hour: "2-digit",
-        minute: "2-digit",
-      });
-    } catch {
-      return iso;
+  const abrirModalResolucao = (item: Complaint) => {
+    setAlvoResolver(item);
+    setParecerResolucao(item.resolutionNotes ?? "");
+    setNotificarWhatsAppAoSalvar(false);
+  };
+
+  const confirmarResolucao = async () => {
+    if (!alvoResolver) return;
+    const notes = parecerResolucao.trim();
+    if (notes.length < MIN_RESOLUTION_LENGTH) return;
+
+    const itemSnapshot = alvoResolver;
+    const shouldOpenWhatsApp =
+      notificarWhatsAppAoSalvar &&
+      !itemSnapshot.anonymous &&
+      !!itemSnapshot.userPhone;
+
+    await atualizarStatus.mutateAsync({
+      id: itemSnapshot.id,
+      solved: true,
+      resolutionNotes: notes,
+    });
+
+    setAlvoResolver(null);
+    setParecerResolucao("");
+    setNotificarWhatsAppAoSalvar(false);
+
+    if (shouldOpenWhatsApp && itemSnapshot.userPhone) {
+      openWhatsApp(
+        itemSnapshot.userPhone,
+        buildWhatsAppResolutionMessage(itemSnapshot, notes)
+      );
     }
+  };
+
+  const confirmarReabertura = async () => {
+    if (!alvoReabrir) return;
+    await atualizarStatus.mutateAsync({
+      id: alvoReabrir.id,
+      solved: false,
+    });
+    setAlvoReabrir(null);
   };
 
   return (
     <AppShell
       title="Ouvidoria — Gestão de Manifestações"
-      description="Visualize as reclamações e sugestões enviadas pelos locatários e acompanhe a resolução."
+      description="Visualize as reclamações e sugestões enviadas pelos locatários e registre as providências tomadas."
     >
       <div className="space-y-6">
         {/* Cards de Resumo */}
@@ -393,7 +580,7 @@ function AdminOuvidoriaView() {
                 {totais.resolvidas}
               </div>
               <p className="mt-1 text-xs text-muted-foreground">
-                Manifestações já solucionadas
+                Com parecer de resolução registrado
               </p>
             </CardContent>
           </Card>
@@ -404,7 +591,7 @@ function AdminOuvidoriaView() {
           <div className="relative flex-1">
             <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
             <Input
-              placeholder="Buscar por texto da reclamação, autor, e-mail ou #ID..."
+              placeholder="Buscar por texto, parecer da solução, autor, e-mail ou #ID..."
               value={busca}
               onChange={(e) => setBusca(e.target.value)}
               className="pl-9"
@@ -474,7 +661,7 @@ function AdminOuvidoriaView() {
                   className="rounded-xl border border-border bg-card p-4 shadow-soft transition-colors"
                 >
                   <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-start">
-                    <div className="min-w-0 flex-1 space-y-2.5">
+                    <div className="min-w-0 flex-1 space-y-3">
                       <div className="flex flex-wrap items-center gap-2">
                         <span className="text-xs font-semibold text-muted-foreground">
                           #{item.id}
@@ -516,38 +703,72 @@ function AdminOuvidoriaView() {
                         </span>
                       </div>
 
-                      <p className="whitespace-pre-wrap break-words rounded-lg bg-muted/40 p-3 text-sm text-card-foreground">
+                      <p className="whitespace-pre-wrap break-words [overflow-wrap:anywhere] rounded-lg bg-muted/40 p-3 text-sm text-card-foreground">
                         {item.complaints}
                       </p>
+
+                      {/* Bloco de Comprovação / Parecer da Resolução */}
+                      {item.solved && (
+                        <div className="min-w-0 rounded-lg border border-emerald-500/30 bg-emerald-500/10 p-3 text-xs text-emerald-950 dark:text-emerald-100">
+                          <div className="mb-1 flex flex-wrap items-center justify-between gap-2 font-semibold text-emerald-800 dark:text-emerald-300">
+                            <span className="flex items-center gap-1.5">
+                              <FileCheck2 className="size-3.5" />
+                              Parecer da Resolução
+                            </span>
+                            <span>
+                              Resolvido por{" "}
+                              <strong>{item.resolvedBy || "Administrador"}</strong>
+                              {item.resolvedAt
+                                ? ` em ${formatDataHora(item.resolvedAt)}`
+                                : ""}
+                            </span>
+                          </div>
+                          <p className="whitespace-pre-wrap break-words [overflow-wrap:anywhere] text-sm text-emerald-900 dark:text-emerald-100">
+                            {item.resolutionNotes || "Resolução confirmada pela administração."}
+                          </p>
+                        </div>
+                      )}
                     </div>
 
-                    <div className="flex shrink-0 items-center gap-2 self-end sm:self-center">
+                    <div className="flex shrink-0 flex-wrap items-center gap-2 self-end sm:self-start">
+                      {!item.anonymous && item.userPhone && item.solved && (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() =>
+                            openWhatsApp(
+                              item.userPhone!,
+                              buildWhatsAppResolutionMessage(
+                                item,
+                                item.resolutionNotes ||
+                                  "Sua manifestação foi analisada e concluída pela administração."
+                              )
+                            )
+                          }
+                          className="gap-1.5 border-emerald-600/30 text-emerald-700 hover:bg-emerald-500/10 dark:text-emerald-300"
+                          title="Enviar parecer de resolução via WhatsApp para o profissional"
+                        >
+                          <MessageCircle className="size-3.5" />
+                          WhatsApp
+                        </Button>
+                      )}
+
                       {item.solved ? (
                         <Button
                           size="sm"
                           variant="outline"
                           disabled={atualizarStatus.isPending}
-                          onClick={() =>
-                            atualizarStatus.mutate({
-                              id: item.id,
-                              solved: false,
-                            })
-                          }
+                          onClick={() => setAlvoReabrir(item)}
                           className="gap-1.5"
                         >
                           <RotateCcw className="size-3.5" />
-                          Marcar como não resolvida
+                          Reabrir como pendente
                         </Button>
                       ) : (
                         <Button
                           size="sm"
                           disabled={atualizarStatus.isPending}
-                          onClick={() =>
-                            atualizarStatus.mutate({
-                              id: item.id,
-                              solved: true,
-                            })
-                          }
+                          onClick={() => abrirModalResolucao(item)}
                           className="gap-1.5"
                         >
                           <CheckCircle2 className="size-3.5" />
@@ -607,7 +828,136 @@ function AdminOuvidoriaView() {
           </div>
         )}
       </div>
+
+      {/* Modal de Parecer Obrigatório para Marcar como Resolvida */}
+      <Dialog
+        open={!!alvoResolver}
+        onOpenChange={(open) => {
+          if (!open) {
+            setAlvoResolver(null);
+            setParecerResolucao("");
+            setNotificarWhatsAppAoSalvar(false);
+          }
+        }}
+      >
+        <DialogContent className="sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <CheckCircle2 className="size-5 text-emerald-600" />
+              Registrar Resolução — Manifestação #{alvoResolver?.id}
+            </DialogTitle>
+            <DialogDescription>
+              Para concluir esta manifestação, descreva obrigatoriamente a
+              providência tomada.{" "}
+              {alvoResolver && !alvoResolver.anonymous
+                ? `O profissional ${alvoResolver.userName} receberá este parecer na aba Ouvidoria dele.`
+                : "Seu usuário e a data/hora ficarão registrados no histórico e na auditoria."}
+            </DialogDescription>
+          </DialogHeader>
+
+          {alvoResolver && (
+            <div className="min-w-0 space-y-4 py-1">
+              <div className="max-h-40 overflow-y-auto rounded-lg border border-border bg-muted/40 p-3 text-xs">
+                <span className="font-semibold text-muted-foreground">
+                  Relato recebido ({alvoResolver.anonymous ? "Anônimo" : alvoResolver.userName}):
+                </span>
+                <p className="mt-1 whitespace-pre-wrap break-words [overflow-wrap:anywhere] text-sm text-foreground">
+                  {alvoResolver.complaints}
+                </p>
+              </div>
+
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <Label htmlFor="parecer-resolucao">
+                    Parecer / O que foi feito para resolver{" "}
+                    <span className="text-destructive">*</span>
+                  </Label>
+                  <span className="text-xs text-muted-foreground">
+                    {parecerResolucao.length}/{MAX_RESOLUTION_LENGTH}
+                  </span>
+                </div>
+                <Textarea
+                  id="parecer-resolucao"
+                  rows={4}
+                  maxLength={MAX_RESOLUTION_LENGTH}
+                  value={parecerResolucao}
+                  onChange={(e) =>
+                    setParecerResolucao(
+                      e.target.value.slice(0, MAX_RESOLUTION_LENGTH)
+                    )
+                  }
+                  placeholder="Ex: Realizada manutenção no ar-condicionado da Sala 2 e substituído o controle remoto em 25/10..."
+                  className="resize-none"
+                />
+                {parecerResolucao.trim().length > 0 &&
+                  parecerResolucao.trim().length < MIN_RESOLUTION_LENGTH && (
+                    <p className="text-xs text-destructive">
+                      O parecer deve conter pelo menos {MIN_RESOLUTION_LENGTH}{" "}
+                      caracteres.
+                    </p>
+                  )}
+              </div>
+
+              {!alvoResolver.anonymous && alvoResolver.userPhone && (
+                <div className="flex items-start gap-2.5 rounded-lg border border-emerald-500/30 bg-emerald-500/5 p-3">
+                  <Checkbox
+                    id="chk-whatsapp-resolucao"
+                    checked={notificarWhatsAppAoSalvar}
+                    onCheckedChange={(v) =>
+                      setNotificarWhatsAppAoSalvar(Boolean(v))
+                    }
+                    className="mt-0.5"
+                  />
+                  <Label
+                    htmlFor="chk-whatsapp-resolucao"
+                    className="cursor-pointer text-xs leading-relaxed text-foreground"
+                  >
+                    Abrir <strong>WhatsApp</strong> após salvar para enviar o
+                    parecer diretamente para{" "}
+                    <strong>{alvoResolver.userName}</strong>
+                  </Label>
+                </div>
+              )}
+            </div>
+          )}
+
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setAlvoResolver(null);
+                setParecerResolucao("");
+                setNotificarWhatsAppAoSalvar(false);
+              }}
+            >
+              Cancelar
+            </Button>
+            <Button
+              disabled={
+                parecerResolucao.trim().length < MIN_RESOLUTION_LENGTH ||
+                atualizarStatus.isPending
+              }
+              onClick={confirmarResolucao}
+              className="gap-1.5"
+            >
+              <CheckCircle2 className="size-4" />
+              {atualizarStatus.isPending
+                ? "Salvando..."
+                : "Confirmar Resolução"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Confirmação para Reabrir Manifestação */}
+      <ConfirmDialog
+        open={!!alvoReabrir}
+        onOpenChange={(open) => !open && setAlvoReabrir(null)}
+        title="Reabrir esta manifestação?"
+        description="A manifestação voltará para o status 'Não resolvida' e precisará de um novo parecer quando for concluída novamente."
+        confirmLabel="Reabrir como não resolvida"
+        onConfirm={confirmarReabertura}
+      />
     </AppShell>
   );
 }
-

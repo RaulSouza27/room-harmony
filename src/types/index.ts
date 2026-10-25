@@ -104,9 +104,13 @@ export interface Complaint {
   userId?: number|null;
   userName: string;
   userEmail?: string|null;
+  userPhone?: string|null;
   anonymous: boolean;
   complaints: string;
   solved: boolean;
+  resolutionNotes?: string|null;
+  resolvedBy?: string|null;
+  resolvedAt?: string|null;
   createdAt: string;
 }
 

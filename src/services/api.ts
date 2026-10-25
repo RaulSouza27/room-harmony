@@ -963,6 +963,35 @@ export async function createComplaint(input: {
   };
 }
 
+function mapComplaintItem(item: any): Complaint {
+  return {
+    id: item.id,
+    userId: item.userId ?? null,
+    userName: item.userName || (item.userId ? `Profissional #${item.userId}` : 'Anônimo'),
+    userEmail: item.userEmail ?? null,
+    userPhone: item.userPhone ?? null,
+    anonymous: item.anonymous ?? item.userId == null,
+    complaints: item.complaints || '',
+    solved: Boolean(item.solved),
+    resolutionNotes: item.resolutionNotes ?? null,
+    resolvedBy: item.resolvedBy ?? null,
+    resolvedAt: item.resolvedAt ?? null,
+    createdAt: item.createdAt || '',
+  };
+}
+
+export async function listMyComplaints(): Promise<Complaint[]> {
+  const response = await fetch(`${BACKEND_URL}/complaints/my`, {
+    headers: getHeaders(),
+  });
+  if (!response.ok) {
+    const errorText = await response.text();
+    throw new Error(errorText || 'Falha ao carregar suas manifestações.');
+  }
+  const data = await response.json();
+  return data.map(mapComplaintItem);
+}
+
 export async function listComplaints(): Promise<Complaint[]> {
   const response = await fetch(`${BACKEND_URL}/complaints/readAll`, {
     headers: getHeaders(),
@@ -972,40 +1001,26 @@ export async function listComplaints(): Promise<Complaint[]> {
     throw new Error(errorText || 'Falha ao carregar registros da Ouvidoria.');
   }
   const data = await response.json();
-  return data.map((item: any) => ({
-    id: item.id,
-    userId: item.userId ?? null,
-    userName: item.userName || (item.userId ? `Profissional #${item.userId}` : 'Anônimo'),
-    userEmail: item.userEmail ?? null,
-    anonymous: item.anonymous ?? item.userId == null,
-    complaints: item.complaints || '',
-    solved: Boolean(item.solved),
-    createdAt: item.createdAt || '',
-  }));
+  return data.map(mapComplaintItem);
 }
 
 export async function updateComplaintSolved(
   id: number,
   solved: boolean,
+  resolutionNotes?: string,
 ): Promise<Complaint> {
   const response = await fetch(`${BACKEND_URL}/complaints/${id}/solved`, {
     method: 'PUT',
     headers: getHeaders(),
-    body: JSON.stringify({solved}),
+    body: JSON.stringify({
+      solved,
+      ...(resolutionNotes !== undefined ? {resolutionNotes} : {}),
+    }),
   });
   if (!response.ok) {
     const errorText = await response.text();
     throw new Error(errorText || 'Falha ao atualizar status da manifestação.');
   }
   const item = await response.json();
-  return {
-    id: item.id,
-    userId: item.userId ?? null,
-    userName: item.userName || (item.userId ? `Profissional #${item.userId}` : 'Anônimo'),
-    userEmail: item.userEmail ?? null,
-    anonymous: item.anonymous ?? item.userId == null,
-    complaints: item.complaints || '',
-    solved: Boolean(item.solved),
-    createdAt: item.createdAt || '',
-  };
+  return mapComplaintItem(item);
 }
