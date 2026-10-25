@@ -14,7 +14,12 @@ export const keys = {
   reservaReceipt: (id: string) => ["reservaReceipt", id] as const,
   holidays: (unitId?: string | number) => ["holidays", unitId ?? "all"] as const,
   complaints: ["complaints"] as const,
+  complaintsPaged: (params: { page: number; size: number; search?: string; solved?: boolean }) =>
+    ["complaints", "paged", params] as const,
+  complaintStats: ["complaintStats"] as const,
   myComplaints: ["myComplaints"] as const,
+  myComplaintsPaged: (params: { page: number; size: number }) =>
+    ["myComplaints", "paged", params] as const,
   complaintQuota: ["complaintQuota"] as const,
 };
 
@@ -412,12 +417,47 @@ export function useMyComplaints(enabled = true) {
   });
 }
 
+export function useMyComplaintsPaged(
+  params: { page: number; size: number },
+  enabled = true
+) {
+  return useQuery({
+    queryKey: keys.myComplaintsPaged(params),
+    queryFn: () => api.listMyComplaintsPaged(params),
+    enabled,
+    staleTime: 1000 * 30,
+    placeholderData: (previousData) => previousData,
+  });
+}
+
+export function useComplaintStats(enabled = true) {
+  return useQuery({
+    queryKey: keys.complaintStats,
+    queryFn: api.getComplaintStats,
+    enabled,
+    staleTime: 1000 * 30,
+  });
+}
+
 export function useComplaints(enabled = true) {
   return useQuery({
     queryKey: keys.complaints,
     queryFn: api.listComplaints,
     enabled,
     staleTime: 1000 * 30,
+  });
+}
+
+export function useComplaintsPaged(
+  params: { page: number; size: number; search?: string; solved?: boolean },
+  enabled = true
+) {
+  return useQuery({
+    queryKey: keys.complaintsPaged(params),
+    queryFn: () => api.listComplaintsPaged(params),
+    enabled,
+    staleTime: 1000 * 30,
+    placeholderData: (previousData) => previousData,
   });
 }
 
@@ -435,6 +475,8 @@ export function useUpdateComplaintSolved() {
     }) => api.updateComplaintSolved(id, solved, resolutionNotes),
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: keys.complaints });
+      queryClient.invalidateQueries({ queryKey: keys.complaintStats });
+      queryClient.invalidateQueries({ queryKey: keys.myComplaints });
       toast.success(
         variables.solved
           ? "Manifestação marcada como resolvida com parecer registrado."

@@ -119,3 +119,17 @@ export interface ComplaintQuota {
   limit: number;
   remaining: number;
 }
+
+export interface ComplaintStats {
+  total: number;
+  pending: number;
+  solved: number;
+}
+
+export interface ComplaintPage {
+  content: Complaint[];
+  totalElements: number;
+  totalPages: number;
+  number: number;
+  size: number;
+}

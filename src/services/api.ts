@@ -1,5 +1,5 @@
 import {BACKEND_URL} from '@/config/api';
-import type {BusinessHours, Complaint, ComplaintQuota, Holiday, NovaReserva, Profession, Reserva, ReservaStatus, Sala, Unidade, User} from '@/types';
+import type {BusinessHours, Complaint, ComplaintPage, ComplaintQuota, ComplaintStats, Holiday, NovaReserva, Profession, Reserva, ReservaStatus, Sala, Unidade, User} from '@/types';
 
 import {createAuditLog} from './auditService';
 import {overlaps, readDB, uid, writeDB} from './db';
@@ -990,6 +990,80 @@ export async function listMyComplaints(): Promise<Complaint[]> {
   }
   const data = await response.json();
   return data.map(mapComplaintItem);
+}
+
+export async function listMyComplaintsPaged(params: {
+  page: number;
+  size: number;
+}): Promise<ComplaintPage> {
+  const query = new URLSearchParams({
+    page: String(params.page),
+    size: String(params.size),
+  });
+  const response = await fetch(`${BACKEND_URL}/complaints/my/paged?${query.toString()}`, {
+    headers: getHeaders(),
+  });
+  if (!response.ok) {
+    const errorText = await response.text();
+    throw new Error(errorText || 'Falha ao carregar suas manifestações.');
+  }
+  const data = await response.json();
+  return {
+    content: (data.content || []).map(mapComplaintItem),
+    totalElements: Number(data.totalElements ?? 0),
+    totalPages: Math.max(1, Number(data.totalPages ?? 1)),
+    number: Number(data.number ?? params.page),
+    size: Number(data.size ?? params.size),
+  };
+}
+
+export async function getComplaintStats(): Promise<ComplaintStats> {
+  const response = await fetch(`${BACKEND_URL}/complaints/stats`, {
+    headers: getHeaders(),
+  });
+  if (!response.ok) {
+    const errorText = await response.text();
+    throw new Error(errorText || 'Falha ao carregar indicadores da Ouvidoria.');
+  }
+  const data = await response.json();
+  return {
+    total: Number(data.total ?? 0),
+    pending: Number(data.pending ?? 0),
+    solved: Number(data.solved ?? 0),
+  };
+}
+
+export async function listComplaintsPaged(params: {
+  page: number;
+  size: number;
+  search?: string;
+  solved?: boolean;
+}): Promise<ComplaintPage> {
+  const query = new URLSearchParams({
+    page: String(params.page),
+    size: String(params.size),
+  });
+  if (params.search && params.search.trim()) {
+    query.append('search', params.search.trim());
+  }
+  if (params.solved !== undefined) {
+    query.append('solved', String(params.solved));
+  }
+  const response = await fetch(`${BACKEND_URL}/complaints/paged?${query.toString()}`, {
+    headers: getHeaders(),
+  });
+  if (!response.ok) {
+    const errorText = await response.text();
+    throw new Error(errorText || 'Falha ao carregar registros da Ouvidoria.');
+  }
+  const data = await response.json();
+  return {
+    content: (data.content || []).map(mapComplaintItem),
+    totalElements: Number(data.totalElements ?? 0),
+    totalPages: Math.max(1, Number(data.totalPages ?? 1)),
+    number: Number(data.number ?? params.page),
+    size: Number(data.size ?? params.size),
+  };
 }
 
 export async function listComplaints(): Promise<Complaint[]> {

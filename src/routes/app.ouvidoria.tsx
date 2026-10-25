@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import {
   CheckCircle2,
   ChevronLeft,
@@ -34,14 +34,22 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import { useAuth } from "@/contexts/AuthContext";
 import {
   useComplaintQuota,
-  useComplaints,
+  useComplaintStats,
+  useComplaintsPaged,
   useCreateComplaint,
-  useMyComplaints,
+  useMyComplaintsPaged,
   useUpdateComplaintSolved,
 } from "@/hooks/useApi";
 import type { Complaint } from "@/types";
@@ -50,7 +58,7 @@ import { openWhatsApp } from "@/utils/whatsapp";
 const MAX_LENGTH = 255;
 const MIN_RESOLUTION_LENGTH = 5;
 const MAX_RESOLUTION_LENGTH = 500;
-const ITEMS_PER_PAGE = 10;
+const PAGE_SIZE_OPTIONS = [10, 20, 30, 50] as const;
 
 function formatDataHora(iso?: string | null) {
   if (!iso) return "Data não informada";
@@ -108,8 +116,11 @@ function OuvidoriaPage() {
 
 function LocadorOuvidoriaView() {
   const { user } = useAuth();
+  const [page, setPage] = useState(0);
+  const [pageSize, setPageSize] = useState<number>(10);
+
   const quotaQ = useComplaintQuota(true);
-  const minhasQ = useMyComplaints(true);
+  const minhasQ = useMyComplaintsPaged({ page, size: pageSize }, true);
   const criar = useCreateComplaint();
 
   const [texto, setTexto] = useState("");
@@ -120,7 +131,10 @@ function LocadorOuvidoriaView() {
   const used = quotaQ.data?.used ?? 0;
   const limit = quotaQ.data?.limit ?? 3;
   const remaining = quotaQ.data?.remaining ?? Math.max(0, limit - used);
-  const minhasIdentificadas = minhasQ.data ?? [];
+
+  const minhasIdentificadas = minhasQ.data?.content ?? [];
+  const totalElements = minhasQ.data?.totalElements ?? 0;
+  const totalPages = minhasQ.data?.totalPages ?? 1;
 
   const textoLimpo = texto.trim();
   const podeEnviar =
@@ -138,6 +152,7 @@ function LocadorOuvidoriaView() {
     setTexto("");
     setConfirmOpen(false);
     setUltimoEnvioSucesso(true);
+    setPage(0);
   };
 
   return (
@@ -307,9 +322,9 @@ function LocadorOuvidoriaView() {
           </Card>
         )}
 
-        {/* Histórico de Manifestações Identificadas do Locatário */}
+        {/* Histórico Paginado de Manifestações Identificadas do Locatário */}
         <div className="space-y-3 pt-2">
-          <div className="flex items-center justify-between">
+          <div className="flex flex-wrap items-center justify-between gap-3">
             <div>
               <h2 className="text-base font-semibold text-foreground">
                 Minhas Manifestações Identificadas
@@ -319,9 +334,31 @@ function LocadorOuvidoriaView() {
                 você optou por se identificar.
               </p>
             </div>
-            <Badge variant="outline" className="text-xs">
-              {minhasIdentificadas.length} registro(s)
-            </Badge>
+
+            <div className="flex items-center gap-2">
+              <span className="text-xs text-muted-foreground">Exibir:</span>
+              <Select
+                value={String(pageSize)}
+                onValueChange={(val) => {
+                  setPageSize(Number(val));
+                  setPage(0);
+                }}
+              >
+                <SelectTrigger className="h-8 w-[110px] text-xs">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {PAGE_SIZE_OPTIONS.map((opt) => (
+                    <SelectItem key={opt} value={String(opt)}>
+                      {opt} por vez
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <Badge variant="outline" className="text-xs">
+                {totalElements} registro(s)
+              </Badge>
+            </div>
           </div>
 
           {minhasQ.isLoading ? (
@@ -337,64 +374,109 @@ function LocadorOuvidoriaView() {
               </CardContent>
             </Card>
           ) : (
-            <ul className="space-y-3">
-              {minhasIdentificadas.map((item) => (
-                <li
-                  key={item.id}
-                  className="rounded-xl border border-border bg-card p-4 shadow-soft"
-                >
-                  <div className="min-w-0 space-y-3">
-                    <div className="flex flex-wrap items-center justify-between gap-2">
-                      <div className="flex flex-wrap items-center gap-2">
-                        <span className="text-xs font-semibold text-muted-foreground">
-                          #{item.id}
-                        </span>
-                        {item.solved ? (
-                          <Badge className="gap-1 bg-emerald-600 text-white hover:bg-emerald-700">
-                            <CheckCircle2 className="size-3" />
-                            Resolvida pela Administração
-                          </Badge>
-                        ) : (
-                          <Badge className="gap-1 bg-amber-600 text-white hover:bg-amber-700">
-                            <Clock className="size-3" />
-                            Em análise pela Administração
-                          </Badge>
-                        )}
-                      </div>
-                      <span className="text-xs text-muted-foreground">
-                        Enviada em {formatDataHora(item.createdAt)}
-                      </span>
-                    </div>
-
-                    <p className="whitespace-pre-wrap break-words [overflow-wrap:anywhere] rounded-lg bg-muted/40 p-3 text-sm text-card-foreground">
-                      {item.complaints}
-                    </p>
-
-                    {item.solved && (
-                      <div className="min-w-0 rounded-lg border border-emerald-500/30 bg-emerald-500/10 p-3 text-xs text-emerald-950 dark:text-emerald-100">
-                        <div className="mb-1 flex flex-wrap items-center justify-between gap-2 font-semibold text-emerald-800 dark:text-emerald-300">
-                          <span className="flex items-center gap-1.5">
-                            <FileCheck2 className="size-3.5" />
-                            Resposta / Parecer da Administração
+            <div className="space-y-4">
+              <ul className="space-y-3">
+                {minhasIdentificadas.map((item) => (
+                  <li
+                    key={item.id}
+                    className="rounded-xl border border-border bg-card p-4 shadow-soft"
+                  >
+                    <div className="min-w-0 space-y-3">
+                      <div className="flex flex-wrap items-center justify-between gap-2">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <span className="text-xs font-semibold text-muted-foreground">
+                            #{item.id}
                           </span>
-                          <span>
-                            Respondido por{" "}
-                            <strong>{item.resolvedBy || "Administração"}</strong>
-                            {item.resolvedAt
-                              ? ` em ${formatDataHora(item.resolvedAt)}`
-                              : ""}
-                          </span>
+                          {item.solved ? (
+                            <Badge className="gap-1 bg-emerald-600 text-white hover:bg-emerald-700">
+                              <CheckCircle2 className="size-3" />
+                              Resolvida pela Administração
+                            </Badge>
+                          ) : (
+                            <Badge className="gap-1 bg-amber-600 text-white hover:bg-amber-700">
+                              <Clock className="size-3" />
+                              Em análise pela Administração
+                            </Badge>
+                          )}
                         </div>
-                        <p className="whitespace-pre-wrap break-words [overflow-wrap:anywhere] text-sm text-emerald-900 dark:text-emerald-100">
-                          {item.resolutionNotes ||
-                            "Sua manifestação foi analisada e concluída pela administração."}
-                        </p>
+                        <span className="text-xs text-muted-foreground">
+                          Enviada em {formatDataHora(item.createdAt)}
+                        </span>
                       </div>
-                    )}
-                  </div>
-                </li>
-              ))}
-            </ul>
+
+                      <p className="whitespace-pre-wrap break-words [overflow-wrap:anywhere] rounded-lg bg-muted/40 p-3 text-sm text-card-foreground">
+                        {item.complaints}
+                      </p>
+
+                      {item.solved && (
+                        <div className="min-w-0 rounded-lg border border-emerald-500/30 bg-emerald-500/10 p-3 text-xs text-emerald-950 dark:text-emerald-100">
+                          <div className="mb-1 flex flex-wrap items-center justify-between gap-2 font-semibold text-emerald-800 dark:text-emerald-300">
+                            <span className="flex items-center gap-1.5">
+                              <FileCheck2 className="size-3.5" />
+                              Resposta / Parecer da Administração
+                            </span>
+                            <span>
+                              Respondido por{" "}
+                              <strong>{item.resolvedBy || "Administração"}</strong>
+                              {item.resolvedAt
+                                ? ` em ${formatDataHora(item.resolvedAt)}`
+                                : ""}
+                            </span>
+                          </div>
+                          <p className="whitespace-pre-wrap break-words [overflow-wrap:anywhere] text-sm text-emerald-900 dark:text-emerald-100">
+                            {item.resolutionNotes ||
+                              "Sua manifestação foi analisada e concluída pela administração."}
+                          </p>
+                        </div>
+                      )}
+                    </div>
+                  </li>
+                ))}
+              </ul>
+
+              {/* Barra de Paginação do Locatário */}
+              <div className="flex flex-col items-center justify-between gap-3 rounded-xl border border-border bg-card px-4 py-3 sm:flex-row">
+                <p className="text-xs text-muted-foreground">
+                  Mostrando{" "}
+                  <span className="font-medium text-foreground">
+                    {totalElements === 0 ? 0 : page * pageSize + 1}
+                  </span>{" "}
+                  a{" "}
+                  <span className="font-medium text-foreground">
+                    {Math.min((page + 1) * pageSize, totalElements)}
+                  </span>{" "}
+                  de{" "}
+                  <span className="font-medium text-foreground">
+                    {totalElements}
+                  </span>{" "}
+                  manifestação(ões)
+                </p>
+
+                <div className="flex items-center gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    disabled={page <= 0 || minhasQ.isFetching}
+                    onClick={() => setPage((p) => Math.max(0, p - 1))}
+                  >
+                    <ChevronLeft className="mr-1 size-4" />
+                    Anterior
+                  </Button>
+                  <span className="px-2 text-xs font-medium">
+                    Página {page + 1} de {Math.max(1, totalPages)}
+                  </span>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    disabled={page + 1 >= totalPages || minhasQ.isFetching}
+                    onClick={() => setPage((p) => p + 1)}
+                  >
+                    Próxima
+                    <ChevronRight className="ml-1 size-4" />
+                  </Button>
+                </div>
+              </div>
+            </div>
           )}
         </div>
       </div>
@@ -420,14 +502,40 @@ function LocadorOuvidoriaView() {
 /* ========================================================================== */
 
 function AdminOuvidoriaView() {
-  const complaintsQ = useComplaints(true);
-  const atualizarStatus = useUpdateComplaintSolved();
-
   const [busca, setBusca] = useState("");
+  const [debouncedBusca, setDebouncedBusca] = useState("");
   const [filtroStatus, setFiltroStatus] = useState<"todas" | "pendentes" | "resolvidas">(
     "todas"
   );
-  const [page, setPage] = useState(1);
+  const [page, setPage] = useState(0);
+  const [pageSize, setPageSize] = useState<number>(10);
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedBusca(busca.trim());
+      setPage(0);
+    }, 350);
+    return () => clearTimeout(timer);
+  }, [busca]);
+
+  const solvedParam =
+    filtroStatus === "todas"
+      ? undefined
+      : filtroStatus === "resolvidas"
+        ? true
+        : false;
+
+  const statsQ = useComplaintStats(true);
+  const complaintsQ = useComplaintsPaged(
+    {
+      page,
+      size: pageSize,
+      ...(debouncedBusca ? { search: debouncedBusca } : {}),
+      ...(solvedParam !== undefined ? { solved: solvedParam } : {}),
+    },
+    true
+  );
+  const atualizarStatus = useUpdateComplaintSolved();
 
   // Modal para registrar parecer de resolução obrigatório
   const [alvoResolver, setAlvoResolver] = useState<Complaint | null>(null);
@@ -437,52 +545,15 @@ function AdminOuvidoriaView() {
   // Modal para confirmar reabertura
   const [alvoReabrir, setAlvoReabrir] = useState<Complaint | null>(null);
 
-  const lista = complaintsQ.data ?? [];
+  const paginadas = complaintsQ.data?.content ?? [];
+  const totalElements = complaintsQ.data?.totalElements ?? 0;
+  const totalPages = complaintsQ.data?.totalPages ?? 1;
 
-  const totais = useMemo(() => {
-    const resolvidas = lista.filter((c) => c.solved).length;
-    const pendentes = lista.length - resolvidas;
-    return {
-      total: lista.length,
-      pendentes,
-      resolvidas,
-    };
-  }, [lista]);
-
-  const filtradas = useMemo(() => {
-    const termo = busca.trim().toLowerCase();
-    return lista.filter((item) => {
-      if (filtroStatus === "pendentes" && item.solved) return false;
-      if (filtroStatus === "resolvidas" && !item.solved) return false;
-
-      if (!termo) return true;
-      const matchTexto = item.complaints.toLowerCase().includes(termo);
-      const matchAutor = (item.userName || "").toLowerCase().includes(termo);
-      const matchEmail = (item.userEmail || "").toLowerCase().includes(termo);
-      const matchParecer = (item.resolutionNotes || "").toLowerCase().includes(termo);
-      const matchResolvidoPor = (item.resolvedBy || "").toLowerCase().includes(termo);
-      const matchId = `#${item.id}`.includes(termo) || String(item.id) === termo;
-      return (
-        matchTexto ||
-        matchAutor ||
-        matchEmail ||
-        matchParecer ||
-        matchResolvidoPor ||
-        matchId
-      );
-    });
-  }, [lista, busca, filtroStatus]);
-
-  useEffect(() => {
-    setPage(1);
-  }, [busca, filtroStatus]);
-
-  const totalPages = Math.max(1, Math.ceil(filtradas.length / ITEMS_PER_PAGE));
-  const currentPage = Math.min(page, totalPages);
-  const paginadas = useMemo(() => {
-    const start = (currentPage - 1) * ITEMS_PER_PAGE;
-    return filtradas.slice(start, start + ITEMS_PER_PAGE);
-  }, [filtradas, currentPage]);
+  const totais = {
+    total: statsQ.data?.total ?? totalElements,
+    pendentes: statsQ.data?.pending ?? 0,
+    resolvidas: statsQ.data?.solved ?? 0,
+  };
 
   const abrirModalResolucao = (item: Complaint) => {
     setAlvoResolver(item);
@@ -586,8 +657,8 @@ function AdminOuvidoriaView() {
           </Card>
         </div>
 
-        {/* Barra de Busca e Filtro por Status */}
-        <div className="flex flex-col gap-3 rounded-xl border border-border bg-card p-4 shadow-soft sm:flex-row sm:items-center sm:justify-between">
+        {/* Barra de Busca, Filtro por Status e Quantidade por Página */}
+        <div className="flex flex-col gap-3 rounded-xl border border-border bg-card p-4 shadow-soft lg:flex-row lg:items-center lg:justify-between">
           <div className="relative flex-1">
             <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
             <Input
@@ -602,24 +673,55 @@ function AdminOuvidoriaView() {
             <Button
               size="sm"
               variant={filtroStatus === "todas" ? "default" : "outline"}
-              onClick={() => setFiltroStatus("todas")}
+              onClick={() => {
+                setFiltroStatus("todas");
+                setPage(0);
+              }}
             >
               Todas ({totais.total})
             </Button>
             <Button
               size="sm"
               variant={filtroStatus === "pendentes" ? "default" : "outline"}
-              onClick={() => setFiltroStatus("pendentes")}
+              onClick={() => {
+                setFiltroStatus("pendentes");
+                setPage(0);
+              }}
             >
               Não resolvidas ({totais.pendentes})
             </Button>
             <Button
               size="sm"
               variant={filtroStatus === "resolvidas" ? "default" : "outline"}
-              onClick={() => setFiltroStatus("resolvidas")}
+              onClick={() => {
+                setFiltroStatus("resolvidas");
+                setPage(0);
+              }}
             >
               Resolvidas ({totais.resolvidas})
             </Button>
+
+            <div className="flex items-center gap-1.5 pl-1">
+              <span className="text-xs text-muted-foreground">Exibir:</span>
+              <Select
+                value={String(pageSize)}
+                onValueChange={(val) => {
+                  setPageSize(Number(val));
+                  setPage(0);
+                }}
+              >
+                <SelectTrigger className="h-8 w-[110px] text-xs">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {PAGE_SIZE_OPTIONS.map((opt) => (
+                    <SelectItem key={opt} value={String(opt)}>
+                      {opt} por vez
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
 
             {(busca.trim() !== "" || filtroStatus !== "todas") && (
               <Button
@@ -627,7 +729,9 @@ function AdminOuvidoriaView() {
                 variant="ghost"
                 onClick={() => {
                   setBusca("");
+                  setDebouncedBusca("");
                   setFiltroStatus("todas");
+                  setPage(0);
                 }}
                 className="gap-1 text-muted-foreground"
               >
@@ -643,7 +747,7 @@ function AdminOuvidoriaView() {
           <LoadingState label="Carregando manifestações da Ouvidoria..." />
         ) : complaintsQ.error ? (
           <ErrorState message={(complaintsQ.error as Error).message} />
-        ) : filtradas.length === 0 ? (
+        ) : paginadas.length === 0 ? (
           <EmptyState
             title="Nenhuma manifestação encontrada"
             description={
@@ -781,50 +885,50 @@ function AdminOuvidoriaView() {
               ))}
             </ul>
 
-            {/* Paginação */}
-            {totalPages > 1 && (
-              <div className="flex flex-col items-center justify-between gap-3 rounded-xl border border-border bg-card px-4 py-3 sm:flex-row">
+            {/* Barra de Paginação do Administrador */}
+            <div className="flex flex-col items-center justify-between gap-3 rounded-xl border border-border bg-card px-4 py-3 sm:flex-row">
+              <div className="flex flex-wrap items-center gap-3">
                 <p className="text-xs text-muted-foreground">
                   Mostrando{" "}
                   <span className="font-medium text-foreground">
-                    {(currentPage - 1) * ITEMS_PER_PAGE + 1}
+                    {totalElements === 0 ? 0 : page * pageSize + 1}
                   </span>{" "}
                   a{" "}
                   <span className="font-medium text-foreground">
-                    {Math.min(currentPage * ITEMS_PER_PAGE, filtradas.length)}
+                    {Math.min((page + 1) * pageSize, totalElements)}
                   </span>{" "}
                   de{" "}
                   <span className="font-medium text-foreground">
-                    {filtradas.length}
+                    {totalElements}
                   </span>{" "}
                   manifestação(ões)
                 </p>
-
-                <div className="flex items-center gap-2">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    disabled={currentPage <= 1}
-                    onClick={() => setPage((p) => Math.max(1, p - 1))}
-                  >
-                    <ChevronLeft className="mr-1 size-4" />
-                    Anterior
-                  </Button>
-                  <span className="px-2 text-xs font-medium">
-                    Página {currentPage} de {totalPages}
-                  </span>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    disabled={currentPage >= totalPages}
-                    onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-                  >
-                    Próxima
-                    <ChevronRight className="ml-1 size-4" />
-                  </Button>
-                </div>
               </div>
-            )}
+
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  disabled={page <= 0 || complaintsQ.isFetching}
+                  onClick={() => setPage((p) => Math.max(0, p - 1))}
+                >
+                  <ChevronLeft className="mr-1 size-4" />
+                  Anterior
+                </Button>
+                <span className="px-2 text-xs font-medium">
+                  Página {page + 1} de {Math.max(1, totalPages)}
+                </span>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  disabled={page + 1 >= totalPages || complaintsQ.isFetching}
+                  onClick={() => setPage((p) => p + 1)}
+                >
+                  Próxima
+                  <ChevronRight className="ml-1 size-4" />
+                </Button>
+              </div>
+            </div>
           </div>
         )}
       </div>
