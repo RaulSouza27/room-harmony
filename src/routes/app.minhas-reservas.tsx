@@ -15,11 +15,14 @@ import {
   FileText,
   BellRing,
   Calendar as CalendarIcon,
+  Coins,
+  Pencil,
   Search,
   ChevronLeft,
   ChevronRight,
   X,
 } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -73,6 +76,7 @@ function MinhasReservasPage() {
     null,
   );
   const [reservaParaReagendar, setReservaParaReagendar] = useState<Reserva | null>(null);
+  const [reservaCreditoParaEditar, setReservaCreditoParaEditar] = useState<Reserva | null>(null);
   const [notifications, setNotifications] = useState<UserNotification[]>([]);
 
   useEffect(() => {
@@ -165,7 +169,7 @@ function MinhasReservasPage() {
           <AlertCircle className="h-4 w-4 text-amber-600 dark:text-amber-400" />
           <AlertTitle className="font-semibold text-amber-700 dark:text-amber-300">Aviso importante</AlertTitle>
           <AlertDescription className="text-amber-600/90 dark:text-amber-400/90">
-            O cancelamento de reservas já aprovadas não pode ser feito diretamente, mas você pode solicitar o cancelamento ao administrador com no mínimo 24h de antecedência.
+            Reservas feitas com <strong>pacote de créditos</strong> podem ser editadas ou canceladas diretamente (com estorno automático de créditos) até 24h antes do horário. Reservas <strong>avulsas</strong> aprovadas exigem solicitação ao administrador com no mínimo 24h de antecedência.
           </AlertDescription>
         </Alert>
 
@@ -270,12 +274,19 @@ function MinhasReservasPage() {
                   <li key={r.id} className="rounded-xl border border-border bg-card p-4 shadow-soft">
                     <div className="flex flex-wrap items-start justify-between gap-3">
                       <div className="min-w-0 flex-1">
-                        <p className="text-sm font-semibold text-card-foreground">
-                          {sala?.nome ?? "Sala removida"}{" "}
-                          <span className="font-normal text-muted-foreground">
-                            · {unidade?.nome ?? "—"}
-                          </span>
-                        </p>
+                        <div className="flex flex-wrap items-center gap-2">
+                          <p className="text-sm font-semibold text-card-foreground">
+                            {sala?.nome ?? "Sala removida"}{" "}
+                            <span className="font-normal text-muted-foreground">
+                              · {unidade?.nome ?? "—"}
+                            </span>
+                          </p>
+                          {r.paid_with_credits && (
+                            <Badge variant="outline" className="bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border-emerald-500/30 gap-1 text-[10px]">
+                              <Coins className="size-3" /> Crédito ({r.credit_hours_used || 1}h)
+                            </Badge>
+                          )}
+                        </div>
                         <p className="mt-0.5 text-sm text-muted-foreground">
                           {formatarData(r.data)} · {r.hora_inicio}–{r.hora_fim} ·{" "}
                           <span>{formatRecorrencia(r.recorrencia)}</span>
@@ -307,6 +318,23 @@ function MinhasReservasPage() {
                       <div className="flex flex-col items-end gap-1">
                         <div className="flex flex-wrap items-center gap-2">
                           <StatusBadge status={r.status} />
+                          {r.paid_with_credits && r.status === "aprovada" && (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              disabled={!temMaisDe24h}
+                              onClick={() => setReservaCreditoParaEditar(r)}
+                              className="gap-1.5 h-8 text-xs"
+                              title={
+                                !temMaisDe24h
+                                  ? "Reservas com menos de 24h de antecedência ficam travadas para edição."
+                                  : "Editar horário, sala ou duração da reserva com crédito"
+                              }
+                            >
+                              <Pencil className="size-3.5" />
+                              Editar
+                            </Button>
+                          )}
                           {r.status === "reagendar" && (
                             <Button
                               variant="default"
@@ -324,7 +352,7 @@ function MinhasReservasPage() {
                         </div>
                         {bloqueadoPor24h && (
                           <span className="text-[10px] text-amber-600 dark:text-amber-400 font-medium">
-                            Prazo de cancelamento expirado (&lt; 24h)
+                            Reserva travada (&lt; 24h de antecedência)
                           </span>
                         )}
                       </div>
@@ -394,6 +422,19 @@ function MinhasReservasPage() {
           reservas={reservasQ.data ?? []}
           reserva={reservaParaReagendar}
           modoReagendamento={true}
+        />
+      )}
+
+      {reservaCreditoParaEditar && (
+        <ReservaFormDialog
+          open={!!reservaCreditoParaEditar}
+          onOpenChange={(v) => !v && setReservaCreditoParaEditar(null)}
+          unidades={unidades}
+          salas={salas}
+          usuarios={user ? [user] : []}
+          reservas={reservasQ.data ?? []}
+          reserva={reservaCreditoParaEditar}
+          modoReagendamento={false}
         />
       )}
     </AppShell>

@@ -16,6 +16,7 @@ import {
   CheckCircle2,
   ShieldCheck,
   MessageSquareWarning,
+  Coins,
 } from "lucide-react";
 import { useState, useMemo, useEffect, type ReactNode } from "react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -23,7 +24,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { useAuth } from "@/contexts/AuthContext";
-import { useReservasPendentesCount, useCompleteTour } from "@/hooks/useApi";
+import { useReservasPendentesCount, useCompleteTour, useCreditPackageStats } from "@/hooks/useApi";
 import { DEFAULT_PASSWORD } from "@/config/api";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
@@ -51,12 +52,15 @@ export function AppShell({
   const [openMobile, setOpenMobile] = useState(false);
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const pendentes = useReservasPendentesCount();
+  const creditStatsQ = useCreditPackageStats(isAdmin);
+  const pacotesPendentes = creditStatsQ.data?.pending ?? 0;
 
   const items: NavItem[] = isAdmin
     ? [
         { to: "/app/dashboard", label: "Dashboard", icon: LayoutDashboard },
         { to: "/app/agenda", label: "Agenda geral", icon: CalendarDays },
         { to: "/app/aprovacoes", label: "Aprovações", icon: ClipboardList, badge: pendentes },
+        { to: "/app/gestao-creditos", label: "Pacotes de crédito", icon: Coins, badge: pacotesPendentes },
         { to: "/app/reservas", label: "Todas as reservas", icon: CalendarCheck },
         { to: "/app/profissionais", label: "Profissionais", icon: Users },
         { to: "/app/profissoes", label: "Profissões", icon: Briefcase },
@@ -72,6 +76,7 @@ export function AppShell({
         { to: "/app/agenda", label: "Disponibilidade", icon: CalendarDays },
         { to: "/app/solicitar", label: "Solicitar reserva", icon: CalendarPlus },
         { to: "/app/minhas-reservas", label: "Minhas reservas", icon: CalendarCheck },
+        { to: "/app/creditos", label: "Meus créditos", icon: Coins },
         { to: "/app/ouvidoria", label: "Ouvidoria", icon: MessageSquareWarning },
         { to: "/app/perfil", label: "Meu perfil", icon: UserRound },
       ];

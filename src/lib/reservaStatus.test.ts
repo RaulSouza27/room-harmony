@@ -4,8 +4,12 @@ import { describe, expect, it } from "vitest";
 import { statusInicialNovaReserva } from "./reservaStatus";
 
 describe("statusInicialNovaReserva", () => {
-  it("locatário sempre cria reserva pendente", () => {
+  it("locatário sempre cria reserva avulsa pendente", () => {
     expect(statusInicialNovaReserva(false)).toBe("pendente");
+  });
+
+  it("locatário cria reserva com pacote de créditos já aprovada", () => {
+    expect(statusInicialNovaReserva(false, true)).toBe("aprovada");
   });
 
   it("admin cria reserva já aprovada", () => {
@@ -19,8 +23,8 @@ describe("ReservaFormDialog (regressão)", () => {
     "utf8",
   );
 
-  it("o fluxo de reserva comum usa statusInicialNovaReserva(isAdmin)", () => {
-    expect(source).toContain("status: statusInicialNovaReserva(isAdmin)");
+  it("o fluxo de reserva comum usa statusInicialNovaReserva(isAdmin, isCredito)", () => {
+    expect(source).toContain("status: statusInicialNovaReserva(isAdmin, isCredito)");
   });
 
   it('status "aprovada" fixo só aparece nos fluxos de Reserva Especial (admin)', () => {

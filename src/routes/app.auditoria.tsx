@@ -100,6 +100,14 @@ function AuditoriaPage() {
     switch (action) {
       case "SOLICITACAO_RESERVA":
         return <Badge className="bg-blue-600 text-white hover:bg-blue-700">Solicitação Reserva</Badge>;
+      case "RESERVA_COM_CREDITO":
+        return <Badge className="bg-emerald-600 text-white hover:bg-emerald-700">Reserva com Crédito</Badge>;
+      case "SOLICITACAO_PACOTE_CREDITO":
+        return <Badge className="bg-teal-600 text-white hover:bg-teal-700">Solicitação Pacote (12h)</Badge>;
+      case "APROVACAO_PACOTE_CREDITO":
+        return <Badge className="bg-emerald-700 text-white hover:bg-emerald-800">Aprovação Pacote (12h)</Badge>;
+      case "REJEICAO_PACOTE_CREDITO":
+        return <Badge className="bg-rose-700 text-white hover:bg-rose-800">Rejeição Pacote (12h)</Badge>;
       case "RESERVA_ESPECIAL_CRIADA":
         return <Badge className="bg-purple-600 text-white hover:bg-purple-700">Reserva Especial (Admin)</Badge>;
       case "ALTERACAO_RESERVA":
@@ -267,6 +275,7 @@ function AuditoriaPage() {
               <SelectContent>
                 <SelectItem value="ALL">Todos os Recursos</SelectItem>
                 <SelectItem value="RESERVA">Reservas</SelectItem>
+                <SelectItem value="PACOTE_CREDITO">Pacotes de Crédito</SelectItem>
                 <SelectItem value="USUARIO">Usuários / Licenças</SelectItem>
                 <SelectItem value="SALA">Salas</SelectItem>
                 <SelectItem value="UNIDADE">Unidades</SelectItem>
@@ -289,6 +298,10 @@ function AuditoriaPage() {
               <SelectContent>
                 <SelectItem value="ALL">Todas as Ações</SelectItem>
                 <SelectItem value="SOLICITACAO_RESERVA">Solicitação de Reserva</SelectItem>
+                <SelectItem value="RESERVA_COM_CREDITO">Reserva com Crédito</SelectItem>
+                <SelectItem value="SOLICITACAO_PACOTE_CREDITO">Solicitação de Pacote (12h)</SelectItem>
+                <SelectItem value="APROVACAO_PACOTE_CREDITO">Aprovação de Pacote (12h)</SelectItem>
+                <SelectItem value="REJEICAO_PACOTE_CREDITO">Rejeição de Pacote (12h)</SelectItem>
                 <SelectItem value="RESERVA_ESPECIAL_CRIADA">Reserva Especial (Admin)</SelectItem>
                 <SelectItem value="ALTERACAO_RESERVA">Alteração / Reagendamento</SelectItem>
                 <SelectItem value="SOLICITACAO_CANCELAMENTO_RESERVA">Solicitação de Cancelamento</SelectItem>

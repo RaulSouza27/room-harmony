@@ -15,8 +15,10 @@ import { Route as AppIndexRouteImport } from './routes/app.index'
 import { Route as AppAgendaRouteImport } from './routes/app.agenda'
 import { Route as AppAprovacoesRouteImport } from './routes/app.aprovacoes'
 import { Route as AppAuditoriaRouteImport } from './routes/app.auditoria'
+import { Route as AppCreditosRouteImport } from './routes/app.creditos'
 import { Route as AppDashboardRouteImport } from './routes/app.dashboard'
 import { Route as AppFeriadosRouteImport } from './routes/app.feriados'
+import { Route as AppGestaoCreditosRouteImport } from './routes/app.gestao-creditos'
 import { Route as AppMinhasReservasRouteImport } from './routes/app.minhas-reservas'
 import { Route as AppOuvidoriaRouteImport } from './routes/app.ouvidoria'
 import { Route as AppPerfilRouteImport } from './routes/app.perfil'
@@ -58,6 +60,11 @@ const AppAuditoriaRoute = AppAuditoriaRouteImport.update({
   path: '/auditoria',
   getParentRoute: () => AppRoute,
 } as any)
+const AppCreditosRoute = AppCreditosRouteImport.update({
+  id: '/creditos',
+  path: '/creditos',
+  getParentRoute: () => AppRoute,
+} as any)
 const AppDashboardRoute = AppDashboardRouteImport.update({
   id: '/dashboard',
   path: '/dashboard',
@@ -66,6 +73,11 @@ const AppDashboardRoute = AppDashboardRouteImport.update({
 const AppFeriadosRoute = AppFeriadosRouteImport.update({
   id: '/feriados',
   path: '/feriados',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppGestaoCreditosRoute = AppGestaoCreditosRouteImport.update({
+  id: '/gestao-creditos',
+  path: '/gestao-creditos',
   getParentRoute: () => AppRoute,
 } as any)
 const AppMinhasReservasRoute = AppMinhasReservasRouteImport.update({
@@ -125,8 +137,10 @@ export interface FileRoutesByFullPath {
   '/app/agenda': typeof AppAgendaRoute
   '/app/aprovacoes': typeof AppAprovacoesRoute
   '/app/auditoria': typeof AppAuditoriaRoute
+  '/app/creditos': typeof AppCreditosRoute
   '/app/dashboard': typeof AppDashboardRoute
   '/app/feriados': typeof AppFeriadosRoute
+  '/app/gestao-creditos': typeof AppGestaoCreditosRoute
   '/app/minhas-reservas': typeof AppMinhasReservasRoute
   '/app/ouvidoria': typeof AppOuvidoriaRoute
   '/app/perfil': typeof AppPerfilRoute
@@ -144,8 +158,10 @@ export interface FileRoutesByTo {
   '/app/agenda': typeof AppAgendaRoute
   '/app/aprovacoes': typeof AppAprovacoesRoute
   '/app/auditoria': typeof AppAuditoriaRoute
+  '/app/creditos': typeof AppCreditosRoute
   '/app/dashboard': typeof AppDashboardRoute
   '/app/feriados': typeof AppFeriadosRoute
+  '/app/gestao-creditos': typeof AppGestaoCreditosRoute
   '/app/minhas-reservas': typeof AppMinhasReservasRoute
   '/app/ouvidoria': typeof AppOuvidoriaRoute
   '/app/perfil': typeof AppPerfilRoute
@@ -165,8 +181,10 @@ export interface FileRoutesById {
   '/app/agenda': typeof AppAgendaRoute
   '/app/aprovacoes': typeof AppAprovacoesRoute
   '/app/auditoria': typeof AppAuditoriaRoute
+  '/app/creditos': typeof AppCreditosRoute
   '/app/dashboard': typeof AppDashboardRoute
   '/app/feriados': typeof AppFeriadosRoute
+  '/app/gestao-creditos': typeof AppGestaoCreditosRoute
   '/app/minhas-reservas': typeof AppMinhasReservasRoute
   '/app/ouvidoria': typeof AppOuvidoriaRoute
   '/app/perfil': typeof AppPerfilRoute
@@ -187,8 +205,10 @@ export interface FileRouteTypes {
     | '/app/agenda'
     | '/app/aprovacoes'
     | '/app/auditoria'
+    | '/app/creditos'
     | '/app/dashboard'
     | '/app/feriados'
+    | '/app/gestao-creditos'
     | '/app/minhas-reservas'
     | '/app/ouvidoria'
     | '/app/perfil'
@@ -206,8 +226,10 @@ export interface FileRouteTypes {
     | '/app/agenda'
     | '/app/aprovacoes'
     | '/app/auditoria'
+    | '/app/creditos'
     | '/app/dashboard'
     | '/app/feriados'
+    | '/app/gestao-creditos'
     | '/app/minhas-reservas'
     | '/app/ouvidoria'
     | '/app/perfil'
@@ -226,8 +248,10 @@ export interface FileRouteTypes {
     | '/app/agenda'
     | '/app/aprovacoes'
     | '/app/auditoria'
+    | '/app/creditos'
     | '/app/dashboard'
     | '/app/feriados'
+    | '/app/gestao-creditos'
     | '/app/minhas-reservas'
     | '/app/ouvidoria'
     | '/app/perfil'
@@ -290,6 +314,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppAuditoriaRouteImport
       parentRoute: typeof AppRoute
     }
+    '/app/creditos': {
+      id: '/app/creditos'
+      path: '/creditos'
+      fullPath: '/app/creditos'
+      preLoaderRoute: typeof AppCreditosRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/app/dashboard': {
       id: '/app/dashboard'
       path: '/dashboard'
@@ -302,6 +333,13 @@ declare module '@tanstack/react-router' {
       path: '/feriados'
       fullPath: '/app/feriados'
       preLoaderRoute: typeof AppFeriadosRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/gestao-creditos': {
+      id: '/app/gestao-creditos'
+      path: '/gestao-creditos'
+      fullPath: '/app/gestao-creditos'
+      preLoaderRoute: typeof AppGestaoCreditosRouteImport
       parentRoute: typeof AppRoute
     }
     '/app/minhas-reservas': {
@@ -381,8 +419,10 @@ interface AppRouteChildren {
   AppAgendaRoute: typeof AppAgendaRoute
   AppAprovacoesRoute: typeof AppAprovacoesRoute
   AppAuditoriaRoute: typeof AppAuditoriaRoute
+  AppCreditosRoute: typeof AppCreditosRoute
   AppDashboardRoute: typeof AppDashboardRoute
   AppFeriadosRoute: typeof AppFeriadosRoute
+  AppGestaoCreditosRoute: typeof AppGestaoCreditosRoute
   AppMinhasReservasRoute: typeof AppMinhasReservasRoute
   AppOuvidoriaRoute: typeof AppOuvidoriaRoute
   AppPerfilRoute: typeof AppPerfilRoute
@@ -400,8 +440,10 @@ const AppRouteChildren: AppRouteChildren = {
   AppAgendaRoute: AppAgendaRoute,
   AppAprovacoesRoute: AppAprovacoesRoute,
   AppAuditoriaRoute: AppAuditoriaRoute,
+  AppCreditosRoute: AppCreditosRoute,
   AppDashboardRoute: AppDashboardRoute,
   AppFeriadosRoute: AppFeriadosRoute,
+  AppGestaoCreditosRoute: AppGestaoCreditosRoute,
   AppMinhasReservasRoute: AppMinhasReservasRoute,
   AppOuvidoriaRoute: AppOuvidoriaRoute,
   AppPerfilRoute: AppPerfilRoute,

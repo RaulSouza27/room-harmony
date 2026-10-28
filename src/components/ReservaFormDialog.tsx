@@ -20,12 +20,12 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 import { useAuth } from "@/contexts/AuthContext";
 import { statusInicialNovaReserva } from "@/lib/reservaStatus";
-import { useCreateReserva, useUpdateReserva, useHolidays, useSala } from "@/hooks/useApi";
+import { useCreateReserva, useUpdateReserva, useHolidays, useSala, useMyCreditPackages } from "@/hooks/useApi";
 import { findConflitos, getReservaReceipt } from "@/services/api";
 import { HORARIOS, toMinutes } from "@/services/db";
 import type { Reserva, Sala, Unidade, User, Recorrencia, ReservaStatus } from "@/types";
-import { CalendarOff, Loader2, Sparkles } from "lucide-react";
-import { isReservaEspecial } from "@/lib/format";
+import { CalendarOff, Coins, Loader2, Sparkles } from "lucide-react";
+import { formatarData, isReservaEspecial } from "@/lib/format";
 import { toast } from "sonner";
 
 interface Props {
@@ -78,13 +78,15 @@ export function ReservaFormDialog({
   const [fim, setFim] = useState("09:00");
   const [profissionalId, setProfissionalId] = useState("");
   const [observacoes, setObservacoes] = useState("");
-  type TipoReservaOpcao = "unica" | "semanal_mensal" | "semanal_anual" | "especial";
+  type TipoReservaOpcao = "unica" | "credito" | "semanal_mensal" | "semanal_anual" | "especial";
   const [tipoReserva, setTipoReserva] = useState<TipoReservaOpcao>("unica");
   const [comprovante, setComprovante] = useState("");
   const [selectedPhotoIndex, setSelectedPhotoIndex] = useState<number | null>(null);
   const [submittingLocal, setSubmittingLocal] = useState(false);
 
   const isEspecial = tipoReserva === "especial";
+  const isCredito = tipoReserva === "credito" || Boolean(reserva?.paid_with_credits);
+  const { data: myCreditPackages = [] } = useMyCreditPackages(open && !isAdmin);
 
   useEffect(() => {
     if (!open) return;
@@ -109,6 +111,8 @@ export function ReservaFormDialog({
     
     if (reserva && isReservaEspecial(reserva)) {
       setTipoReserva("especial");
+    } else if (reserva?.paid_with_credits) {
+      setTipoReserva("credito");
     } else {
       // Map legacy 'semanal' to 'semanal_mensal'
       const rec = (reserva?.recorrencia === "semanal") ? "semanal_mensal" : (reserva?.recorrencia ?? "unica");
@@ -127,22 +131,22 @@ export function ReservaFormDialog({
 
   // Enforce automatic reservation duration set: 1h for avulsa, 4h for shift (turno)
   useEffect(() => {
-    if (tipoReserva === "especial") return;
+    if (tipoReserva === "especial" || tipoReserva === "credito") return;
     const startHour = Number(inicio.slice(0, 2));
     const duration = (tipoReserva === "semanal_anual") ? 4 : 1;
     const endHour = startHour + duration;
     setFim(`${String(endHour).padStart(2, "0")}:00`);
   }, [inicio, tipoReserva]);
 
-  // Se especial estiver ativo e o horário de fim for menor ou igual ao de início, ajusta
+  // Se especial ou crédito estiver ativo e o horário de fim for menor ou igual ao de início, ajusta
   useEffect(() => {
-    if (tipoReserva === "especial") {
+    if (tipoReserva === "especial" || tipoReserva === "credito") {
       if (toMinutes(fim) <= toMinutes(inicio)) {
         const startHour = Number(inicio.slice(0, 2));
         const endHour = Math.min(startHour + 1, 22);
         setFim(`${String(endHour).padStart(2, "0")}:00`);
       }
-      if (dataFim < data) {
+      if (tipoReserva === "especial" && dataFim < data) {
         setDataFim(data);
       }
     }
@@ -227,9 +231,68 @@ export function ReservaFormDialog({
     });
   }, [data, holidays, unidadeId]);
 
+  const horasSelecionadas = useMemo(() => {
+    const diff = (toMinutes(fim) - toMinutes(inicio)) / 60;
+    return diff > 0 ? Math.round(diff) : 0;
+  }, [inicio, fim]);
+
+  // Pacotes ativos na unidade selecionada (hoje) vs. pacotes válidos até a data da reserva
+  const { creditosAtivosUnidadeHoje, creditosValidosNaData, maxValidadePacoteUnidade } = useMemo(() => {
+    if (!unidadeId) {
+      return { creditosAtivosUnidadeHoje: 0, creditosValidosNaData: 0, maxValidadePacoteUnidade: null as string | null };
+    }
+    const now = new Date();
+    let ativosHoje = 0;
+    let validosData = 0;
+    let maxExpiry: string | null = null;
+
+    for (const p of myCreditPackages) {
+      if (
+        p.status === "APPROVED" &&
+        String(p.unitId) === String(unidadeId) &&
+        p.remainingCredits > 0 &&
+        (!p.expiresAt || new Date(p.expiresAt) >= now)
+      ) {
+        ativosHoje += p.remainingCredits;
+        const expDateStr = p.expiresAt ? p.expiresAt.slice(0, 10) : null;
+        if (expDateStr && (!maxExpiry || expDateStr > maxExpiry)) {
+          maxExpiry = expDateStr;
+        }
+        if (!expDateStr || !data || expDateStr >= data) {
+          validosData += p.remainingCredits;
+        }
+      }
+    }
+    return {
+      creditosAtivosUnidadeHoje: ativosHoje,
+      creditosValidosNaData: validosData,
+      maxValidadePacoteUnidade: maxExpiry,
+    };
+  }, [myCreditPackages, unidadeId, data]);
+
+  const horasExtrasNecessarias = useMemo(() => {
+    if (!isCredito) return 0;
+    if (reserva?.paid_with_credits) {
+      const jaUsadas = reserva.credit_hours_used || 1;
+      return Math.max(0, horasSelecionadas - jaUsadas);
+    }
+    return horasSelecionadas;
+  }, [isCredito, reserva, horasSelecionadas]);
+
+  const dataAposVencimentoPacote =
+    isCredito &&
+    !isAdmin &&
+    creditosAtivosUnidadeHoje > 0 &&
+    creditosValidosNaData < horasExtrasNecessarias &&
+    Boolean(maxValidadePacoteUnidade && data > maxValidadePacoteUnidade);
+
+  const saldoCreditoInsuficiente =
+    isCredito && !isAdmin && creditosValidosNaData < horasExtrasNecessarias;
+
   const comprovanteFaltando =
     !isAdmin &&
     !isEspecial &&
+    !isCredito &&
     !modoReagendamento &&
     !reserva &&
     (!comprovante || comprovante.trim() === "" || comprovante === "empty");
@@ -243,6 +306,7 @@ export function ReservaFormDialog({
     !!profissionalId &&
     !horarioInvalido &&
     !dataInvalida &&
+    !saldoCreditoInsuficiente &&
     (isEspecial || (!foraDoHorario && !feriadoDaData && conflitos.length === 0)) &&
     !comprovanteFaltando &&
     !isSubmitting;
@@ -261,8 +325,13 @@ export function ReservaFormDialog({
   async function handleSubmit() {
     if (!podeSalvar || isSubmitting) return;
 
-    const recorrenciaFinal: Recorrencia = isEspecial ? "unica" : (tipoReserva as Recorrencia);
-    const comprovanteFinal = isEspecial ? "reserva_especial_admin" : comprovante;
+    const recorrenciaFinal: Recorrencia =
+      isEspecial || isCredito ? "unica" : (tipoReserva as Recorrencia);
+    const comprovanteFinal = isEspecial
+      ? "reserva_especial_admin"
+      : isCredito
+        ? "credito_pacote"
+        : comprovante;
     const observacoesFinal = isEspecial
       ? (observacoes.includes("[Reserva Especial Admin]")
           ? observacoes
@@ -351,8 +420,9 @@ export function ReservaFormDialog({
           profissional_id: profissionalId,
           observacoes: observacoesFinal,
           recorrencia: recorrenciaFinal,
-          status: statusInicialNovaReserva(isAdmin),
+          status: statusInicialNovaReserva(isAdmin, isCredito),
           comprovante: comprovanteFinal,
+          paid_with_credits: isCredito,
         });
       }
       onOpenChange(false);
@@ -397,7 +467,7 @@ export function ReservaFormDialog({
               <Label>Unidade</Label>
               <Select
                 value={unidadeId}
-                disabled={modoReagendamento}
+                disabled={modoReagendamento || Boolean(reserva?.paid_with_credits)}
                 onValueChange={(v) => {
                   setUnidadeId(v);
                   setSalaId("");
@@ -489,12 +559,21 @@ export function ReservaFormDialog({
 
           <div className="space-y-2">
             <Label>Tipo / Recorrência</Label>
-            <Select value={tipoReserva} onValueChange={(v) => setTipoReserva(v as TipoReservaOpcao)} disabled={modoReagendamento}>
+            <Select
+              value={tipoReserva}
+              onValueChange={(v) => setTipoReserva(v as TipoReservaOpcao)}
+              disabled={modoReagendamento || Boolean(reserva?.paid_with_credits)}
+            >
               <SelectTrigger>
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="unica">Hora avulsa (1h)</SelectItem>
+                {(!isAdmin || Boolean(reserva?.paid_with_credits)) && (
+                  <SelectItem value="credito" className="font-semibold text-emerald-700 dark:text-emerald-300">
+                    💳 Usar Créditos do Pacote ({creditosValidosNaData}h disponíveis na data)
+                  </SelectItem>
+                )}
                 <SelectItem value="semanal_mensal">Hora avulsa fixa (semanal até fim do mês)</SelectItem>
                 <SelectItem value="semanal_anual">Turno (4h - semanal até fim do ano)</SelectItem>
                 {isAdmin && (
@@ -505,6 +584,34 @@ export function ReservaFormDialog({
               </SelectContent>
             </Select>
           </div>
+
+          {isCredito && (
+            <div className="rounded-lg border border-emerald-500/30 bg-emerald-500/10 p-3 text-xs text-emerald-800 dark:text-emerald-200 flex items-start gap-2.5">
+              <Coins className="size-4 text-emerald-600 dark:text-emerald-400 shrink-0 mt-0.5" />
+              <div className="space-y-1 flex-1">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <p className="font-semibold">Reserva com Pacote de Créditos (Aprovação Imediata)</p>
+                  <span className="font-bold bg-emerald-500/20 px-2 py-0.5 rounded border border-emerald-500/30">
+                    Duração: {horasSelecionadas}h ({horasSelecionadas} crédito{horasSelecionadas > 1 ? "s" : ""})
+                  </span>
+                </div>
+                <p className="opacity-90">
+                  Saldo válido nesta unidade para a data <strong>{formatarData(data)}</strong>:{" "}
+                  <strong>{creditosValidosNaData}h</strong>. Você pode escolher 1h ou mais horas inteiras no campo Fim.
+                </p>
+                {dataAposVencimentoPacote && maxValidadePacoteUnidade && (
+                  <p className="text-destructive font-semibold mt-1">
+                    ⚠️ A data selecionada ({formatarData(data)}) ultrapassa o vencimento de 30 dias do seu pacote ativo ({formatarData(maxValidadePacoteUnidade)}). A reserva precisa acontecer dentro da validade do pacote.
+                  </p>
+                )}
+                {!dataAposVencimentoPacote && saldoCreditoInsuficiente && (
+                  <p className="text-destructive font-semibold mt-1">
+                    ⚠️ Saldo de créditos insuficiente nesta unidade para cobrir {horasExtrasNecessarias}h. Solicite um pacote na aba &ldquo;Meus créditos&rdquo;.
+                  </p>
+                )}
+              </div>
+            </div>
+          )}
 
           {isEspecial && (
             <div className="rounded-lg border border-amber-500/30 bg-amber-500/10 p-3 text-xs text-amber-800 dark:text-amber-200 flex items-start gap-2">
@@ -605,13 +712,17 @@ export function ReservaFormDialog({
               </div>
               <div className="space-y-2">
                 <Label>Fim</Label>
-                <Select value={fim} onValueChange={setFim} disabled={true}>
+                <Select value={fim} onValueChange={setFim} disabled={!isCredito}>
                   <SelectTrigger>
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
                     {[...HORARIOS.slice(1), "22:00"].map((h) => (
-                      <SelectItem key={h} value={h}>
+                      <SelectItem
+                        key={h}
+                        value={h}
+                        disabled={toMinutes(h) <= toMinutes(inicio)}
+                      >
                         {h}
                       </SelectItem>
                     ))}
@@ -638,6 +749,13 @@ export function ReservaFormDialog({
               <span>Comprovante de pagamento dispensado para Reserva Especial.</span>
               <span className="text-[10px] font-semibold text-amber-600 dark:text-amber-400 bg-amber-500/10 px-2 py-0.5 rounded border border-amber-500/20">
                 Dispensado
+              </span>
+            </div>
+          ) : isCredito ? (
+            <div className="rounded-lg border border-emerald-500/30 bg-emerald-500/10 p-3 text-xs text-emerald-700 dark:text-emerald-300 flex items-center justify-between">
+              <span>Pagamento realizado via Pacote de Créditos (comprovante já aprovado no pacote).</span>
+              <span className="text-[10px] font-semibold text-emerald-700 dark:text-emerald-300 bg-emerald-500/20 px-2 py-0.5 rounded border border-emerald-500/30">
+                Usando Créditos
               </span>
             </div>
           ) : modoReagendamento ? (
@@ -763,6 +881,13 @@ export function ReservaFormDialog({
                 {feriadoDaData && !isEspecial && <li>A data selecionada coincide com um feriado/bloqueio ({feriadoDaData.name}).</li>}
                 {conflitos.length > 0 && !isEspecial && <li>Conflito: já existe reserva no mesmo horário nesta sala.</li>}
                 {comprovanteFaltando && <li>Comprovante de pagamento obrigatório.</li>}
+                {saldoCreditoInsuficiente && (
+                  <li>
+                    {dataAposVencimentoPacote
+                      ? "A data escolhida ultrapassa o vencimento de 30 dias do seu pacote de créditos."
+                      : `Saldo de créditos insuficiente nesta unidade para a data (${creditosValidosNaData}h disponíveis, ${horasExtrasNecessarias}h necessárias).`}
+                  </li>
+                )}
               </ul>
             </div>
           ) : null}
@@ -788,7 +913,9 @@ export function ReservaFormDialog({
                   ? "Salvar alterações"
                   : isAdmin
                     ? "Criar reserva"
-                    : "Enviar solicitação"}
+                    : isCredito
+                      ? `Confirmar com ${horasSelecionadas} crédito(s)`
+                      : "Enviar solicitação"}
           </Button>
         </DialogFooter>
       </DialogContent>

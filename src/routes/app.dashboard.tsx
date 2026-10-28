@@ -1,6 +1,6 @@
 import { useMemo } from "react";
 import { Link, createFileRoute } from "@tanstack/react-router";
-import { CalendarClock, CalendarPlus, ClipboardList, DoorOpen, Percent } from "lucide-react";
+import { CalendarClock, CalendarPlus, ClipboardList, Coins, DoorOpen, Percent } from "lucide-react";
 import { AppShell } from "@/components/AppShell";
 import {
   EmptyState,
@@ -9,9 +9,10 @@ import {
   SectionCard,
   StatusBadge,
 } from "@/components/common";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/contexts/AuthContext";
-import { useReservas, useSalas, useUnidades, useUsuarios } from "@/hooks/useApi";
+import { useCreditPackageStats, useMyCreditPackages, useReservas, useSalas, useUnidades, useUsuarios } from "@/hooks/useApi";
 import { HORARIOS, toMinutes } from "@/services/db";
 import { formatarData } from "@/lib/format";
 
@@ -67,6 +68,8 @@ function DashboardPage() {
   const salasQ = useSalas();
   const unidadesQ = useUnidades();
   const usuariosQ = useUsuarios();
+  const myPackagesQ = useMyCreditPackages(!isAdmin);
+  const creditStatsQ = useCreditPackageStats(isAdmin);
 
   const loading = reservasQ.isLoading || salasQ.isLoading || unidadesQ.isLoading;
   const error = reservasQ.error ?? salasQ.error ?? unidadesQ.error;
@@ -76,6 +79,42 @@ function DashboardPage() {
   const salas = salasQ.data ?? [];
   const unidades = unidadesQ.data ?? [];
   const usuarios = usuariosQ.data ?? [];
+  const myPackages = myPackagesQ.data ?? [];
+
+  const activeCreditPackages = useMemo(() => {
+    const now = new Date();
+    return myPackages
+      .filter(
+        (p) =>
+          p.status === "APPROVED" &&
+          p.remainingCredits > 0 &&
+          (!p.expiresAt || new Date(p.expiresAt) >= now)
+      )
+      .sort((a, b) => (a.expiresAt || "").localeCompare(b.expiresAt || ""));
+  }, [myPackages]);
+
+  const totalCreditosAtivos = useMemo(
+    () => activeCreditPackages.reduce((acc, p) => acc + p.remainingCredits, 0),
+    [activeCreditPackages]
+  );
+
+  const creditosPorUnidade = useMemo(() => {
+    const map = new Map<number, { unitId: number; unitName: string; credits: number; nextExpiresAt?: string | null }>();
+    for (const p of activeCreditPackages) {
+      const current = map.get(p.unitId);
+      if (!current) {
+        map.set(p.unitId, {
+          unitId: p.unitId,
+          unitName: p.unitName,
+          credits: p.remainingCredits,
+          nextExpiresAt: p.expiresAt,
+        });
+      } else {
+        current.credits += p.remainingCredits;
+      }
+    }
+    return Array.from(map.values());
+  }, [activeCreditPackages]);
 
   const nomeSala = (id: string) => salas.find((s) => s.id === id)?.nome ?? "—";
   const nomeUnidade = (id: string) => unidades.find((u) => u.id === id)?.nome ?? "—";
@@ -130,15 +169,23 @@ function DashboardPage() {
         <ErrorState message={error.message} />
       ) : (
         <div className="space-y-6">
-          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
             {isAdmin ? (
               <>
                 <Metric
                   label="Pendentes"
                   value={pendentes.length}
-                  hint="Aguardando aprovação"
+                  hint="Reservas avulsas em aberto"
                   icon={ClipboardList}
                 />
+                <Link to="/app/gestao-creditos" className="block transition-transform hover:scale-[1.01]">
+                  <Metric
+                    label="Pacotes em aberto"
+                    value={creditStatsQ.data?.pending ?? 0}
+                    hint={`${creditStatsQ.data?.approved ?? 0} pacote(s) de 12h ativo(s)`}
+                    icon={Coins}
+                  />
+                </Link>
                 <Metric
                   label="Reservas futuras"
                   value={aprovadasFuturas.length}
@@ -182,9 +229,69 @@ function DashboardPage() {
                   hint="Onde você pode reservar"
                   icon={DoorOpen}
                 />
+                <Metric
+                  label="Meus créditos"
+                  value={`${totalCreditosAtivos}h`}
+                  hint={
+                    creditosPorUnidade.length > 0
+                      ? `${creditosPorUnidade.map((u) => `${u.unitName}: ${u.credits}h`).join(" · ")}`
+                      : "Nenhum pacote ativo"
+                  }
+                  icon={Coins}
+                />
               </>
             )}
           </div>
+
+          {!isAdmin && (
+            <SectionCard
+              title="Meus Pacotes de Créditos por Unidade"
+              description="Saldo de horas pré-aprovadas e validade de cada pacote ativo"
+              actions={
+                <Button asChild variant="outline" size="sm" className="gap-1.5">
+                  <Link to="/app/creditos">
+                    <Coins className="size-4 text-primary" />
+                    Comprar / Ver extrato
+                  </Link>
+                </Button>
+              }
+            >
+              {activeCreditPackages.length === 0 ? (
+                <div className="flex flex-wrap items-center justify-between gap-3 py-2 text-sm text-muted-foreground">
+                  <span>
+                    Você não possui pacotes de créditos ativos no momento. Adquira um pacote de 12h para reservar sem aguardar aprovação.
+                  </span>
+                  <Button asChild size="sm" variant="secondary">
+                    <Link to="/app/creditos">Solicitar Pacote (12h)</Link>
+                  </Button>
+                </div>
+              ) : (
+                <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                  {activeCreditPackages.map((pkg) => (
+                    <div
+                      key={pkg.id}
+                      className="rounded-lg border border-border bg-muted/20 p-3.5 flex items-center justify-between gap-3"
+                    >
+                      <div className="min-w-0">
+                        <p className="text-sm font-semibold text-card-foreground truncate">
+                          {pkg.unitName}
+                        </p>
+                        <p className="text-xs text-muted-foreground">
+                          Pacote #{pkg.id} · Vence em{" "}
+                          {pkg.expiresAt
+                            ? new Date(pkg.expiresAt).toLocaleDateString("pt-BR")
+                            : "—"}
+                        </p>
+                      </div>
+                      <Badge className="bg-primary/15 text-primary border-primary/30 text-sm font-bold px-2.5 py-1">
+                        {pkg.remainingCredits}h / {pkg.totalCredits}h
+                      </Badge>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </SectionCard>
+          )}
 
           {isAdmin ? (
             <div className="grid gap-6 lg:grid-cols-2">

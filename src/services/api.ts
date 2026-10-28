@@ -1,5 +1,5 @@
 import {BACKEND_URL} from '@/config/api';
-import type {BusinessHours, Complaint, ComplaintPage, ComplaintQuota, ComplaintStats, Holiday, NovaReserva, Profession, Reserva, ReservaStatus, Sala, Unidade, User} from '@/types';
+import type {BusinessHours, Complaint, ComplaintPage, ComplaintQuota, ComplaintStats, CreditPackage, CreditPackageStats, CreditTransaction, CreditTransactionPage, Holiday, NovaReserva, Profession, Reserva, ReservaStatus, Sala, Unidade, User} from '@/types';
 
 import {createAuditLog} from './auditService';
 import {overlaps, readDB, uid, writeDB} from './db';
@@ -565,6 +565,8 @@ export async function listReservas(filters?: ReservaFilters):
       aprovado_por: item.aprovadoPor || '',
       recorrencia: item.recorrencia || 'unica',
       comprovante: item.depositImage || '',
+      paid_with_credits: Boolean(item.paidWithCredits),
+      credit_hours_used: Number(item.creditHoursUsed ?? 0),
     };
   });
 }
@@ -612,6 +614,7 @@ export async function createReserva(input: NovaReserva): Promise<Reserva> {
     motivoNegacao: '',
     aprovadoPor: '',
     recorrencia: input.recorrencia || 'unica',
+    paidWithCredits: Boolean(input.paid_with_credits),
   };
 
   const response = await fetch(`${BACKEND_URL}/reservations`, {
@@ -648,6 +651,8 @@ export async function createReserva(input: NovaReserva): Promise<Reserva> {
     aprovado_por: data.aprovadoPor || '',
     recorrencia: data.recorrencia || 'unica',
     comprovante: data.depositImage || '',
+    paid_with_credits: Boolean(data.paidWithCredits),
+    credit_hours_used: Number(data.creditHoursUsed ?? 0),
   };
 }
 
@@ -709,6 +714,8 @@ export async function updateReserva(
     aprovado_por: data.aprovadoPor || '',
     recorrencia: data.recorrencia || 'unica',
     comprovante: data.depositImage || '',
+    paid_with_credits: Boolean(data.paidWithCredits),
+    credit_hours_used: Number(data.creditHoursUsed ?? 0),
   };
 }
 
@@ -1109,4 +1116,215 @@ export async function updateComplaintSolved(
   }
   const item = await response.json();
   return mapComplaintItem(item);
+}
+
+/* ------------------------ Créditos (Pacotes 12h) -------------------- */
+function mapCreditPackage(item: any): CreditPackage {
+  return {
+    id: Number(item.id),
+    userId: Number(item.userId),
+    userName: item.userName || `Profissional #${item.userId}`,
+    userEmail: item.userEmail ?? null,
+    userPhone: item.userPhone ?? null,
+    unitId: Number(item.unitId),
+    unitName: item.unitName || `Unidade #${item.unitId}`,
+    totalCredits: Number(item.totalCredits ?? 12),
+    remainingCredits: Number(item.remainingCredits ?? 0),
+    receiptImage: item.receiptImage || 'empty',
+    status: item.status || 'PENDING',
+    rejectionReason: item.rejectionReason ?? null,
+    createdAt: item.createdAt || '',
+    reviewedAt: item.reviewedAt ?? null,
+    reviewedByUserId: item.reviewedByUserId ?? null,
+    reviewedByName: item.reviewedByName ?? null,
+    expiresAt: item.expiresAt ?? null,
+  };
+}
+
+function mapCreditTransaction(item: any): CreditTransaction {
+  return {
+    id: Number(item.id),
+    packageId: Number(item.packageId),
+    userId: Number(item.userId),
+    userName: item.userName || `Profissional #${item.userId}`,
+    userEmail: item.userEmail ?? null,
+    unitId: Number(item.unitId),
+    unitName: item.unitName || `Unidade #${item.unitId}`,
+    reservationId: item.reservationId != null ? Number(item.reservationId) : null,
+    type: item.type || 'USO_RESERVA',
+    amount: Number(item.amount ?? 0),
+    balanceAfter: Number(item.balanceAfter ?? 0),
+    description: item.description || '',
+    performedByUserId: item.performedByUserId ?? null,
+    performedByName: item.performedByName ?? null,
+    createdAt: item.createdAt || '',
+  };
+}
+
+export async function createCreditPackageRequest(input: {
+  unitId: number;
+  receiptImage: string;
+}): Promise<CreditPackage> {
+  const response = await fetch(`${BACKEND_URL}/credits/packages`, {
+    method: 'POST',
+    headers: getHeaders(),
+    body: JSON.stringify(input),
+  });
+  if (!response.ok) {
+    const errorText = await response.text();
+    throw new Error(errorText || 'Falha ao enviar solicitação de pacote de créditos.');
+  }
+  const data = await response.json();
+  return mapCreditPackage(data);
+}
+
+export async function listMyCreditPackages(): Promise<CreditPackage[]> {
+  const response = await fetch(`${BACKEND_URL}/credits/packages/my`, {
+    headers: getHeaders(),
+  });
+  if (!response.ok) {
+    const errorText = await response.text();
+    throw new Error(errorText || 'Falha ao carregar seus pacotes de créditos.');
+  }
+  const data = await response.json();
+  return (data || []).map(mapCreditPackage);
+}
+
+export async function getCreditPackageStats(): Promise<CreditPackageStats> {
+  const response = await fetch(`${BACKEND_URL}/credits/packages/stats`, {
+    headers: getHeaders(),
+  });
+  if (!response.ok) {
+    const errorText = await response.text();
+    throw new Error(errorText || 'Falha ao carregar estatísticas de pacotes.');
+  }
+  const data = await response.json();
+  return {
+    pending: Number(data.pending ?? 0),
+    approved: Number(data.approved ?? 0),
+    rejected: Number(data.rejected ?? 0),
+    expired: Number(data.expired ?? 0),
+    total: Number(data.total ?? 0),
+  };
+}
+
+export async function listAllCreditPackages(params?: {
+  status?: string;
+  unitId?: number;
+  userId?: number;
+}): Promise<CreditPackage[]> {
+  const query = new URLSearchParams();
+  if (params?.status && params.status !== 'ALL') query.append('status', params.status);
+  if (params?.unitId) query.append('unitId', String(params.unitId));
+  if (params?.userId) query.append('userId', String(params.userId));
+  const qs = query.toString();
+  const response = await fetch(`${BACKEND_URL}/credits/packages${qs ? `?${qs}` : ''}`, {
+    headers: getHeaders(),
+  });
+  if (!response.ok) {
+    const errorText = await response.text();
+    throw new Error(errorText || 'Falha ao carregar solicitações de pacotes.');
+  }
+  const data = await response.json();
+  return (data || []).map(mapCreditPackage);
+}
+
+export async function getCreditPackageReceipt(id: number): Promise<string> {
+  const response = await fetch(`${BACKEND_URL}/credits/packages/${id}/receipt`, {
+    headers: getHeaders(),
+  });
+  if (!response.ok) {
+    throw new Error('Falha ao carregar comprovante do pacote.');
+  }
+  const data = await response.json();
+  return data.receiptImage || '';
+}
+
+export async function approveCreditPackage(id: number): Promise<CreditPackage> {
+  const response = await fetch(`${BACKEND_URL}/credits/packages/${id}/approve`, {
+    method: 'PUT',
+    headers: getHeaders(),
+  });
+  if (!response.ok) {
+    const errorText = await response.text();
+    throw new Error(errorText || 'Falha ao aprovar pacote de créditos.');
+  }
+  const data = await response.json();
+  return mapCreditPackage(data);
+}
+
+export async function rejectCreditPackage(
+  id: number,
+  rejectionReason?: string,
+): Promise<CreditPackage> {
+  const response = await fetch(`${BACKEND_URL}/credits/packages/${id}/reject`, {
+    method: 'PUT',
+    headers: getHeaders(),
+    body: JSON.stringify({ rejectionReason: rejectionReason?.trim() || null }),
+  });
+  if (!response.ok) {
+    const errorText = await response.text();
+    throw new Error(errorText || 'Falha ao rejeitar pacote de créditos.');
+  }
+  const data = await response.json();
+  return mapCreditPackage(data);
+}
+
+export async function listMyCreditTransactions(params?: {
+  unitId?: number;
+  type?: string;
+  startDate?: string;
+  endDate?: string;
+}): Promise<CreditTransaction[]> {
+  const query = new URLSearchParams();
+  if (params?.unitId) query.append('unitId', String(params.unitId));
+  if (params?.type && params.type !== 'ALL') query.append('type', params.type);
+  if (params?.startDate) query.append('startDate', params.startDate);
+  if (params?.endDate) query.append('endDate', params.endDate);
+  const qs = query.toString();
+  const response = await fetch(`${BACKEND_URL}/credits/transactions/my${qs ? `?${qs}` : ''}`, {
+    headers: getHeaders(),
+  });
+  if (!response.ok) {
+    const errorText = await response.text();
+    throw new Error(errorText || 'Falha ao carregar extrato de créditos.');
+  }
+  const data = await response.json();
+  return (data || []).map(mapCreditTransaction);
+}
+
+export async function listAllCreditTransactionsPaged(params: {
+  page: number;
+  size: number;
+  userId?: number;
+  unitId?: number;
+  type?: string;
+  startDate?: string;
+  endDate?: string;
+}): Promise<CreditTransactionPage> {
+  const query = new URLSearchParams({
+    page: String(params.page),
+    size: String(params.size),
+  });
+  if (params.userId) query.append('userId', String(params.userId));
+  if (params.unitId) query.append('unitId', String(params.unitId));
+  if (params.type && params.type !== 'ALL') query.append('type', params.type);
+  if (params.startDate) query.append('startDate', params.startDate);
+  if (params.endDate) query.append('endDate', params.endDate);
+
+  const response = await fetch(`${BACKEND_URL}/credits/transactions?${query.toString()}`, {
+    headers: getHeaders(),
+  });
+  if (!response.ok) {
+    const errorText = await response.text();
+    throw new Error(errorText || 'Falha ao carregar extrato geral de créditos.');
+  }
+  const data = await response.json();
+  return {
+    content: (data.content || []).map(mapCreditTransaction),
+    totalElements: Number(data.totalElements ?? 0),
+    totalPages: Math.max(1, Number(data.totalPages ?? 1)),
+    number: Number(data.number ?? params.page),
+    size: Number(data.size ?? params.size),
+  };
 }

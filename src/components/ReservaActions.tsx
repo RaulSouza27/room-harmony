@@ -197,20 +197,24 @@ export function CancelarReservaButton({
   label?: string;
   size?: "sm" | "default";
 }) {
-  const { user, isAdmin } = useAuth();
+  const { isAdmin } = useAuth();
   const atualizar = useUpdateReserva();
   const [open, setOpen] = useState(false);
 
-  // Se for locatário (não-admin) e a reserva estiver APROVADA, ele solicita o cancelamento ao admin.
-  const isSolicitacaoLocatario = !isAdmin && reserva.status === "aprovada";
+  const isReservaCreditoLocatario = !isAdmin && Boolean(reserva.paid_with_credits);
+  // Se for locatário (não-admin), reserva avulsa e APROVADA, solicita o cancelamento ao admin.
+  // Se for reserva com crédito (com >= 24h), cancela diretamente e devolve os créditos ao pacote.
+  const isSolicitacaoLocatario = !isAdmin && reserva.status === "aprovada" && !isReservaCreditoLocatario;
   const temMaisDe24h = isReservaComMaisDe24h(reserva.data, reserva.hora_inicio);
-  const bloqueadoPor24h = isSolicitacaoLocatario && !temMaisDe24h;
+  const bloqueadoPor24h = (isSolicitacaoLocatario || isReservaCreditoLocatario) && !temMaisDe24h;
 
   const defaultLabel = label
     ? label
-    : isSolicitacaoLocatario
-      ? "Solicitar cancelamento"
-      : "Cancelar";
+    : isReservaCreditoLocatario
+      ? "Cancelar e estornar"
+      : isSolicitacaoLocatario
+        ? "Solicitar cancelamento"
+        : "Cancelar";
 
   const handleConfirm = async () => {
     if (isSolicitacaoLocatario) {
@@ -229,6 +233,23 @@ export function CancelarReservaButton({
       });
 
       toast.success("Solicitação de cancelamento enviada aos administradores com sucesso.");
+    } else if (isReservaCreditoLocatario) {
+      if (!isReservaComMaisDe24h(reserva.data, reserva.hora_inicio)) {
+        toast.error(
+          "Reservas com menos de 24h de antecedência estão travadas para cancelamento pelo locatário. Contate a administração."
+        );
+        setOpen(false);
+        return;
+      }
+
+      await atualizar.mutateAsync({
+        id: reserva.id,
+        patch: { status: "cancelada" },
+      });
+
+      toast.success(
+        `Reserva cancelada com sucesso! ${reserva.credit_hours_used || 1} crédito(s) devolvido(s) ao pacote de origem.`
+      );
     } else {
       // Efetivar cancelamento da reserva
       await atualizar.mutateAsync({
@@ -242,7 +263,11 @@ export function CancelarReservaButton({
         `O cancelamento solicitado para sua reserva no dia ${reserva.data} (${reserva.hora_inicio}-${reserva.hora_fim}) foi realizado com sucesso.`,
       );
 
-      toast.success("Reserva cancelada com sucesso!");
+      toast.success(
+        reserva.paid_with_credits
+          ? `Reserva cancelada e ${reserva.credit_hours_used || 1} crédito(s) devolvido(s) ao pacote do locatário!`
+          : "Reserva cancelada com sucesso!"
+      );
     }
   };
 
@@ -255,7 +280,7 @@ export function CancelarReservaButton({
         onClick={() => setOpen(true)}
         title={
           bloqueadoPor24h
-            ? "Cancelamentos pelo sistema só são permitidos com no mínimo 24h de antecedência. Contate a administração para urgências."
+            ? "Com menos de 24h de antecedência a reserva fica travada. Apenas a administração pode alterá-la."
             : undefined
         }
       >
@@ -267,14 +292,26 @@ export function CancelarReservaButton({
         title={
           isSolicitacaoLocatario
             ? "Solicitar cancelamento ao administrador?"
-            : "Cancelar esta reserva?"
+            : isReservaCreditoLocatario
+              ? "Cancelar reserva e estornar créditos?"
+              : "Cancelar esta reserva?"
         }
         description={
           isSolicitacaoLocatario
             ? "Sua solicitação de cancelamento será encaminhada para a equipe de administração analisar e efetivar o cancelamento."
-            : "A reserva será cancelada, liberando a vaga na grade e notificando o profissional solicitante."
+            : isReservaCreditoLocatario
+              ? `A reserva será cancelada imediatamente e ${reserva.credit_hours_used || 1} crédito(s) retornarão ao seu pacote de origem.`
+              : reserva.paid_with_credits
+                ? `A reserva será cancelada e ${reserva.credit_hours_used || 1} crédito(s) retornarão automaticamente ao pacote de origem do locatário.`
+                : "A reserva será cancelada, liberando a vaga na grade e notificando o profissional solicitante."
         }
-        confirmLabel={isSolicitacaoLocatario ? "Solicitar cancelamento" : "Efetivar cancelamento"}
+        confirmLabel={
+          isSolicitacaoLocatario
+            ? "Solicitar cancelamento"
+            : isReservaCreditoLocatario
+              ? "Confirmar e estornar créditos"
+              : "Efetivar cancelamento"
+        }
         destructive={!isSolicitacaoLocatario}
         onConfirm={handleConfirm}
       />

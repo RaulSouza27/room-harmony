@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
-import { Eye, FileText, Images, Sparkles } from "lucide-react";
+import { Coins, Eye, FileText, Images, Sparkles } from "lucide-react";
 import { AppShell } from "@/components/AppShell";
 import {
   AprovacaoActions,
@@ -392,6 +392,15 @@ function ReservasPage() {
                                   {prof?.nome ?? "—"}
                                 </p>
                                 <StatusBadge status={r.status} />
+                                {r.paid_with_credits && (
+                                  <Badge
+                                    variant="outline"
+                                    className="bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border-emerald-500/30 gap-1 text-[11px]"
+                                  >
+                                    <Coins className="size-3" />
+                                    Crédito ({r.credit_hours_used || 1}h)
+                                  </Badge>
+                                )}
                                 {isReservaEspecial(r) && (
                                   <Badge className="bg-[#78350f]/20 border border-[#78350f]/40 text-[#451a03] dark:text-[#fde68a] text-[11px] font-medium gap-1 hover:bg-[#78350f]/30">
                                     <Sparkles className="size-3 text-amber-500" />

@@ -73,6 +73,8 @@ export interface Reserva {
   aprovado_por?: string|undefined;
   recorrencia: Recorrencia;
   comprovante?: string;
+  paid_with_credits?: boolean;
+  credit_hours_used?: number;
 }
 
 export interface NovaReserva {
@@ -86,6 +88,7 @@ export interface NovaReserva {
   recorrencia?: Recorrencia|undefined;
   status?: ReservaStatus|undefined;
   comprovante?: string;
+  paid_with_credits?: boolean;
 }
 
 export interface Holiday {
@@ -128,6 +131,69 @@ export interface ComplaintStats {
 
 export interface ComplaintPage {
   content: Complaint[];
+  totalElements: number;
+  totalPages: number;
+  number: number;
+  size: number;
+}
+
+export type CreditPackageStatus = 'PENDING' | 'APPROVED' | 'REJECTED' | 'EXPIRED';
+
+export interface CreditPackage {
+  id: number;
+  userId: number;
+  userName: string;
+  userEmail?: string | null;
+  userPhone?: string | null;
+  unitId: number;
+  unitName: string;
+  totalCredits: number;
+  remainingCredits: number;
+  receiptImage: string;
+  status: CreditPackageStatus;
+  rejectionReason?: string | null;
+  createdAt: string;
+  reviewedAt?: string | null;
+  reviewedByUserId?: number | null;
+  reviewedByName?: string | null;
+  expiresAt?: string | null;
+}
+
+export interface CreditPackageStats {
+  pending: number;
+  approved: number;
+  rejected: number;
+  expired: number;
+  total: number;
+}
+
+export type CreditTransactionType =
+  | 'CREDITO_PACOTE'
+  | 'USO_RESERVA'
+  | 'ESTORNO_CANCELAMENTO'
+  | 'AJUSTE_EDICAO'
+  | 'EXPIRACAO';
+
+export interface CreditTransaction {
+  id: number;
+  packageId: number;
+  userId: number;
+  userName: string;
+  userEmail?: string | null;
+  unitId: number;
+  unitName: string;
+  reservationId?: number | null;
+  type: CreditTransactionType;
+  amount: number;
+  balanceAfter: number;
+  description: string;
+  performedByUserId?: number | null;
+  performedByName?: string | null;
+  createdAt: string;
+}
+
+export interface CreditTransactionPage {
+  content: CreditTransaction[];
   totalElements: number;
   totalPages: number;
   number: number;
