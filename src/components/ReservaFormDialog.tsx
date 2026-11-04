@@ -36,7 +36,15 @@ interface Props {
   usuarios: User[];
   reservas: Reserva[];
   reserva?: Reserva | null;
-  preset?: { unidade_id?: string; sala_id?: string; data?: string; hora_inicio?: string };
+  preset?: {
+    unidade_id?: string;
+    sala_id?: string;
+    data?: string;
+    hora_inicio?: string;
+    hora_fim?: string;
+    recorrencia?: Recorrencia;
+    profissional_id?: string;
+  };
   modoReagendamento?: boolean;
 }
 
@@ -100,18 +108,24 @@ export function ReservaFormDialog({
     setInicio(reserva?.hora_inicio ?? preset?.hora_inicio ?? "08:00");
     setFim(
       reserva?.hora_fim ??
+        preset?.hora_fim ??
         (preset?.hora_inicio
           ? `${String(Number(preset.hora_inicio.slice(0, 2)) + 1).padStart(2, "0")}:00`
           : "09:00"),
     );
-    setProfissionalId(reserva?.profissional_id ?? (isAdmin ? (user?.id ?? "") : (user?.id ?? "")));
+    setProfissionalId(
+      reserva?.profissional_id ??
+        preset?.profissional_id ??
+        (isAdmin ? (user?.id ?? "") : (user?.id ?? "")),
+    );
     setObservacoes(reserva?.observacoes ?? "");
     
     if (reserva && isReservaEspecial(reserva)) {
       setTipoReserva("especial");
     } else {
       // Map legacy 'semanal' to 'semanal_mensal'
-      const rec = (reserva?.recorrencia === "semanal") ? "semanal_mensal" : (reserva?.recorrencia ?? "unica");
+      const rawRec = reserva?.recorrencia ?? preset?.recorrencia ?? "unica";
+      const rec = rawRec === "semanal" ? "semanal_mensal" : rawRec;
       setTipoReserva(rec as TipoReservaOpcao);
     }
     if (reserva?.comprovante === "has_receipt" && reserva?.id) {

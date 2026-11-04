@@ -21,6 +21,7 @@ export const keys = {
   myComplaintsPaged: (params: { page: number; size: number }) =>
     ["myComplaints", "paged", params] as const,
   complaintQuota: ["complaintQuota"] as const,
+  expiringAlerts: (userId?: string) => ["expiringAlerts", userId ?? "all"] as const,
 };
 
 export const useUnidades = () =>
@@ -58,6 +59,14 @@ export const useReservas = (filters?: api.ReservaFilters) =>
     queryFn: () => api.listReservas(filters),
     staleTime: 1000 * 60,
     placeholderData: (previousData) => previousData,
+  });
+
+export const useExpiringAlerts = (userId?: string, enabled = true) =>
+  useQuery({
+    queryKey: keys.expiringAlerts(userId),
+    queryFn: () => api.listExpiringAlerts(userId),
+    enabled,
+    staleTime: 1000 * 60,
   });
 
 export const useProfessions = () =>
@@ -260,11 +269,12 @@ export function useChangePassword() {
 }
 
 export function useCreateReserva() {
-  const invalidate = useInvalidate(["reservas"]);
+  const qc = useQueryClient();
   return useMutation({
     mutationFn: (input: NovaReserva) => api.createReserva(input),
     onSuccess: () => {
-      invalidate();
+      qc.invalidateQueries({ queryKey: ["reservas"] });
+      qc.invalidateQueries({ queryKey: ["expiringAlerts"] });
       toast.success("Solicitação enviada. Aguardando aprovação.");
     },
     onError: (e: Error) => toast.error(e.message),
@@ -272,12 +282,13 @@ export function useCreateReserva() {
 }
 
 export function useUpdateReserva(successMessage = "Reserva atualizada.") {
-  const invalidate = useInvalidate(["reservas"]);
+  const qc = useQueryClient();
   return useMutation({
     mutationFn: ({ id, patch }: { id: string; patch: Partial<Reserva> }) =>
       api.updateReserva(id, patch),
     onSuccess: () => {
-      invalidate();
+      qc.invalidateQueries({ queryKey: ["reservas"] });
+      qc.invalidateQueries({ queryKey: ["expiringAlerts"] });
       toast.success(successMessage);
     },
     onError: (e: Error) => toast.error(e.message),
@@ -285,11 +296,12 @@ export function useUpdateReserva(successMessage = "Reserva atualizada.") {
 }
 
 export function useDeleteReserva() {
-  const invalidate = useInvalidate(["reservas"]);
+  const qc = useQueryClient();
   return useMutation({
     mutationFn: (id: string) => api.deleteReserva(id),
     onSuccess: () => {
-      invalidate();
+      qc.invalidateQueries({ queryKey: ["reservas"] });
+      qc.invalidateQueries({ queryKey: ["expiringAlerts"] });
       toast.success("Reserva excluída.");
     },
     onError: (e: Error) => toast.error(e.message),
@@ -297,11 +309,12 @@ export function useDeleteReserva() {
 }
 
 export function useDeleteReservasBatch() {
-  const invalidate = useInvalidate(["reservas"]);
+  const qc = useQueryClient();
   return useMutation({
     mutationFn: (ids: string[]) => api.deleteReservasBatch(ids),
     onSuccess: () => {
-      invalidate();
+      qc.invalidateQueries({ queryKey: ["reservas"] });
+      qc.invalidateQueries({ queryKey: ["expiringAlerts"] });
       toast.success("Reservas excluídas com sucesso.");
     },
     onError: (e: Error) => toast.error(e.message),
@@ -309,11 +322,12 @@ export function useDeleteReservasBatch() {
 }
 
 export function useCancelReservasBatch() {
-  const invalidate = useInvalidate(["reservas"]);
+  const qc = useQueryClient();
   return useMutation({
     mutationFn: (ids: string[]) => api.cancelReservasBatch(ids),
     onSuccess: () => {
-      invalidate();
+      qc.invalidateQueries({ queryKey: ["reservas"] });
+      qc.invalidateQueries({ queryKey: ["expiringAlerts"] });
       toast.success("Reservas canceladas com sucesso.");
     },
     onError: (e: Error) => toast.error(e.message),

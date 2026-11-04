@@ -6,10 +6,11 @@ import { CancelarReservaButton } from "@/components/ReservaActions";
 import { ReceiptViewerDialog } from "@/components/ReceiptViewerDialog";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useAuth } from "@/contexts/AuthContext";
-import { useReservas, useSalas, useUnidades } from "@/hooks/useApi";
+import { useExpiringAlerts, useReservas, useSalas, useUnidades } from "@/hooks/useApi";
 import { formatarData, formatRecorrencia, isReservaComMaisDe24h } from "@/lib/format";
-import type { Reserva, ReservaStatus } from "@/types";
+import type { ExpiringReservationAlert, Reserva, ReservaStatus } from "@/types";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { ExpiringReservationsAlert } from "@/components/ExpiringReservationsAlert";
 import {
   AlertCircle,
   FileText,
@@ -62,6 +63,8 @@ function MinhasReservasPage() {
   const reservasQ = useReservas(user?.id ? { userId: user.id } : undefined);
   const salasQ = useSalas();
   const unidadesQ = useUnidades();
+  const expiringAlertsQ = useExpiringAlerts(user?.id, !!user?.id);
+  const [alertaParaRenovar, setAlertaParaRenovar] = useState<ExpiringReservationAlert | null>(null);
   const [filtro, setFiltro] = useState<"ativas" | ReservaStatus>("ativas");
   const [searchQuery, setSearchQuery] = useState("");
   const [de, setDe] = useState("");
@@ -147,6 +150,11 @@ function MinhasReservasPage() {
       description={`Histórico e status das suas solicitações · ${totalItems} reserva(s)`}
     >
       <div className="space-y-5">
+        <ExpiringReservationsAlert
+          alerts={expiringAlertsQ.data ?? []}
+          onRenew={(alert) => setAlertaParaRenovar(alert)}
+        />
+
         {notifications.length > 0 && (
           <div className="space-y-2">
             {notifications.map((n) => (
@@ -394,6 +402,26 @@ function MinhasReservasPage() {
           reservas={reservasQ.data ?? []}
           reserva={reservaParaReagendar}
           modoReagendamento={true}
+        />
+      )}
+
+      {alertaParaRenovar && (
+        <ReservaFormDialog
+          open={!!alertaParaRenovar}
+          onOpenChange={(v) => !v && setAlertaParaRenovar(null)}
+          unidades={unidades}
+          salas={salas}
+          usuarios={user ? [user] : []}
+          reservas={reservasQ.data ?? []}
+          preset={{
+            unidade_id: alertaParaRenovar.unitId ? String(alertaParaRenovar.unitId) : undefined,
+            sala_id: String(alertaParaRenovar.roomId),
+            data: alertaParaRenovar.nextStartDate,
+            hora_inicio: alertaParaRenovar.horaInicio,
+            hora_fim: alertaParaRenovar.horaFim,
+            recorrencia: alertaParaRenovar.recorrencia,
+            profissional_id: String(alertaParaRenovar.userId),
+          }}
         />
       )}
     </AppShell>

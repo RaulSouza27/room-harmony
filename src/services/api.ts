@@ -1,5 +1,5 @@
 import {BACKEND_URL} from '@/config/api';
-import type {BusinessHours, Complaint, ComplaintPage, ComplaintQuota, ComplaintStats, Holiday, NovaReserva, Profession, Reserva, ReservaStatus, Sala, Unidade, User} from '@/types';
+import type {BusinessHours, Complaint, ComplaintPage, ComplaintQuota, ComplaintStats, ExpiringReservationAlert, Holiday, NovaReserva, Profession, Reserva, ReservaStatus, Sala, Unidade, User} from '@/types';
 
 import {createAuditLog} from './auditService';
 import {overlaps, readDB, uid, writeDB} from './db';
@@ -457,8 +457,8 @@ export async function softDeleteUsuario(
     targetType: 'USUARIO',
     targetId: String(id),
     targetName: usuario?.nome || `Profissional #${id}`,
-    details:
-        `Status do profissional ${usuario?.nome || `#${id}`} alterado para ${novoStatus.toUpperCase()}.`,
+    details: `Status do profissional ${
+        usuario?.nome || `#${id}`} alterado para ${novoStatus.toUpperCase()}.`,
   });
 }
 
@@ -578,6 +578,24 @@ export async function getReservaReceipt(id: string): Promise<string> {
   }
   const data = await response.json();
   return data.depositImage || '';
+}
+
+export async function listExpiringAlerts(
+    userId?: string,
+    ): Promise<ExpiringReservationAlert[]> {
+  const params = new URLSearchParams();
+  if (userId) params.append('userId', userId);
+  const queryString = params.toString();
+  const url = `${BACKEND_URL}/reservations/expiring-alerts${
+      queryString ? `?${queryString}` : ''}`;
+
+  const response = await fetch(url, {
+    headers: getHeaders(),
+  });
+  if (!response.ok) {
+    throw new Error('Falha ao carregar alertas de expiração de reservas.');
+  }
+  return response.json();
 }
 
 /** Conflitos que ocupam o horário (aprovadas e pendentes). */
@@ -949,9 +967,8 @@ export async function getComplaintQuota(): Promise<ComplaintQuota> {
 }
 
 export async function createComplaint(input: {
-  complaints: string;
-  anonymous: boolean;
-}): Promise<ComplaintQuota & {success: boolean}> {
+  complaints: string; anonymous: boolean;
+}): Promise<ComplaintQuota&{success: boolean}> {
   const response = await fetch(`${BACKEND_URL}/complaints`, {
     method: 'POST',
     headers: getHeaders(),
@@ -963,7 +980,8 @@ export async function createComplaint(input: {
 
   if (!response.ok) {
     const errorText = await response.text();
-    throw new Error(errorText || 'Falha ao enviar manifestação para a Ouvidoria.');
+    throw new Error(
+        errorText || 'Falha ao enviar manifestação para a Ouvidoria.');
   }
 
   const data = await response.json();
@@ -979,7 +997,8 @@ function mapComplaintItem(item: any): Complaint {
   return {
     id: item.id,
     userId: item.userId ?? null,
-    userName: item.userName || (item.userId ? `Profissional #${item.userId}` : 'Anônimo'),
+    userName: item.userName ||
+        (item.userId ? `Profissional #${item.userId}` : 'Anônimo'),
     userEmail: item.userEmail ?? null,
     userPhone: item.userPhone ?? null,
     anonymous: item.anonymous ?? item.userId == null,
@@ -1004,17 +1023,16 @@ export async function listMyComplaints(): Promise<Complaint[]> {
   return data.map(mapComplaintItem);
 }
 
-export async function listMyComplaintsPaged(params: {
-  page: number;
-  size: number;
-}): Promise<ComplaintPage> {
+export async function listMyComplaintsPaged(
+    params: {page: number; size: number;}): Promise<ComplaintPage> {
   const query = new URLSearchParams({
     page: String(params.page),
     size: String(params.size),
   });
-  const response = await fetch(`${BACKEND_URL}/complaints/my/paged?${query.toString()}`, {
-    headers: getHeaders(),
-  });
+  const response =
+      await fetch(`${BACKEND_URL}/complaints/my/paged?${query.toString()}`, {
+        headers: getHeaders(),
+      });
   if (!response.ok) {
     const errorText = await response.text();
     throw new Error(errorText || 'Falha ao carregar suas manifestações.');
@@ -1045,12 +1063,9 @@ export async function getComplaintStats(): Promise<ComplaintStats> {
   };
 }
 
-export async function listComplaintsPaged(params: {
-  page: number;
-  size: number;
-  search?: string;
-  solved?: boolean;
-}): Promise<ComplaintPage> {
+export async function listComplaintsPaged(
+    params: {page: number; size: number; search?: string; solved?: boolean;}):
+    Promise<ComplaintPage> {
   const query = new URLSearchParams({
     page: String(params.page),
     size: String(params.size),
@@ -1061,9 +1076,10 @@ export async function listComplaintsPaged(params: {
   if (params.solved !== undefined) {
     query.append('solved', String(params.solved));
   }
-  const response = await fetch(`${BACKEND_URL}/complaints/paged?${query.toString()}`, {
-    headers: getHeaders(),
-  });
+  const response =
+      await fetch(`${BACKEND_URL}/complaints/paged?${query.toString()}`, {
+        headers: getHeaders(),
+      });
   if (!response.ok) {
     const errorText = await response.text();
     throw new Error(errorText || 'Falha ao carregar registros da Ouvidoria.');
@@ -1091,10 +1107,10 @@ export async function listComplaints(): Promise<Complaint[]> {
 }
 
 export async function updateComplaintSolved(
-  id: number,
-  solved: boolean,
-  resolutionNotes?: string,
-): Promise<Complaint> {
+    id: number,
+    solved: boolean,
+    resolutionNotes?: string,
+    ): Promise<Complaint> {
   const response = await fetch(`${BACKEND_URL}/complaints/${id}/solved`, {
     method: 'PUT',
     headers: getHeaders(),

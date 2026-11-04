@@ -133,3 +133,32 @@ export interface ComplaintPage {
   number: number;
   size: number;
 }
+
+export interface ExpiringReservationAlert {
+  seriesKey: string;
+  lastReservationId: number;
+  userId: number;
+  userName: string;
+  userEmail: string;
+  userPhone: string;
+  roomId: number;
+  roomName: string;
+  unitId: number | null;
+  unitName: string;
+  recorrencia: Recorrencia;
+  recorrenciaLabel: string;
+  dayOfWeekLabel: string;
+  horaInicio: string;
+  horaFim: string;
+  lastDate: string;
+  lastDateFormatted: string;
+  daysUntilExpiration: number;
+  urgencyLevel: 'critical' | 'warning';
+  alertTitle: string;
+  alertMessage: string;
+  whatsappMessage: string;
+  nextStartDate: string;
+  nextStartDateFormatted: string;
+  nextCycleLabel: string;
+}
+
