@@ -78,7 +78,7 @@ export function AppShell({
         { to: "/app/salas", label: "Salas", icon: DoorOpen },
         { to: "/app/unidades", label: "Unidades", icon: Building2 },
         { to: "/app/feriados", label: "Feriados e Bloqueios", icon: CalendarOff },
-        { to: "/app/ouvidoria", label: "Ouvidoria", icon: MessageSquareWarning },
+        { to: "/app/ouvidoria", label: "Fale Conosco", icon: MessageSquareWarning },
         { to: "/app/auditoria", label: "Auditoria", icon: ShieldCheck },
         { to: "/app/perfil", label: "Meu perfil", icon: UserRound },
       ]
@@ -87,7 +87,7 @@ export function AppShell({
         { to: "/app/agenda", label: "Disponibilidade", icon: CalendarDays },
         { to: "/app/solicitar", label: "Solicitar reserva", icon: CalendarPlus },
         { to: "/app/minhas-reservas", label: "Minhas reservas", icon: CalendarCheck, badge: expiringAlerts.length },
-        { to: "/app/ouvidoria", label: "Ouvidoria", icon: MessageSquareWarning },
+        { to: "/app/ouvidoria", label: "Fale Conosco", icon: MessageSquareWarning },
         { to: "/app/perfil", label: "Meu perfil", icon: UserRound },
       ];
 

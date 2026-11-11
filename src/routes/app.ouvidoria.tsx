@@ -79,7 +79,7 @@ function formatDataHora(iso?: string | null) {
 function buildWhatsAppResolutionMessage(item: Complaint, notes: string) {
   return (
     `Olá, ${item.userName}! Tudo bem?\n\n` +
-    `Sobre sua manifestação *#${item.id}* registrada na Ouvidoria da Clínica Escuta:\n` +
+    `Sobre sua manifestação *#${item.id}* registrada no Fale Conosco da Clínica Escuta:\n` +
     `_"${item.complaints}"_\n\n` +
     `✅ *Parecer da Administração:*\n${notes}`
   );
@@ -89,16 +89,16 @@ export const Route = createFileRoute("/app/ouvidoria")({
   ssr: false,
   head: () => ({
     meta: [
-      { title: "Ouvidoria — Clínica Escuta" },
+      { title: "Fale Conosco — Clínica Escuta" },
       {
         name: "description",
         content:
-          "Canal de Ouvidoria para envio e gestão de reclamações, sugestões e relatos.",
+          "Canal Fale Conosco para envio e gestão de elogios, sugestões, comentários ou reclamações.",
       },
-      { property: "og:title", content: "Ouvidoria — Clínica Escuta" },
+      { property: "og:title", content: "Fale Conosco — Clínica Escuta" },
       {
         property: "og:description",
-        content: "Envie manifestações de forma identificada ou anônima.",
+        content: "Compartilhe elogios, sugestões, comentários ou reclamações de forma identificada ou anônima.",
       },
     ],
   }),
@@ -157,17 +157,24 @@ function LocadorOuvidoriaView() {
 
   return (
     <AppShell
-      title="Ouvidoria — Canal de Escuta"
-      description="Espaço dedicado para relatos, reclamações ou sugestões sobre a clínica, administração, salas ou sistema."
+      title="Fale Conosco"
+      description="Espaço dedicado para compartilhar elogios, sugestões, comentários ou reclamações sobre sua experiência conosco."
     >
       <div className="mx-auto max-w-3xl space-y-6">
+        {/* Textbox / Caixa de apresentação institucional */}
+        <div className="rounded-xl border border-primary/25 bg-primary/5 p-5 shadow-soft">
+          <p className="text-sm leading-relaxed text-foreground">
+            Sua opinião é muito importante para nós, da Clínica Escuta. Por isso, criamos este espaço para você compartilhar elogios, sugestões, comentários ou reclamações sobre sua experiência conosco. Sua contribuição nos ajuda a aprimorar nossos serviços e nosso cuidado com você.
+          </p>
+        </div>
+
         {/* Card de Regras e Cota Diária */}
         <Card className="border-border bg-card shadow-soft">
           <CardHeader className="pb-3">
             <div className="flex flex-wrap items-center justify-between gap-2">
               <CardTitle className="flex items-center gap-2 text-base font-semibold">
                 <MessageSquareWarning className="size-5 text-primary" />
-                Como funciona a Ouvidoria
+                Como funciona o Fale Conosco
               </CardTitle>
               <Badge
                 variant={remaining > 0 ? "secondary" : "destructive"}
@@ -303,7 +310,7 @@ function LocadorOuvidoriaView() {
                     setTexto(e.target.value.slice(0, MAX_LENGTH));
                     if (ultimoEnvioSucesso) setUltimoEnvioSucesso(false);
                   }}
-                  placeholder="Descreva aqui sua reclamação, relato ou sugestão sobre a clínica, administração, salas ou sistema..."
+                  placeholder="Compartilhe aqui seus elogios, sugestões, comentários ou reclamações sobre sua experiência conosco..."
                   className="resize-none"
                 />
               </div>
@@ -315,7 +322,7 @@ function LocadorOuvidoriaView() {
                   className="gap-2"
                 >
                   <Send className="size-4" />
-                  Enviar para a Ouvidoria
+                  Enviar para o Fale Conosco
                 </Button>
               </div>
             </CardContent>
@@ -484,7 +491,7 @@ function LocadorOuvidoriaView() {
       <ConfirmDialog
         open={confirmOpen}
         onOpenChange={setConfirmOpen}
-        title="Confirmar envio à Ouvidoria?"
+        title="Confirmar envio ao Fale Conosco?"
         description={
           anonimo
             ? "Sua mensagem será enviada de forma 100% ANÔNIMA. Por segurança e sigilo, você não poderá mais visualizá-la após o envio."
@@ -601,8 +608,8 @@ function AdminOuvidoriaView() {
 
   return (
     <AppShell
-      title="Ouvidoria — Gestão de Manifestações"
-      description="Visualize as reclamações e sugestões enviadas pelos locatários e registre as providências tomadas."
+      title="Fale Conosco — Gestão de Manifestações"
+      description="Visualize os elogios, sugestões, comentários e reclamações enviados pelos locatários e registre as providências tomadas."
     >
       <div className="space-y-6">
         {/* Cards de Resumo */}
@@ -617,7 +624,7 @@ function AdminOuvidoriaView() {
             <CardContent>
               <div className="text-2xl font-bold">{totais.total}</div>
               <p className="mt-1 text-xs text-muted-foreground">
-                Registros permanentes na Ouvidoria
+                Registros permanentes no Fale Conosco
               </p>
             </CardContent>
           </Card>
@@ -744,7 +751,7 @@ function AdminOuvidoriaView() {
 
         {/* Lista de Manifestações */}
         {complaintsQ.isLoading ? (
-          <LoadingState label="Carregando manifestações da Ouvidoria..." />
+          <LoadingState label="Carregando manifestações do Fale Conosco..." />
         ) : complaintsQ.error ? (
           <ErrorState message={(complaintsQ.error as Error).message} />
         ) : paginadas.length === 0 ? (
@@ -954,7 +961,7 @@ function AdminOuvidoriaView() {
               Para concluir esta manifestação, descreva obrigatoriamente a
               providência tomada.{" "}
               {alvoResolver && !alvoResolver.anonymous
-                ? `O profissional ${alvoResolver.userName} receberá este parecer na aba Ouvidoria dele.`
+                ? `O profissional ${alvoResolver.userName} receberá este parecer na aba Fale Conosco dele.`
                 : "Seu usuário e a data/hora ficarão registrados no histórico e na auditoria."}
             </DialogDescription>
           </DialogHeader>

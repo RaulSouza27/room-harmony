@@ -146,7 +146,7 @@ function AuditoriaPage() {
       case "EXCLUSAO_PROFISSAO":
         return <Badge className="bg-violet-600 text-white hover:bg-violet-700">Gestão de Profissão</Badge>;
       case "ALTERACAO_STATUS_OUVIDORIA":
-        return <Badge className="bg-amber-700 text-white hover:bg-amber-800">Status Ouvidoria</Badge>;
+        return <Badge className="bg-amber-700 text-white hover:bg-amber-800">Status Fale Conosco</Badge>;
       default:
         return <Badge variant="outline">{action}</Badge>;
     }
@@ -272,7 +272,7 @@ function AuditoriaPage() {
                 <SelectItem value="UNIDADE">Unidades</SelectItem>
                 <SelectItem value="FERIADO">Feriados / Bloqueios</SelectItem>
                 <SelectItem value="PROFISSAO">Profissões</SelectItem>
-                <SelectItem value="OUVIDORIA">Ouvidoria</SelectItem>
+                <SelectItem value="OUVIDORIA">Fale Conosco</SelectItem>
               </SelectContent>
             </Select>
 
@@ -314,7 +314,7 @@ function AuditoriaPage() {
                 <SelectItem value="CRIACAO_PROFISSAO">Criação de Profissão</SelectItem>
                 <SelectItem value="ALTERACAO_PROFISSAO">Alteração de Profissão</SelectItem>
                 <SelectItem value="EXCLUSAO_PROFISSAO">Exclusão de Profissão</SelectItem>
-                <SelectItem value="ALTERACAO_STATUS_OUVIDORIA">Status de Ouvidoria</SelectItem>
+                <SelectItem value="ALTERACAO_STATUS_OUVIDORIA">Status do Fale Conosco</SelectItem>
               </SelectContent>
             </Select>
           </div>

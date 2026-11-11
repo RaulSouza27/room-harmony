@@ -428,7 +428,7 @@ export function useCreateComplaint() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: keys.complaintQuota });
       queryClient.invalidateQueries({ queryKey: keys.myComplaints });
-      toast.success("Manifestação enviada à Ouvidoria com sucesso!");
+      toast.success("Manifestação enviada ao Fale Conosco com sucesso!");
     },
     onError: (e: Error) => toast.error(e.message),
   });

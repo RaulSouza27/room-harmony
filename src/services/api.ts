@@ -950,13 +950,13 @@ export async function deleteHoliday(id: number): Promise<void> {
   }
 }
 
-/* ------------------------------- Ouvidoria ------------------------------ */
+/* ----------------------------- Fale Conosco ---------------------------- */
 export async function getComplaintQuota(): Promise<ComplaintQuota> {
   const response = await fetch(`${BACKEND_URL}/complaints/quota`, {
     headers: getHeaders(),
   });
   if (!response.ok) {
-    throw new Error('Falha ao consultar limite diário da Ouvidoria.');
+    throw new Error('Falha ao consultar limite diário do Fale Conosco.');
   }
   const data = await response.json();
   return {
@@ -981,7 +981,7 @@ export async function createComplaint(input: {
   if (!response.ok) {
     const errorText = await response.text();
     throw new Error(
-        errorText || 'Falha ao enviar manifestação para a Ouvidoria.');
+        errorText || 'Falha ao enviar manifestação para o Fale Conosco.');
   }
 
   const data = await response.json();
@@ -1053,7 +1053,7 @@ export async function getComplaintStats(): Promise<ComplaintStats> {
   });
   if (!response.ok) {
     const errorText = await response.text();
-    throw new Error(errorText || 'Falha ao carregar indicadores da Ouvidoria.');
+    throw new Error(errorText || 'Falha ao carregar indicadores do Fale Conosco.');
   }
   const data = await response.json();
   return {
@@ -1082,7 +1082,7 @@ export async function listComplaintsPaged(
       });
   if (!response.ok) {
     const errorText = await response.text();
-    throw new Error(errorText || 'Falha ao carregar registros da Ouvidoria.');
+    throw new Error(errorText || 'Falha ao carregar registros do Fale Conosco.');
   }
   const data = await response.json();
   return {
@@ -1100,7 +1100,7 @@ export async function listComplaints(): Promise<Complaint[]> {
   });
   if (!response.ok) {
     const errorText = await response.text();
-    throw new Error(errorText || 'Falha ao carregar registros da Ouvidoria.');
+    throw new Error(errorText || 'Falha ao carregar registros do Fale Conosco.');
   }
   const data = await response.json();
   return data.map(mapComplaintItem);
