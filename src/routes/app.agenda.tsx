@@ -63,56 +63,19 @@ type ModoVisao = "diario" | "mensal" | "anual";
 function AgendaPage() {
   const { user, isAdmin } = useAuth();
   const [modoVisao, setModoVisao] = useState<ModoVisao>("diario");
-  const [unidadeFiltro, setUnidadeFiltro] = useState("todas");
+  const [unidadeFiltro, setUnidadeFiltro] = useState("");
   const [data, setData] = useState(hojeISO());
 
   const hojeDate = new Date();
   const [ano, setAno] = useState(hojeDate.getFullYear());
   const [mes, setMes] = useState(hojeDate.getMonth() + 1); // 1..12
 
-  const dateFilters = useMemo(() => {
-    if (modoVisao === "diario") {
-      return {
-        startDate: data,
-        endDate: data,
-        unitId: unidadeFiltro !== "todas" ? unidadeFiltro : undefined,
-      };
-    }
-    if (modoVisao === "mensal") {
-      const start = `${ano}-${String(mes).padStart(2, "0")}-01`;
-      const lastDay = new Date(ano, mes, 0).getDate();
-      const end = `${ano}-${String(mes).padStart(2, "0")}-${String(lastDay).padStart(2, "0")}`;
-      return {
-        startDate: start,
-        endDate: end,
-        unitId: unidadeFiltro !== "todas" ? unidadeFiltro : undefined,
-      };
-    }
-    return {
-      startDate: `${ano}-01-01`,
-      endDate: `${ano}-12-31`,
-      unitId: unidadeFiltro !== "todas" ? unidadeFiltro : undefined,
-    };
-  }, [modoVisao, data, ano, mes, unidadeFiltro]);
-
   const unidadesQ = useUnidades();
   const salasQ = useSalas();
-  const reservasQ = useReservas(dateFilters);
   const usuariosQ = useUsuarios();
-
-  const [preset, setPreset] = useState<SlotInfo | null>(null);
-  const [formOpen, setFormOpen] = useState(false);
-  const [especialOpen, setEspecialOpen] = useState(false);
-  const [detalhe, setDetalhe] = useState<Reserva | null>(null);
-  const [editando, setEditando] = useState<Reserva | null>(null);
-  const [detalheCompleto, setDetalheCompleto] = useState<Reserva | null>(null);
-  const [alvoVisualizacaoComprovante, setAlvoVisualizacaoComprovante] = useState<string | null>(
-    null,
-  );
 
   const unidades = unidadesQ.data ?? [];
   const salas = salasQ.data ?? [];
-  const reservas = reservasQ.data ?? [];
   const usuarios = usuariosQ.data ?? [];
 
   const unidadesVisiveis = useMemo(
@@ -124,10 +87,55 @@ function AgendaPage() {
     [unidades, isAdmin, user],
   );
 
+  const unidadeSelecionada = useMemo(() => {
+    if (unidadeFiltro && unidadesVisiveis.some((u) => u.id === unidadeFiltro)) {
+      return unidadeFiltro;
+    }
+    return unidadesVisiveis[0]?.id ?? "";
+  }, [unidadeFiltro, unidadesVisiveis]);
+
+  const dateFilters = useMemo(() => {
+    if (modoVisao === "diario") {
+      return {
+        startDate: data,
+        endDate: data,
+        unitId: unidadeSelecionada || undefined,
+      };
+    }
+    if (modoVisao === "mensal") {
+      const start = `${ano}-${String(mes).padStart(2, "0")}-01`;
+      const lastDay = new Date(ano, mes, 0).getDate();
+      const end = `${ano}-${String(mes).padStart(2, "0")}-${String(lastDay).padStart(2, "0")}`;
+      return {
+        startDate: start,
+        endDate: end,
+        unitId: unidadeSelecionada || undefined,
+      };
+    }
+    return {
+      startDate: `${ano}-01-01`,
+      endDate: `${ano}-12-31`,
+      unitId: unidadeSelecionada || undefined,
+    };
+  }, [modoVisao, data, ano, mes, unidadeSelecionada]);
+
+  const reservasQ = useReservas(dateFilters);
+  const reservas = reservasQ.data ?? [];
+
+  const [preset, setPreset] = useState<SlotInfo | null>(null);
+  const [formOpen, setFormOpen] = useState(false);
+  const [especialOpen, setEspecialOpen] = useState(false);
+  const [detalhe, setDetalhe] = useState<Reserva | null>(null);
+  const [editando, setEditando] = useState<Reserva | null>(null);
+  const [detalheCompleto, setDetalheCompleto] = useState<Reserva | null>(null);
+  const [alvoVisualizacaoComprovante, setAlvoVisualizacaoComprovante] = useState<string | null>(
+    null,
+  );
+
   const salasVisiveis = salas.filter(
     (s) =>
       unidadesVisiveis.some((u) => u.id === s.unidade_id) &&
-      (unidadeFiltro === "todas" || s.unidade_id === unidadeFiltro),
+      s.unidade_id === unidadeSelecionada,
   );
 
   const idsSalasVisiveis = useMemo(() => new Set(salasVisiveis.map((s) => s.id)), [salasVisiveis]);
@@ -240,12 +248,11 @@ function AgendaPage() {
           <div className="grid gap-4 sm:flex sm:items-end flex-1">
             <div className="space-y-2 min-w-[200px]">
               <Label>Unidade</Label>
-              <Select value={unidadeFiltro} onValueChange={setUnidadeFiltro}>
+              <Select value={unidadeSelecionada} onValueChange={setUnidadeFiltro}>
                 <SelectTrigger>
-                  <SelectValue />
+                  <SelectValue placeholder="Selecione a unidade" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="todas">Todas as unidades</SelectItem>
                   {unidadesVisiveis.map((u) => (
                     <SelectItem key={u.id} value={u.id}>
                       {u.nome}
@@ -359,7 +366,7 @@ function AgendaPage() {
                 data,
                 hora_inicio: preset.hora,
               }
-            : { data }
+            : { unidade_id: unidadeSelecionada, data }
         }
       />
 

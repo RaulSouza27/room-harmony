@@ -344,13 +344,26 @@ function ReservasPage() {
                 </Label>
               </div>
               {selectedIds.length > 0 && (
-                <button
-                  type="button"
-                  onClick={() => setSelectedIds([])}
-                  className="text-xs text-primary hover:underline font-semibold"
-                >
-                  Limpar seleção
-                </button>
+                <div className="flex items-center gap-3">
+                  {selectedCancelableIds.length > 0 && (
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="h-7 text-xs border-amber-500/40 text-amber-700 dark:text-amber-300 hover:bg-amber-500/10"
+                      onClick={() => setConfirmBatchCancel(true)}
+                      disabled={cancelarLote.isPending || excluirLote.isPending}
+                    >
+                      Cancelar {selectedCancelableIds.length} selecionada(s)
+                    </Button>
+                  )}
+                  <button
+                    type="button"
+                    onClick={() => setSelectedIds([])}
+                    className="text-xs text-primary hover:underline font-semibold"
+                  >
+                    Limpar seleção
+                  </button>
+                </div>
               )}
             </div>
 

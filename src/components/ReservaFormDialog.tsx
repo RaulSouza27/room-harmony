@@ -24,8 +24,9 @@ import { useCreateReserva, useUpdateReserva, useHolidays, useSala } from "@/hook
 import { findConflitos, getReservaReceipt } from "@/services/api";
 import { HORARIOS, toMinutes } from "@/services/db";
 import type { Reserva, Sala, Unidade, User, Recorrencia, ReservaStatus } from "@/types";
-import { CalendarOff, Loader2, Sparkles } from "lucide-react";
+import { CalendarOff, Check, ChevronDown, Loader2, Search, Sparkles, X } from "lucide-react";
 import { isReservaEspecial } from "@/lib/format";
+import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 
 interface Props {
@@ -91,11 +92,15 @@ export function ReservaFormDialog({
   const [comprovante, setComprovante] = useState("");
   const [selectedPhotoIndex, setSelectedPhotoIndex] = useState<number | null>(null);
   const [submittingLocal, setSubmittingLocal] = useState(false);
+  const [profBusca, setProfBusca] = useState("");
+  const [profDropdownOpen, setProfDropdownOpen] = useState(false);
 
   const isEspecial = tipoReserva === "especial";
 
   useEffect(() => {
     if (!open) return;
+    setProfBusca("");
+    setProfDropdownOpen(false);
     const base = reserva ?? preset;
     const targetSalaId = reserva?.sala_id ?? preset?.sala_id ?? "";
     const salaObj = salas.find((s) => s.id === targetSalaId);
@@ -169,6 +174,27 @@ export function ReservaFormDialog({
     }
     return usuarios.filter((u) => u.status === "ativo");
   }, [usuarios, isEspecial]);
+
+  const profissionaisFiltrados = useMemo(() => {
+    const q = profBusca
+      .trim()
+      .toLowerCase()
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "");
+    if (!q) return profissionais;
+    return profissionais.filter((p) =>
+      (p.nome || "")
+        .toLowerCase()
+        .normalize("NFD")
+        .replace(/[\u0300-\u036f]/g, "")
+        .includes(q),
+    );
+  }, [profissionais, profBusca]);
+
+  const profissionalSelecionado = useMemo(
+    () => profissionais.find((p) => p.id === profissionalId),
+    [profissionais, profissionalId],
+  );
 
   useEffect(() => {
     if (isEspecial && profissionais.length > 0) {
@@ -484,20 +510,76 @@ export function ReservaFormDialog({
           ) : null}
 
           {isAdmin ? (
-            <div className="space-y-2">
+            <div className="space-y-2 relative">
               <Label>Profissional</Label>
-              <Select value={profissionalId} onValueChange={setProfissionalId} disabled={modoReagendamento}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Em nome de..." />
-                </SelectTrigger>
-                <SelectContent>
-                  {profissionais.map((p) => (
-                    <SelectItem key={p.id} value={p.id}>
-                      {p.nome}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <button
+                type="button"
+                disabled={modoReagendamento}
+                onClick={() => setProfDropdownOpen((prev) => !prev)}
+                className={cn(
+                  "flex h-9 w-full items-center justify-between whitespace-nowrap rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-xs ring-offset-background focus:outline-none focus:ring-1 focus:ring-ring disabled:cursor-not-allowed disabled:opacity-50",
+                  !profissionalSelecionado && "text-muted-foreground",
+                )}
+              >
+                <span className="truncate">
+                  {profissionalSelecionado ? profissionalSelecionado.nome : "Em nome de..."}
+                </span>
+                <ChevronDown className="size-4 opacity-50 shrink-0 ml-2" />
+              </button>
+
+              {profDropdownOpen && !modoReagendamento && (
+                <div className="z-50 mt-1 w-full rounded-md border border-border bg-popover text-popover-foreground shadow-md p-2 space-y-2">
+                  <div className="relative">
+                    <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 size-3.5 text-muted-foreground" />
+                    <Input
+                      autoFocus
+                      placeholder="Pesquisar profissional pelo nome..."
+                      value={profBusca}
+                      onChange={(e) => setProfBusca(e.target.value)}
+                      className="h-8 pl-8 pr-7 text-xs"
+                    />
+                    {profBusca && (
+                      <button
+                        type="button"
+                        onClick={() => setProfBusca("")}
+                        className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                      >
+                        <X className="size-3.5" />
+                      </button>
+                    )}
+                  </div>
+
+                  <div className="max-h-48 overflow-y-auto divide-y divide-border/40">
+                    {profissionaisFiltrados.length === 0 ? (
+                      <p className="py-3 text-center text-xs text-muted-foreground">
+                        Nenhum profissional encontrado.
+                      </p>
+                    ) : (
+                      profissionaisFiltrados.map((p) => {
+                        const selected = p.id === profissionalId;
+                        return (
+                          <button
+                            key={p.id}
+                            type="button"
+                            onClick={() => {
+                              setProfissionalId(p.id);
+                              setProfDropdownOpen(false);
+                              setProfBusca("");
+                            }}
+                            className={cn(
+                              "flex w-full items-center justify-between rounded-sm px-2.5 py-1.5 text-left text-xs transition-colors hover:bg-accent hover:text-accent-foreground",
+                              selected && "bg-accent/60 font-medium",
+                            )}
+                          >
+                            <span className="truncate">{p.nome}</span>
+                            {selected && <Check className="size-3.5 text-primary shrink-0 ml-2" />}
+                          </button>
+                        );
+                      })
+                    )}
+                  </div>
+                </div>
+              )}
             </div>
           ) : null}
 

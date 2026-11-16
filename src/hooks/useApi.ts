@@ -92,15 +92,14 @@ export const useUsuarioDetail = (id: string | null) =>
     staleTime: 1000 * 60 * 10,
   });
 
-export const useReservasPendentesCount = () => {
-  const { data } = useReservas();
-  if (!data) return 0;
-  return data.filter(
-    (r) =>
-      r.status === "pendente" ||
-      r.status === "solicitacao_cancelamento" ||
-      r.status === "reagendar",
-  ).length;
+export const useReservasPendentesCount = (enabled = true) => {
+  const { data } = useQuery({
+    queryKey: ["reservas", "pendingCount"] as const,
+    queryFn: api.getPendingReservationsCount,
+    enabled,
+    staleTime: 1000 * 60,
+  });
+  return data ?? 0;
 };
 
 function useInvalidate(key: readonly unknown[]) {

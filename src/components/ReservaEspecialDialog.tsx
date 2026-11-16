@@ -27,12 +27,15 @@ import {
   ArrowLeft,
   ArrowRight,
   Check,
+  ChevronDown,
   Calendar as CalendarIcon,
   Clock,
   Loader2,
+  Search,
   ShieldAlert,
   Sparkles,
   Info,
+  X,
 } from "lucide-react";
 import { toast } from "sonner";
 import { useQueryClient } from "@tanstack/react-query";
@@ -140,6 +143,24 @@ export function ReservaEspecialDialog({
   const [numSemanas, setNumSemanas] = useState(1);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [progressoEnvio, setProgressoEnvio] = useState<{ atual: number; total: number } | null>(null);
+  const [profBusca, setProfBusca] = useState("");
+  const [profDropdownOpen, setProfDropdownOpen] = useState(false);
+
+  const profissionaisAdminFiltrados = useMemo(() => {
+    const q = profBusca
+      .trim()
+      .toLowerCase()
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "");
+    if (!q) return profissionaisAdmin;
+    return profissionaisAdmin.filter((p) =>
+      (p.nome || "")
+        .toLowerCase()
+        .normalize("NFD")
+        .replace(/[\u0300-\u036f]/g, "")
+        .includes(q),
+    );
+  }, [profissionaisAdmin, profBusca]);
 
   // Reset ao abrir
   useEffect(() => {
@@ -154,6 +175,8 @@ export function ReservaEspecialDialog({
     setNumSemanas(1);
     setIsSubmitting(false);
     setProgressoEnvio(null);
+    setProfBusca("");
+    setProfDropdownOpen(false);
   }, [open, unidadesAtivas, profissionaisAdmin, user]);
 
   const salasDaUnidade = useMemo(
@@ -419,25 +442,84 @@ export function ReservaEspecialDialog({
               </div>
             </div>
 
-            <div className="space-y-2">
+            <div className="space-y-2 relative">
               <Label className="flex items-center justify-between">
                 <span>Profissional ADMIN</span>
                 <span className="text-[11px] text-muted-foreground font-normal">
                   (Apenas usuários com papel ADMINISTRADOR)
                 </span>
               </Label>
-              <Select value={profissionalId} onValueChange={setProfissionalId}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Selecione o profissional admin" />
-                </SelectTrigger>
-                <SelectContent>
-                  {profissionaisAdmin.map((p) => (
-                    <SelectItem key={p.id} value={p.id}>
-                      {p.nome} ({p.email})
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <button
+                type="button"
+                onClick={() => setProfDropdownOpen((prev) => !prev)}
+                className={cn(
+                  "flex h-9 w-full items-center justify-between whitespace-nowrap rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-xs ring-offset-background focus:outline-none focus:ring-1 focus:ring-ring",
+                  !profissionalAtual && "text-muted-foreground",
+                )}
+              >
+                <span className="truncate">
+                  {profissionalAtual
+                    ? `${profissionalAtual.nome} (${profissionalAtual.email})`
+                    : "Selecione o profissional admin"}
+                </span>
+                <ChevronDown className="size-4 opacity-50 shrink-0 ml-2" />
+              </button>
+
+              {profDropdownOpen && (
+                <div className="z-50 mt-1 w-full rounded-md border border-border bg-popover text-popover-foreground shadow-md p-2 space-y-2">
+                  <div className="relative">
+                    <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 size-3.5 text-muted-foreground" />
+                    <Input
+                      autoFocus
+                      placeholder="Pesquisar profissional pelo nome..."
+                      value={profBusca}
+                      onChange={(e) => setProfBusca(e.target.value)}
+                      className="h-8 pl-8 pr-7 text-xs"
+                    />
+                    {profBusca && (
+                      <button
+                        type="button"
+                        onClick={() => setProfBusca("")}
+                        className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                      >
+                        <X className="size-3.5" />
+                      </button>
+                    )}
+                  </div>
+
+                  <div className="max-h-48 overflow-y-auto divide-y divide-border/40">
+                    {profissionaisAdminFiltrados.length === 0 ? (
+                      <p className="py-3 text-center text-xs text-muted-foreground">
+                        Nenhum profissional encontrado.
+                      </p>
+                    ) : (
+                      profissionaisAdminFiltrados.map((p) => {
+                        const selected = p.id === profissionalId;
+                        return (
+                          <button
+                            key={p.id}
+                            type="button"
+                            onClick={() => {
+                              setProfissionalId(p.id);
+                              setProfDropdownOpen(false);
+                              setProfBusca("");
+                            }}
+                            className={cn(
+                              "flex w-full items-center justify-between rounded-sm px-2.5 py-1.5 text-left text-xs transition-colors hover:bg-accent hover:text-accent-foreground",
+                              selected && "bg-accent/60 font-medium",
+                            )}
+                          >
+                            <span className="truncate">
+                              {p.nome} ({p.email})
+                            </span>
+                            {selected && <Check className="size-3.5 text-primary shrink-0 ml-2" />}
+                          </button>
+                        );
+                      })
+                    )}
+                  </div>
+                </div>
+              )}
             </div>
 
             <div className="space-y-2">

@@ -50,7 +50,7 @@ export function AppShell({
   const navigate = useNavigate();
   const [openMobile, setOpenMobile] = useState(false);
   const pathname = useRouterState({ select: (s) => s.location.pathname });
-  const pendentes = useReservasPendentesCount();
+  const pendentes = useReservasPendentesCount(isAdmin);
   const { data: expiringAlerts = [] } = useExpiringAlerts(
     !isAdmin ? user?.id : undefined,
     !isAdmin && !!user?.id,

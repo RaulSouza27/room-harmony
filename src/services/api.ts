@@ -598,6 +598,17 @@ export async function listExpiringAlerts(
   return response.json();
 }
 
+export async function getPendingReservationsCount(): Promise<number> {
+  const response = await fetch(`${BACKEND_URL}/reservations/pending-count`, {
+    headers: getHeaders(),
+  });
+  if (!response.ok) {
+    return 0;
+  }
+  const data = await response.json();
+  return Number(data.count ?? 0);
+}
+
 /** Conflitos que ocupam o horário (aprovadas e pendentes). */
 export function findConflitos(
     reservas: Reserva[],
