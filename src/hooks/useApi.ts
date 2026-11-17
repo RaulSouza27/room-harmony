@@ -53,10 +53,11 @@ export const useUsuarios = () =>
     staleTime: 1000 * 60 * 15,
   });
 
-export const useReservas = (filters?: api.ReservaFilters) =>
+export const useReservas = (filters?: api.ReservaFilters, enabled = true) =>
   useQuery({
     queryKey: keys.reservas(filters),
     queryFn: () => api.listReservas(filters),
+    enabled,
     staleTime: 1000 * 60,
     placeholderData: (previousData) => previousData,
   });

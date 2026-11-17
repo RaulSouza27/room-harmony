@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
-import { Calendar, CalendarDays, CalendarRange, Eye, FileText, Sparkles } from "lucide-react";
+import { Building2, Calendar, CalendarDays, CalendarRange, Eye, FileText, Sparkles } from "lucide-react";
 import { AppShell } from "@/components/AppShell";
 import { AvailabilityGrid, type SlotInfo } from "@/components/AvailabilityGrid";
 import { MonthlyCalendarView } from "@/components/MonthlyCalendarView";
@@ -91,7 +91,7 @@ function AgendaPage() {
     if (unidadeFiltro && unidadesVisiveis.some((u) => u.id === unidadeFiltro)) {
       return unidadeFiltro;
     }
-    return unidadesVisiveis[0]?.id ?? "";
+    return "";
   }, [unidadeFiltro, unidadesVisiveis]);
 
   const dateFilters = useMemo(() => {
@@ -119,7 +119,7 @@ function AgendaPage() {
     };
   }, [modoVisao, data, ano, mes, unidadeSelecionada]);
 
-  const reservasQ = useReservas(dateFilters);
+  const reservasQ = useReservas(dateFilters, !!unidadeSelecionada);
   const reservas = reservasQ.data ?? [];
 
   const [preset, setPreset] = useState<SlotInfo | null>(null);
@@ -146,8 +146,14 @@ function AgendaPage() {
   );
 
   const reservasDoDia = reservasFiltradas.filter((r) => r.data === data);
-  const loading = unidadesQ.isLoading || salasQ.isLoading || reservasQ.isLoading;
-  const error = unidadesQ.error ?? salasQ.error ?? reservasQ.error;
+  const loading =
+    unidadesQ.isLoading ||
+    salasQ.isLoading ||
+    (!!unidadeSelecionada && reservasQ.isLoading);
+  const error =
+    unidadesQ.error ??
+    salasQ.error ??
+    (unidadeSelecionada ? reservasQ.error : null);
 
   function handleSlot(slot: SlotInfo) {
     if (slot.tipo === "reserva") {
@@ -307,7 +313,35 @@ function AgendaPage() {
           </div>
         </div>
 
-        {loading ? (
+        {!unidadeSelecionada ? (
+          <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-primary/35 bg-primary/5 px-6 py-14 text-center shadow-soft">
+            <div className="mb-3 flex size-12 items-center justify-center rounded-full bg-primary/10 text-primary">
+              <Building2 className="size-6" />
+            </div>
+            <h3 className="text-base font-semibold text-foreground">
+              Selecione uma unidade para visualizar a agenda
+            </h3>
+            <p className="mt-1 max-w-md text-sm text-muted-foreground">
+              Para exibir as salas e os horários disponíveis, escolha primeiro uma unidade no seletor acima{unidadesVisiveis.length > 0 ? " ou clique em uma das unidades abaixo:" : "."}
+            </p>
+            {unidadesVisiveis.length > 0 && (
+              <div className="mt-5 flex flex-wrap items-center justify-center gap-2.5">
+                {unidadesVisiveis.map((u) => (
+                  <Button
+                    key={u.id}
+                    type="button"
+                    variant="outline"
+                    onClick={() => setUnidadeFiltro(u.id)}
+                    className="gap-2 border-primary/30 bg-background hover:bg-primary hover:text-primary-foreground"
+                  >
+                    <Building2 className="size-4" />
+                    {u.nome}
+                  </Button>
+                ))}
+              </div>
+            )}
+          </div>
+        ) : loading ? (
           <LoadingState label="Carregando dados de disponibilidade..." />
         ) : error ? (
           <ErrorState message={error.message} />
