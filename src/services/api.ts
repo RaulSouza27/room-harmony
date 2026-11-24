@@ -1,5 +1,5 @@
 import {BACKEND_URL} from '@/config/api';
-import type {BusinessHours, Complaint, ComplaintQuota, Holiday, NovaReserva, Profession, Reserva, ReservaStatus, Sala, Unidade, User} from '@/types';
+import type {BusinessHours, Complaint, ComplaintPage, ComplaintQuota, ComplaintStats, ExpiringReservationAlert, Holiday, NovaReserva, Profession, Reserva, ReservaStatus, Sala, Unidade, User} from '@/types';
 
 import {createAuditLog} from './auditService';
 import {overlaps, readDB, uid, writeDB} from './db';
@@ -457,8 +457,8 @@ export async function softDeleteUsuario(
     targetType: 'USUARIO',
     targetId: String(id),
     targetName: usuario?.nome || `Profissional #${id}`,
-    details:
-        `Status do profissional ${usuario?.nome || `#${id}`} alterado para ${novoStatus.toUpperCase()}.`,
+    details: `Status do profissional ${
+        usuario?.nome || `#${id}`} alterado para ${novoStatus.toUpperCase()}.`,
   });
 }
 
@@ -578,6 +578,35 @@ export async function getReservaReceipt(id: string): Promise<string> {
   }
   const data = await response.json();
   return data.depositImage || '';
+}
+
+export async function listExpiringAlerts(
+    userId?: string,
+    ): Promise<ExpiringReservationAlert[]> {
+  const params = new URLSearchParams();
+  if (userId) params.append('userId', userId);
+  const queryString = params.toString();
+  const url = `${BACKEND_URL}/reservations/expiring-alerts${
+      queryString ? `?${queryString}` : ''}`;
+
+  const response = await fetch(url, {
+    headers: getHeaders(),
+  });
+  if (!response.ok) {
+    throw new Error('Falha ao carregar alertas de expiração de reservas.');
+  }
+  return response.json();
+}
+
+export async function getPendingReservationsCount(): Promise<number> {
+  const response = await fetch(`${BACKEND_URL}/reservations/pending-count`, {
+    headers: getHeaders(),
+  });
+  if (!response.ok) {
+    return 0;
+  }
+  const data = await response.json();
+  return Number(data.count ?? 0);
 }
 
 /** Conflitos que ocupam o horário (aprovadas e pendentes). */
@@ -739,6 +768,18 @@ export async function deleteReservasBatch(ids: string[]): Promise<void> {
   if (!response.ok) {
     const errorText = await response.text();
     throw new Error(errorText || 'Falha ao excluir reservas em lote.');
+  }
+}
+
+export async function cancelReservasBatch(ids: string[]): Promise<void> {
+  const response = await fetch(`${BACKEND_URL}/reservations/cancel-batch`, {
+    method: 'POST',
+    headers: getHeaders(),
+    body: JSON.stringify(ids.map(Number)),
+  });
+  if (!response.ok) {
+    const errorText = await response.text();
+    throw new Error(errorText || 'Falha ao cancelar reservas em lote.');
   }
 }
 
@@ -920,13 +961,13 @@ export async function deleteHoliday(id: number): Promise<void> {
   }
 }
 
-/* ------------------------------- Ouvidoria ------------------------------ */
+/* ----------------------------- Fale Conosco ---------------------------- */
 export async function getComplaintQuota(): Promise<ComplaintQuota> {
   const response = await fetch(`${BACKEND_URL}/complaints/quota`, {
     headers: getHeaders(),
   });
   if (!response.ok) {
-    throw new Error('Falha ao consultar limite diário da Ouvidoria.');
+    throw new Error('Falha ao consultar limite diário do Fale Conosco.');
   }
   const data = await response.json();
   return {
@@ -937,9 +978,8 @@ export async function getComplaintQuota(): Promise<ComplaintQuota> {
 }
 
 export async function createComplaint(input: {
-  complaints: string;
-  anonymous: boolean;
-}): Promise<ComplaintQuota & {success: boolean}> {
+  complaints: string; anonymous: boolean;
+}): Promise<ComplaintQuota&{success: boolean}> {
   const response = await fetch(`${BACKEND_URL}/complaints`, {
     method: 'POST',
     headers: getHeaders(),
@@ -951,7 +991,8 @@ export async function createComplaint(input: {
 
   if (!response.ok) {
     const errorText = await response.text();
-    throw new Error(errorText || 'Falha ao enviar manifestação para a Ouvidoria.');
+    throw new Error(
+        errorText || 'Falha ao enviar manifestação para o Fale Conosco.');
   }
 
   const data = await response.json();
@@ -963,49 +1004,136 @@ export async function createComplaint(input: {
   };
 }
 
+function mapComplaintItem(item: any): Complaint {
+  return {
+    id: item.id,
+    userId: item.userId ?? null,
+    userName: item.userName ||
+        (item.userId ? `Profissional #${item.userId}` : 'Anônimo'),
+    userEmail: item.userEmail ?? null,
+    userPhone: item.userPhone ?? null,
+    anonymous: item.anonymous ?? item.userId == null,
+    complaints: item.complaints || '',
+    solved: Boolean(item.solved),
+    resolutionNotes: item.resolutionNotes ?? null,
+    resolvedBy: item.resolvedBy ?? null,
+    resolvedAt: item.resolvedAt ?? null,
+    createdAt: item.createdAt || '',
+  };
+}
+
+export async function listMyComplaints(): Promise<Complaint[]> {
+  const response = await fetch(`${BACKEND_URL}/complaints/my`, {
+    headers: getHeaders(),
+  });
+  if (!response.ok) {
+    const errorText = await response.text();
+    throw new Error(errorText || 'Falha ao carregar suas manifestações.');
+  }
+  const data = await response.json();
+  return data.map(mapComplaintItem);
+}
+
+export async function listMyComplaintsPaged(
+    params: {page: number; size: number;}): Promise<ComplaintPage> {
+  const query = new URLSearchParams({
+    page: String(params.page),
+    size: String(params.size),
+  });
+  const response =
+      await fetch(`${BACKEND_URL}/complaints/my/paged?${query.toString()}`, {
+        headers: getHeaders(),
+      });
+  if (!response.ok) {
+    const errorText = await response.text();
+    throw new Error(errorText || 'Falha ao carregar suas manifestações.');
+  }
+  const data = await response.json();
+  return {
+    content: (data.content || []).map(mapComplaintItem),
+    totalElements: Number(data.totalElements ?? 0),
+    totalPages: Math.max(1, Number(data.totalPages ?? 1)),
+    number: Number(data.number ?? params.page),
+    size: Number(data.size ?? params.size),
+  };
+}
+
+export async function getComplaintStats(): Promise<ComplaintStats> {
+  const response = await fetch(`${BACKEND_URL}/complaints/stats`, {
+    headers: getHeaders(),
+  });
+  if (!response.ok) {
+    const errorText = await response.text();
+    throw new Error(errorText || 'Falha ao carregar indicadores do Fale Conosco.');
+  }
+  const data = await response.json();
+  return {
+    total: Number(data.total ?? 0),
+    pending: Number(data.pending ?? 0),
+    solved: Number(data.solved ?? 0),
+  };
+}
+
+export async function listComplaintsPaged(
+    params: {page: number; size: number; search?: string; solved?: boolean;}):
+    Promise<ComplaintPage> {
+  const query = new URLSearchParams({
+    page: String(params.page),
+    size: String(params.size),
+  });
+  if (params.search && params.search.trim()) {
+    query.append('search', params.search.trim());
+  }
+  if (params.solved !== undefined) {
+    query.append('solved', String(params.solved));
+  }
+  const response =
+      await fetch(`${BACKEND_URL}/complaints/paged?${query.toString()}`, {
+        headers: getHeaders(),
+      });
+  if (!response.ok) {
+    const errorText = await response.text();
+    throw new Error(errorText || 'Falha ao carregar registros do Fale Conosco.');
+  }
+  const data = await response.json();
+  return {
+    content: (data.content || []).map(mapComplaintItem),
+    totalElements: Number(data.totalElements ?? 0),
+    totalPages: Math.max(1, Number(data.totalPages ?? 1)),
+    number: Number(data.number ?? params.page),
+    size: Number(data.size ?? params.size),
+  };
+}
+
 export async function listComplaints(): Promise<Complaint[]> {
   const response = await fetch(`${BACKEND_URL}/complaints/readAll`, {
     headers: getHeaders(),
   });
   if (!response.ok) {
     const errorText = await response.text();
-    throw new Error(errorText || 'Falha ao carregar registros da Ouvidoria.');
+    throw new Error(errorText || 'Falha ao carregar registros do Fale Conosco.');
   }
   const data = await response.json();
-  return data.map((item: any) => ({
-    id: item.id,
-    userId: item.userId ?? null,
-    userName: item.userName || (item.userId ? `Profissional #${item.userId}` : 'Anônimo'),
-    userEmail: item.userEmail ?? null,
-    anonymous: item.anonymous ?? item.userId == null,
-    complaints: item.complaints || '',
-    solved: Boolean(item.solved),
-    createdAt: item.createdAt || '',
-  }));
+  return data.map(mapComplaintItem);
 }
 
 export async function updateComplaintSolved(
-  id: number,
-  solved: boolean,
-): Promise<Complaint> {
+    id: number,
+    solved: boolean,
+    resolutionNotes?: string,
+    ): Promise<Complaint> {
   const response = await fetch(`${BACKEND_URL}/complaints/${id}/solved`, {
     method: 'PUT',
     headers: getHeaders(),
-    body: JSON.stringify({solved}),
+    body: JSON.stringify({
+      solved,
+      ...(resolutionNotes !== undefined ? {resolutionNotes} : {}),
+    }),
   });
   if (!response.ok) {
     const errorText = await response.text();
     throw new Error(errorText || 'Falha ao atualizar status da manifestação.');
   }
   const item = await response.json();
-  return {
-    id: item.id,
-    userId: item.userId ?? null,
-    userName: item.userName || (item.userId ? `Profissional #${item.userId}` : 'Anônimo'),
-    userEmail: item.userEmail ?? null,
-    anonymous: item.anonymous ?? item.userId == null,
-    complaints: item.complaints || '',
-    solved: Boolean(item.solved),
-    createdAt: item.createdAt || '',
-  };
+  return mapComplaintItem(item);
 }

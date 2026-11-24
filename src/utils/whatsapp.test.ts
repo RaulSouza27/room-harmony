@@ -1,11 +1,10 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { openWhatsApp } from './whatsapp';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { openWhatsApp, resetWhatsAppWindowRef } from './whatsapp';
 
 describe('whatsapp utility', () => {
-  const originalWindowLocation = window.location;
-
   beforeEach(() => {
     vi.restoreAllMocks();
+    resetWhatsAppWindowRef();
   });
 
   it('does nothing if phone is undefined or empty', () => {
@@ -33,5 +32,28 @@ describe('whatsapp utility', () => {
       'https://web.whatsapp.com/send?phone=5511999998888',
       'whatsapp_tab'
     );
+  });
+
+  it('reuses an already open WhatsApp tab on desktop without calling window.open again', () => {
+    const mockTab = {
+      closed: false,
+      location: { href: '' },
+      focus: vi.fn(),
+    } as unknown as Window;
+
+    const spyOpen = vi.spyOn(window, 'open').mockReturnValue(mockTab);
+
+    // Primeira chamada abre a aba e guarda a referência
+    openWhatsApp('11987654321', 'Primeira mensagem');
+    expect(spyOpen).toHaveBeenCalledTimes(1);
+    expect(mockTab.focus).toHaveBeenCalledTimes(1);
+
+    // Segunda chamada detecta a aba aberta e atualiza a URL diretamente nela
+    openWhatsApp('11911112222', 'Segunda mensagem');
+    expect(spyOpen).toHaveBeenCalledTimes(1);
+    expect(mockTab.location.href).toBe(
+      'https://web.whatsapp.com/send?phone=5511911112222&text=Segunda%20mensagem'
+    );
+    expect(mockTab.focus).toHaveBeenCalledTimes(2);
   });
 });

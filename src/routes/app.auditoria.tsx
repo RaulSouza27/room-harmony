@@ -107,6 +107,7 @@ function AuditoriaPage() {
       case "SOLICITACAO_CANCELAMENTO_RESERVA":
         return <Badge className="bg-amber-600 text-white hover:bg-amber-700">Solicitação Cancelamento</Badge>;
       case "CANCELAMENTO_RESERVA":
+      case "CANCELAMENTO_LOTE_RESERVA":
         return <Badge className="bg-slate-600 text-white hover:bg-slate-700">Cancelamento Reserva</Badge>;
       case "APROVACAO_RESERVA":
         return <Badge className="bg-emerald-600 text-white hover:bg-emerald-700">Aprovação Reserva</Badge>;
@@ -145,7 +146,7 @@ function AuditoriaPage() {
       case "EXCLUSAO_PROFISSAO":
         return <Badge className="bg-violet-600 text-white hover:bg-violet-700">Gestão de Profissão</Badge>;
       case "ALTERACAO_STATUS_OUVIDORIA":
-        return <Badge className="bg-amber-700 text-white hover:bg-amber-800">Status Ouvidoria</Badge>;
+        return <Badge className="bg-amber-700 text-white hover:bg-amber-800">Status Fale Conosco</Badge>;
       default:
         return <Badge variant="outline">{action}</Badge>;
     }
@@ -271,7 +272,7 @@ function AuditoriaPage() {
                 <SelectItem value="UNIDADE">Unidades</SelectItem>
                 <SelectItem value="FERIADO">Feriados / Bloqueios</SelectItem>
                 <SelectItem value="PROFISSAO">Profissões</SelectItem>
-                <SelectItem value="OUVIDORIA">Ouvidoria</SelectItem>
+                <SelectItem value="OUVIDORIA">Fale Conosco</SelectItem>
               </SelectContent>
             </Select>
 
@@ -292,6 +293,7 @@ function AuditoriaPage() {
                 <SelectItem value="ALTERACAO_RESERVA">Alteração / Reagendamento</SelectItem>
                 <SelectItem value="SOLICITACAO_CANCELAMENTO_RESERVA">Solicitação de Cancelamento</SelectItem>
                 <SelectItem value="CANCELAMENTO_RESERVA">Cancelamento de Reserva</SelectItem>
+                <SelectItem value="CANCELAMENTO_LOTE_RESERVA">Cancelamento em Lote</SelectItem>
                 <SelectItem value="APROVACAO_RESERVA">Aprovação de Reserva</SelectItem>
                 <SelectItem value="REJEICAO_RESERVA">Rejeição de Reserva</SelectItem>
                 <SelectItem value="EXCLUSAO_RESERVA">Exclusão de Reserva</SelectItem>
@@ -312,7 +314,7 @@ function AuditoriaPage() {
                 <SelectItem value="CRIACAO_PROFISSAO">Criação de Profissão</SelectItem>
                 <SelectItem value="ALTERACAO_PROFISSAO">Alteração de Profissão</SelectItem>
                 <SelectItem value="EXCLUSAO_PROFISSAO">Exclusão de Profissão</SelectItem>
-                <SelectItem value="ALTERACAO_STATUS_OUVIDORIA">Status de Ouvidoria</SelectItem>
+                <SelectItem value="ALTERACAO_STATUS_OUVIDORIA">Status do Fale Conosco</SelectItem>
               </SelectContent>
             </Select>
           </div>

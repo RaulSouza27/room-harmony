@@ -2,14 +2,16 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { AppShell } from "@/components/AppShell";
 import { EmptyState, ErrorState, LoadingState, StatusBadge } from "@/components/common";
-import { CancelarReservaButton } from "@/components/ReservaActions";
+import { CancelarReservaButton, ConfirmDialog } from "@/components/ReservaActions";
 import { ReceiptViewerDialog } from "@/components/ReceiptViewerDialog";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useAuth } from "@/contexts/AuthContext";
-import { useReservas, useSalas, useUnidades } from "@/hooks/useApi";
+import { useCancelReservasBatch, useExpiringAlerts, useReservas, useSalas, useUnidades } from "@/hooks/useApi";
 import { formatarData, formatRecorrencia, isReservaComMaisDe24h } from "@/lib/format";
-import type { Reserva, ReservaStatus } from "@/types";
+import type { ExpiringReservationAlert, Reserva, ReservaStatus } from "@/types";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { ExpiringReservationsAlert } from "@/components/ExpiringReservationsAlert";
 import {
   AlertCircle,
   FileText,
@@ -62,6 +64,8 @@ function MinhasReservasPage() {
   const reservasQ = useReservas(user?.id ? { userId: user.id } : undefined);
   const salasQ = useSalas();
   const unidadesQ = useUnidades();
+  const expiringAlertsQ = useExpiringAlerts(user?.id, !!user?.id);
+  const [alertaParaRenovar, setAlertaParaRenovar] = useState<ExpiringReservationAlert | null>(null);
   const [filtro, setFiltro] = useState<"ativas" | ReservaStatus>("ativas");
   const [searchQuery, setSearchQuery] = useState("");
   const [de, setDe] = useState("");
@@ -74,6 +78,9 @@ function MinhasReservasPage() {
   );
   const [reservaParaReagendar, setReservaParaReagendar] = useState<Reserva | null>(null);
   const [notifications, setNotifications] = useState<UserNotification[]>([]);
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  const [confirmBatchCancel, setConfirmBatchCancel] = useState(false);
+  const cancelarLote = useCancelReservasBatch();
 
   useEffect(() => {
     if (!user?.id) return;
@@ -141,12 +148,56 @@ function MinhasReservasPage() {
 
   const temFiltroAtivo = searchQuery.trim() !== "" || de !== "" || ate !== "";
 
+  const isReservaCancelavelPeloLocatario = (r: Reserva) => {
+    if (r.status === "pendente" || r.status === "reagendar") return true;
+    if (r.status === "aprovada") return isReservaComMaisDe24h(r.data, r.hora_inicio);
+    return false;
+  };
+
+  const cancelaveisNaLista = useMemo(
+    () => lista.filter(isReservaCancelavelPeloLocatario),
+    [lista],
+  );
+
+  const selectedCancelableIds = useMemo(
+    () =>
+      selectedIds.filter((id) => {
+        const res = minhasReservas.find((r) => r.id === id);
+        return res && isReservaCancelavelPeloLocatario(res);
+      }),
+    [selectedIds, minhasReservas],
+  );
+
+  const handleBatchCancel = async () => {
+    if (selectedCancelableIds.length === 0) return;
+    await cancelarLote.mutateAsync(selectedCancelableIds);
+    setSelectedIds([]);
+    setConfirmBatchCancel(false);
+  };
+
   return (
     <AppShell
       title="Minhas reservas"
       description={`Histórico e status das suas solicitações · ${totalItems} reserva(s)`}
+      actions={
+        selectedCancelableIds.length > 0 ? (
+          <Button
+            size="sm"
+            variant="destructive"
+            onClick={() => setConfirmBatchCancel(true)}
+            disabled={cancelarLote.isPending}
+          >
+            Cancelar {selectedCancelableIds.length} selecionada(s)
+          </Button>
+        ) : undefined
+      }
     >
       <div className="space-y-5">
+        <ExpiringReservationsAlert
+          alerts={expiringAlertsQ.data ?? []}
+          onRenew={(alert) => setAlertaParaRenovar(alert)}
+        />
+
         {notifications.length > 0 && (
           <div className="space-y-2">
             {notifications.map((n) => (
@@ -258,6 +309,53 @@ function MinhasReservasPage() {
           />
         ) : (
           <>
+            {cancelaveisNaLista.length > 0 && (
+              <div className="flex items-center gap-2 px-4 py-3 bg-muted/30 border border-border rounded-xl text-sm justify-between shadow-soft">
+                <div className="flex items-center gap-2">
+                  <Checkbox
+                    id="select-all-minhas"
+                    checked={
+                      selectedCancelableIds.length === cancelaveisNaLista.length &&
+                      cancelaveisNaLista.length > 0
+                    }
+                    onCheckedChange={(checked) => {
+                      if (checked) {
+                        setSelectedIds(cancelaveisNaLista.map((r) => r.id));
+                      } else {
+                        setSelectedIds([]);
+                      }
+                    }}
+                  />
+                  <Label
+                    htmlFor="select-all-minhas"
+                    className="cursor-pointer font-medium text-foreground select-none"
+                  >
+                    Selecionar todas as {cancelaveisNaLista.length} reservas disponíveis para cancelamento
+                  </Label>
+                </div>
+                {selectedCancelableIds.length > 0 && (
+                  <div className="flex items-center gap-3">
+                    <Button
+                      size="sm"
+                      variant="destructive"
+                      className="h-7 text-xs"
+                      onClick={() => setConfirmBatchCancel(true)}
+                      disabled={cancelarLote.isPending}
+                    >
+                      Cancelar {selectedCancelableIds.length} selecionada(s)
+                    </Button>
+                    <button
+                      type="button"
+                      onClick={() => setSelectedIds([])}
+                      className="text-xs text-primary hover:underline font-semibold"
+                    >
+                      Limpar seleção
+                    </button>
+                  </div>
+                )}
+              </div>
+            )}
+
             <ul className="space-y-3">
               {paginatedLista.map((r) => {
                 const sala = salas.find((s) => s.id === r.sala_id);
@@ -265,10 +363,29 @@ function MinhasReservasPage() {
                 const podeSolicitarCancelamento = r.status === "aprovada" || r.status === "pendente";
                 const temMaisDe24h = isReservaComMaisDe24h(r.data, r.hora_inicio);
                 const bloqueadoPor24h = r.status === "aprovada" && !temMaisDe24h;
+                const podeSelecionar = isReservaCancelavelPeloLocatario(r);
+                const isSelected = selectedCancelableIds.includes(r.id);
 
                 return (
-                  <li key={r.id} className="rounded-xl border border-border bg-card p-4 shadow-soft">
-                    <div className="flex flex-wrap items-start justify-between gap-3">
+                  <li
+                    key={r.id}
+                    className={`rounded-xl border p-4 shadow-soft transition-colors flex gap-3.5 items-start ${
+                      isSelected
+                        ? "border-primary/45 bg-primary/5"
+                        : "border-border bg-card"
+                    }`}
+                  >
+                    <Checkbox
+                      className="mt-1"
+                      checked={isSelected}
+                      disabled={!podeSelecionar}
+                      onCheckedChange={(checked) => {
+                        setSelectedIds((prev) =>
+                          checked ? [...prev, r.id] : prev.filter((id) => id !== r.id),
+                        );
+                      }}
+                    />
+                    <div className="flex flex-wrap items-start justify-between gap-3 flex-1 min-w-0">
                       <div className="min-w-0 flex-1">
                         <p className="text-sm font-semibold text-card-foreground">
                           {sala?.nome ?? "Sala removida"}{" "}
@@ -396,6 +513,36 @@ function MinhasReservasPage() {
           modoReagendamento={true}
         />
       )}
+
+      {alertaParaRenovar && (
+        <ReservaFormDialog
+          open={!!alertaParaRenovar}
+          onOpenChange={(v) => !v && setAlertaParaRenovar(null)}
+          unidades={unidades}
+          salas={salas}
+          usuarios={user ? [user] : []}
+          reservas={reservasQ.data ?? []}
+          preset={{
+            unidade_id: alertaParaRenovar.unitId ? String(alertaParaRenovar.unitId) : undefined,
+            sala_id: String(alertaParaRenovar.roomId),
+            data: alertaParaRenovar.nextStartDate,
+            hora_inicio: alertaParaRenovar.horaInicio,
+            hora_fim: alertaParaRenovar.horaFim,
+            recorrencia: alertaParaRenovar.recorrencia,
+            profissional_id: String(alertaParaRenovar.userId),
+          }}
+        />
+      )}
+
+      <ConfirmDialog
+        open={confirmBatchCancel}
+        onOpenChange={setConfirmBatchCancel}
+        title={`Cancelar ${selectedCancelableIds.length} reserva(s) selecionada(s)?`}
+        description="Reservas pendentes serão canceladas imediatamente e reservas já aprovadas (> 24h) serão enviadas para solicitação de cancelamento junto à administração."
+        confirmLabel="Confirmar cancelamento em massa"
+        destructive
+        onConfirm={handleBatchCancel}
+      />
     </AppShell>
   );
 }

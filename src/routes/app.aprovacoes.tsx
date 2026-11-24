@@ -12,18 +12,19 @@ import {
   X,
 } from "lucide-react";
 import { AppShell } from "@/components/AppShell";
-import { AprovacaoActions, CancelarReservaButton } from "@/components/ReservaActions";
+import { AprovacaoActions, CancelarReservaButton, ConfirmDialog } from "@/components/ReservaActions";
 import { ReservaFormDialog } from "@/components/ReservaFormDialog";
 import { EmptyState, ErrorState, LoadingState, StatusBadge } from "@/components/common";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { ReceiptViewerDialog } from "@/components/ReceiptViewerDialog";
 import { ReservaDetailDialog } from "@/components/ReservaDetailDialog";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { useReservas, useSalas, useUnidades, useUsuarios, useUpdateReserva } from "@/hooks/useApi";
+import { useCancelReservasBatch, useReservas, useSalas, useUnidades, useUsuarios, useUpdateReserva } from "@/hooks/useApi";
 import { formatarData, formatRecorrencia } from "@/lib/format";
 import { findConflitos } from "@/services/api";
 import type { Reserva } from "@/types";
@@ -76,6 +77,9 @@ function AprovacoesPage() {
   const [alvoComprovante, setAlvoComprovante] = useState<string | null>(null);
   const [detalheReserva, setDetalheReserva] = useState<Reserva | null>(null);
   const [reservaParaReagendar, setReservaParaReagendar] = useState<Reserva | null>(null);
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  const [confirmBatchCancel, setConfirmBatchCancel] = useState(false);
+  const cancelarLote = useCancelReservasBatch();
 
   const reservas = reservasQ.data ?? [];
   const salas = salasQ.data ?? [];
@@ -195,10 +199,35 @@ function AprovacoesPage() {
     pendentesReserva.length + pendentesCancelamento.length + pendentesReagendar.length;
   const temFiltroAtivo = searchQuery.trim() !== "" || de !== "" || ate !== "";
 
+  const activeListIds = useMemo(() => new Set(listaAtiva.map((r) => r.id)), [listaAtiva]);
+  const selectedActiveIds = useMemo(
+    () => selectedIds.filter((id) => activeListIds.has(id)),
+    [selectedIds, activeListIds],
+  );
+
+  const handleBatchCancel = async () => {
+    if (selectedActiveIds.length === 0) return;
+    await cancelarLote.mutateAsync(selectedActiveIds);
+    setSelectedIds([]);
+    setConfirmBatchCancel(false);
+  };
+
   return (
     <AppShell
       title="Aprovações pendentes"
       description={`${totalPendencias} solicitação(ões) aguardando análise do administrador`}
+      actions={
+        selectedActiveIds.length > 0 ? (
+          <Button
+            size="sm"
+            variant="destructive"
+            onClick={() => setConfirmBatchCancel(true)}
+            disabled={cancelarLote.isPending}
+          >
+            Cancelar {selectedActiveIds.length} selecionada(s)
+          </Button>
+        ) : undefined
+      }
     >
       <div className="space-y-5">
         <div className="flex flex-wrap items-center justify-between gap-3">
@@ -207,6 +236,7 @@ function AprovacoesPage() {
             onValueChange={(v) => {
               setTab(v as "reservas" | "cancelamentos" | "reagendar");
               setCurrentPage(1);
+              setSelectedIds([]);
             }}
           >
             <TabsList>
@@ -312,6 +342,52 @@ function AprovacoesPage() {
           </div>
         </div>
 
+        {!reservasQ.isLoading && !reservasQ.error && listaAtiva.length > 0 && (
+          <div className="flex items-center gap-2 px-4 py-3 bg-muted/30 border border-border rounded-xl text-sm justify-between shadow-soft">
+            <div className="flex items-center gap-2">
+              <Checkbox
+                id="select-all-aprovacoes"
+                checked={
+                  selectedActiveIds.length === listaAtiva.length && listaAtiva.length > 0
+                }
+                onCheckedChange={(checked) => {
+                  if (checked) {
+                    setSelectedIds(listaAtiva.map((r) => r.id));
+                  } else {
+                    setSelectedIds([]);
+                  }
+                }}
+              />
+              <Label
+                htmlFor="select-all-aprovacoes"
+                className="cursor-pointer font-medium text-foreground select-none"
+              >
+                Selecionar todas as {listaAtiva.length} reservas desta aba
+              </Label>
+            </div>
+            {selectedActiveIds.length > 0 && (
+              <div className="flex items-center gap-3">
+                <Button
+                  size="sm"
+                  variant="destructive"
+                  className="h-7 text-xs"
+                  onClick={() => setConfirmBatchCancel(true)}
+                  disabled={cancelarLote.isPending}
+                >
+                  Cancelar {selectedActiveIds.length} selecionada(s)
+                </Button>
+                <button
+                  type="button"
+                  onClick={() => setSelectedIds([])}
+                  className="text-xs text-primary hover:underline font-semibold"
+                >
+                  Limpar seleção
+                </button>
+              </div>
+            )}
+          </div>
+        )}
+
         {reservasQ.isLoading ? (
           <LoadingState />
         ) : reservasQ.error ? (
@@ -337,9 +413,19 @@ function AprovacoesPage() {
                   ignoreId: r.id,
                 }).filter((c) => c.status === "pendente");
                 const p = prof(r.profissional_id);
+                const isSelected = selectedActiveIds.includes(r.id);
                 return (
-                  <li key={r.id} className="rounded-xl border border-border bg-card p-4 shadow-soft">
-                    <div className="flex flex-wrap items-start justify-between gap-4">
+                  <li key={r.id} className="rounded-xl border border-border bg-card p-4 shadow-soft flex gap-3.5 items-start">
+                    <Checkbox
+                      className="mt-1"
+                      checked={isSelected}
+                      onCheckedChange={(checked) => {
+                        setSelectedIds((prev) =>
+                          checked ? [...prev, r.id] : prev.filter((id) => id !== r.id),
+                        );
+                      }}
+                    />
+                    <div className="flex flex-wrap items-start justify-between gap-4 flex-1 min-w-0">
                       <div className="min-w-0 flex-1">
                         <div className="flex items-start gap-3">
                           <Avatar className="size-11 border border-border shrink-0 mt-0.5">
@@ -443,9 +529,19 @@ function AprovacoesPage() {
             <ul className="space-y-3">
               {paginatedLista.map((r) => {
                 const p = prof(r.profissional_id);
+                const isSelected = selectedActiveIds.includes(r.id);
                 return (
-                  <li key={r.id} className="rounded-xl border border-purple-500/30 bg-purple-500/5 p-4 shadow-soft">
-                    <div className="flex flex-wrap items-start justify-between gap-4">
+                  <li key={r.id} className="rounded-xl border border-purple-500/30 bg-purple-500/5 p-4 shadow-soft flex gap-3.5 items-start">
+                    <Checkbox
+                      className="mt-1"
+                      checked={isSelected}
+                      onCheckedChange={(checked) => {
+                        setSelectedIds((prev) =>
+                          checked ? [...prev, r.id] : prev.filter((id) => id !== r.id),
+                        );
+                      }}
+                    />
+                    <div className="flex flex-wrap items-start justify-between gap-4 flex-1 min-w-0">
                       <div className="min-w-0 flex-1">
                         <div className="flex items-start gap-3">
                           <Avatar className="size-11 border border-border shrink-0 mt-0.5">
@@ -511,9 +607,19 @@ function AprovacoesPage() {
           <ul className="space-y-3">
             {paginatedLista.map((r) => {
               const p = prof(r.profissional_id);
+              const isSelected = selectedActiveIds.includes(r.id);
               return (
-                <li key={r.id} className="rounded-xl border border-amber-500/30 bg-amber-500/5 p-4 shadow-soft">
-                  <div className="flex flex-wrap items-start justify-between gap-4">
+                <li key={r.id} className="rounded-xl border border-amber-500/30 bg-amber-500/5 p-4 shadow-soft flex gap-3.5 items-start">
+                  <Checkbox
+                    className="mt-1"
+                    checked={isSelected}
+                    onCheckedChange={(checked) => {
+                      setSelectedIds((prev) =>
+                        checked ? [...prev, r.id] : prev.filter((id) => id !== r.id),
+                      );
+                    }}
+                  />
+                  <div className="flex flex-wrap items-start justify-between gap-4 flex-1 min-w-0">
                     <div className="min-w-0 flex-1">
                       <div className="flex items-start gap-3">
                         <Avatar className="size-11 border border-border shrink-0 mt-0.5">
@@ -644,6 +750,16 @@ function AprovacoesPage() {
           reserva={reservaParaReagendar}
         />
       )}
+
+      <ConfirmDialog
+        open={confirmBatchCancel}
+        onOpenChange={setConfirmBatchCancel}
+        title={`Cancelar ${selectedActiveIds.length} reserva(s) selecionada(s)?`}
+        description="Todas as reservas selecionadas terão seu status alterado para cancelada e os horários correspondentes serão liberados na agenda."
+        confirmLabel="Confirmar cancelamento em massa"
+        destructive
+        onConfirm={handleBatchCancel}
+      />
     </AppShell>
   );
 }

@@ -23,7 +23,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { useAuth } from "@/contexts/AuthContext";
-import { useReservasPendentesCount, useCompleteTour } from "@/hooks/useApi";
+import { useExpiringAlerts, useReservasPendentesCount, useCompleteTour } from "@/hooks/useApi";
 import { DEFAULT_PASSWORD } from "@/config/api";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
@@ -50,7 +50,22 @@ export function AppShell({
   const navigate = useNavigate();
   const [openMobile, setOpenMobile] = useState(false);
   const pathname = useRouterState({ select: (s) => s.location.pathname });
-  const pendentes = useReservasPendentesCount();
+  const pendentes = useReservasPendentesCount(isAdmin);
+  const { data: expiringAlerts = [] } = useExpiringAlerts(
+    !isAdmin ? user?.id : undefined,
+    !isAdmin && !!user?.id,
+  );
+
+  useEffect(() => {
+    if (isAdmin || !user?.id || expiringAlerts.length === 0) return;
+    const sessionKey = `clinica-salas-expiring-toast-${user.id}`;
+    if (sessionStorage.getItem(sessionKey)) return;
+    sessionStorage.setItem(sessionKey, "1");
+    toast.warning(
+      `Você possui ${expiringAlerts.length} reserva(s) recorrente(s) próxima(s) de expirar. Acesse "Minhas reservas" para renovar.`,
+      { duration: 6000 },
+    );
+  }, [isAdmin, user?.id, expiringAlerts.length]);
 
   const items: NavItem[] = isAdmin
     ? [
@@ -63,7 +78,7 @@ export function AppShell({
         { to: "/app/salas", label: "Salas", icon: DoorOpen },
         { to: "/app/unidades", label: "Unidades", icon: Building2 },
         { to: "/app/feriados", label: "Feriados e Bloqueios", icon: CalendarOff },
-        { to: "/app/ouvidoria", label: "Ouvidoria", icon: MessageSquareWarning },
+        { to: "/app/ouvidoria", label: "Fale Conosco", icon: MessageSquareWarning },
         { to: "/app/auditoria", label: "Auditoria", icon: ShieldCheck },
         { to: "/app/perfil", label: "Meu perfil", icon: UserRound },
       ]
@@ -71,8 +86,8 @@ export function AppShell({
         { to: "/app/dashboard", label: "Dashboard", icon: LayoutDashboard },
         { to: "/app/agenda", label: "Disponibilidade", icon: CalendarDays },
         { to: "/app/solicitar", label: "Solicitar reserva", icon: CalendarPlus },
-        { to: "/app/minhas-reservas", label: "Minhas reservas", icon: CalendarCheck },
-        { to: "/app/ouvidoria", label: "Ouvidoria", icon: MessageSquareWarning },
+        { to: "/app/minhas-reservas", label: "Minhas reservas", icon: CalendarCheck, badge: expiringAlerts.length },
+        { to: "/app/ouvidoria", label: "Fale Conosco", icon: MessageSquareWarning },
         { to: "/app/perfil", label: "Meu perfil", icon: UserRound },
       ];
 

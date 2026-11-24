@@ -14,7 +14,14 @@ export const keys = {
   reservaReceipt: (id: string) => ["reservaReceipt", id] as const,
   holidays: (unitId?: string | number) => ["holidays", unitId ?? "all"] as const,
   complaints: ["complaints"] as const,
+  complaintsPaged: (params: { page: number; size: number; search?: string; solved?: boolean }) =>
+    ["complaints", "paged", params] as const,
+  complaintStats: ["complaintStats"] as const,
+  myComplaints: ["myComplaints"] as const,
+  myComplaintsPaged: (params: { page: number; size: number }) =>
+    ["myComplaints", "paged", params] as const,
   complaintQuota: ["complaintQuota"] as const,
+  expiringAlerts: (userId?: string) => ["expiringAlerts", userId ?? "all"] as const,
 };
 
 export const useUnidades = () =>
@@ -46,12 +53,21 @@ export const useUsuarios = () =>
     staleTime: 1000 * 60 * 15,
   });
 
-export const useReservas = (filters?: api.ReservaFilters) =>
+export const useReservas = (filters?: api.ReservaFilters, enabled = true) =>
   useQuery({
     queryKey: keys.reservas(filters),
     queryFn: () => api.listReservas(filters),
+    enabled,
     staleTime: 1000 * 60,
     placeholderData: (previousData) => previousData,
+  });
+
+export const useExpiringAlerts = (userId?: string, enabled = true) =>
+  useQuery({
+    queryKey: keys.expiringAlerts(userId),
+    queryFn: () => api.listExpiringAlerts(userId),
+    enabled,
+    staleTime: 1000 * 60,
   });
 
 export const useProfessions = () =>
@@ -77,15 +93,14 @@ export const useUsuarioDetail = (id: string | null) =>
     staleTime: 1000 * 60 * 10,
   });
 
-export const useReservasPendentesCount = () => {
-  const { data } = useReservas();
-  if (!data) return 0;
-  return data.filter(
-    (r) =>
-      r.status === "pendente" ||
-      r.status === "solicitacao_cancelamento" ||
-      r.status === "reagendar",
-  ).length;
+export const useReservasPendentesCount = (enabled = true) => {
+  const { data } = useQuery({
+    queryKey: ["reservas", "pendingCount"] as const,
+    queryFn: api.getPendingReservationsCount,
+    enabled,
+    staleTime: 1000 * 60,
+  });
+  return data ?? 0;
 };
 
 function useInvalidate(key: readonly unknown[]) {
@@ -254,11 +269,12 @@ export function useChangePassword() {
 }
 
 export function useCreateReserva() {
-  const invalidate = useInvalidate(["reservas"]);
+  const qc = useQueryClient();
   return useMutation({
     mutationFn: (input: NovaReserva) => api.createReserva(input),
     onSuccess: () => {
-      invalidate();
+      qc.invalidateQueries({ queryKey: ["reservas"] });
+      qc.invalidateQueries({ queryKey: ["expiringAlerts"] });
       toast.success("Solicitação enviada. Aguardando aprovação.");
     },
     onError: (e: Error) => toast.error(e.message),
@@ -266,12 +282,13 @@ export function useCreateReserva() {
 }
 
 export function useUpdateReserva(successMessage = "Reserva atualizada.") {
-  const invalidate = useInvalidate(["reservas"]);
+  const qc = useQueryClient();
   return useMutation({
     mutationFn: ({ id, patch }: { id: string; patch: Partial<Reserva> }) =>
       api.updateReserva(id, patch),
     onSuccess: () => {
-      invalidate();
+      qc.invalidateQueries({ queryKey: ["reservas"] });
+      qc.invalidateQueries({ queryKey: ["expiringAlerts"] });
       toast.success(successMessage);
     },
     onError: (e: Error) => toast.error(e.message),
@@ -279,11 +296,12 @@ export function useUpdateReserva(successMessage = "Reserva atualizada.") {
 }
 
 export function useDeleteReserva() {
-  const invalidate = useInvalidate(["reservas"]);
+  const qc = useQueryClient();
   return useMutation({
     mutationFn: (id: string) => api.deleteReserva(id),
     onSuccess: () => {
-      invalidate();
+      qc.invalidateQueries({ queryKey: ["reservas"] });
+      qc.invalidateQueries({ queryKey: ["expiringAlerts"] });
       toast.success("Reserva excluída.");
     },
     onError: (e: Error) => toast.error(e.message),
@@ -291,12 +309,26 @@ export function useDeleteReserva() {
 }
 
 export function useDeleteReservasBatch() {
-  const invalidate = useInvalidate(["reservas"]);
+  const qc = useQueryClient();
   return useMutation({
     mutationFn: (ids: string[]) => api.deleteReservasBatch(ids),
     onSuccess: () => {
-      invalidate();
+      qc.invalidateQueries({ queryKey: ["reservas"] });
+      qc.invalidateQueries({ queryKey: ["expiringAlerts"] });
       toast.success("Reservas excluídas com sucesso.");
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+}
+
+export function useCancelReservasBatch() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (ids: string[]) => api.cancelReservasBatch(ids),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["reservas"] });
+      qc.invalidateQueries({ queryKey: ["expiringAlerts"] });
+      toast.success("Reservas canceladas com sucesso.");
     },
     onError: (e: Error) => toast.error(e.message),
   });
@@ -395,9 +427,41 @@ export function useCreateComplaint() {
       api.createComplaint(input),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: keys.complaintQuota });
-      toast.success("Manifestação enviada à Ouvidoria com sucesso!");
+      queryClient.invalidateQueries({ queryKey: keys.myComplaints });
+      toast.success("Manifestação enviada ao Fale Conosco com sucesso!");
     },
     onError: (e: Error) => toast.error(e.message),
+  });
+}
+
+export function useMyComplaints(enabled = true) {
+  return useQuery({
+    queryKey: keys.myComplaints,
+    queryFn: api.listMyComplaints,
+    enabled,
+    staleTime: 1000 * 30,
+  });
+}
+
+export function useMyComplaintsPaged(
+  params: { page: number; size: number },
+  enabled = true
+) {
+  return useQuery({
+    queryKey: keys.myComplaintsPaged(params),
+    queryFn: () => api.listMyComplaintsPaged(params),
+    enabled,
+    staleTime: 1000 * 30,
+    placeholderData: (previousData) => previousData,
+  });
+}
+
+export function useComplaintStats(enabled = true) {
+  return useQuery({
+    queryKey: keys.complaintStats,
+    queryFn: api.getComplaintStats,
+    enabled,
+    staleTime: 1000 * 30,
   });
 }
 
@@ -410,17 +474,39 @@ export function useComplaints(enabled = true) {
   });
 }
 
+export function useComplaintsPaged(
+  params: { page: number; size: number; search?: string; solved?: boolean },
+  enabled = true
+) {
+  return useQuery({
+    queryKey: keys.complaintsPaged(params),
+    queryFn: () => api.listComplaintsPaged(params),
+    enabled,
+    staleTime: 1000 * 30,
+    placeholderData: (previousData) => previousData,
+  });
+}
+
 export function useUpdateComplaintSolved() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({ id, solved }: { id: number; solved: boolean }) =>
-      api.updateComplaintSolved(id, solved),
+    mutationFn: ({
+      id,
+      solved,
+      resolutionNotes,
+    }: {
+      id: number;
+      solved: boolean;
+      resolutionNotes?: string;
+    }) => api.updateComplaintSolved(id, solved, resolutionNotes),
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: keys.complaints });
+      queryClient.invalidateQueries({ queryKey: keys.complaintStats });
+      queryClient.invalidateQueries({ queryKey: keys.myComplaints });
       toast.success(
         variables.solved
-          ? "Manifestação marcada como resolvida."
-          : "Manifestação marcada como não resolvida."
+          ? "Manifestação marcada como resolvida com parecer registrado."
+          : "Manifestação reaberta como não resolvida."
       );
     },
     onError: (e: Error) => toast.error(e.message),

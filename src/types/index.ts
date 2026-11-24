@@ -104,9 +104,13 @@ export interface Complaint {
   userId?: number|null;
   userName: string;
   userEmail?: string|null;
+  userPhone?: string|null;
   anonymous: boolean;
   complaints: string;
   solved: boolean;
+  resolutionNotes?: string|null;
+  resolvedBy?: string|null;
+  resolvedAt?: string|null;
   createdAt: string;
 }
 
@@ -115,3 +119,46 @@ export interface ComplaintQuota {
   limit: number;
   remaining: number;
 }
+
+export interface ComplaintStats {
+  total: number;
+  pending: number;
+  solved: number;
+}
+
+export interface ComplaintPage {
+  content: Complaint[];
+  totalElements: number;
+  totalPages: number;
+  number: number;
+  size: number;
+}
+
+export interface ExpiringReservationAlert {
+  seriesKey: string;
+  lastReservationId: number;
+  userId: number;
+  userName: string;
+  userEmail: string;
+  userPhone: string;
+  roomId: number;
+  roomName: string;
+  unitId: number | null;
+  unitName: string;
+  recorrencia: Recorrencia;
+  recorrenciaLabel: string;
+  dayOfWeekLabel: string;
+  horaInicio: string;
+  horaFim: string;
+  lastDate: string;
+  lastDateFormatted: string;
+  daysUntilExpiration: number;
+  urgencyLevel: 'critical' | 'warning';
+  alertTitle: string;
+  alertMessage: string;
+  whatsappMessage: string;
+  nextStartDate: string;
+  nextStartDateFormatted: string;
+  nextCycleLabel: string;
+}
+

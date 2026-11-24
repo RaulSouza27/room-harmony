@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
-import { Calendar, CalendarDays, CalendarRange, Eye, FileText, Sparkles } from "lucide-react";
+import { Building2, Calendar, CalendarDays, CalendarRange, Eye, FileText, Sparkles } from "lucide-react";
 import { AppShell } from "@/components/AppShell";
 import { AvailabilityGrid, type SlotInfo } from "@/components/AvailabilityGrid";
 import { MonthlyCalendarView } from "@/components/MonthlyCalendarView";
@@ -63,56 +63,19 @@ type ModoVisao = "diario" | "mensal" | "anual";
 function AgendaPage() {
   const { user, isAdmin } = useAuth();
   const [modoVisao, setModoVisao] = useState<ModoVisao>("diario");
-  const [unidadeFiltro, setUnidadeFiltro] = useState("todas");
+  const [unidadeFiltro, setUnidadeFiltro] = useState("");
   const [data, setData] = useState(hojeISO());
 
   const hojeDate = new Date();
   const [ano, setAno] = useState(hojeDate.getFullYear());
   const [mes, setMes] = useState(hojeDate.getMonth() + 1); // 1..12
 
-  const dateFilters = useMemo(() => {
-    if (modoVisao === "diario") {
-      return {
-        startDate: data,
-        endDate: data,
-        unitId: unidadeFiltro !== "todas" ? unidadeFiltro : undefined,
-      };
-    }
-    if (modoVisao === "mensal") {
-      const start = `${ano}-${String(mes).padStart(2, "0")}-01`;
-      const lastDay = new Date(ano, mes, 0).getDate();
-      const end = `${ano}-${String(mes).padStart(2, "0")}-${String(lastDay).padStart(2, "0")}`;
-      return {
-        startDate: start,
-        endDate: end,
-        unitId: unidadeFiltro !== "todas" ? unidadeFiltro : undefined,
-      };
-    }
-    return {
-      startDate: `${ano}-01-01`,
-      endDate: `${ano}-12-31`,
-      unitId: unidadeFiltro !== "todas" ? unidadeFiltro : undefined,
-    };
-  }, [modoVisao, data, ano, mes, unidadeFiltro]);
-
   const unidadesQ = useUnidades();
   const salasQ = useSalas();
-  const reservasQ = useReservas(dateFilters);
   const usuariosQ = useUsuarios();
-
-  const [preset, setPreset] = useState<SlotInfo | null>(null);
-  const [formOpen, setFormOpen] = useState(false);
-  const [especialOpen, setEspecialOpen] = useState(false);
-  const [detalhe, setDetalhe] = useState<Reserva | null>(null);
-  const [editando, setEditando] = useState<Reserva | null>(null);
-  const [detalheCompleto, setDetalheCompleto] = useState<Reserva | null>(null);
-  const [alvoVisualizacaoComprovante, setAlvoVisualizacaoComprovante] = useState<string | null>(
-    null,
-  );
 
   const unidades = unidadesQ.data ?? [];
   const salas = salasQ.data ?? [];
-  const reservas = reservasQ.data ?? [];
   const usuarios = usuariosQ.data ?? [];
 
   const unidadesVisiveis = useMemo(
@@ -124,10 +87,55 @@ function AgendaPage() {
     [unidades, isAdmin, user],
   );
 
+  const unidadeSelecionada = useMemo(() => {
+    if (unidadeFiltro && unidadesVisiveis.some((u) => u.id === unidadeFiltro)) {
+      return unidadeFiltro;
+    }
+    return "";
+  }, [unidadeFiltro, unidadesVisiveis]);
+
+  const dateFilters = useMemo(() => {
+    if (modoVisao === "diario") {
+      return {
+        startDate: data,
+        endDate: data,
+        unitId: unidadeSelecionada || undefined,
+      };
+    }
+    if (modoVisao === "mensal") {
+      const start = `${ano}-${String(mes).padStart(2, "0")}-01`;
+      const lastDay = new Date(ano, mes, 0).getDate();
+      const end = `${ano}-${String(mes).padStart(2, "0")}-${String(lastDay).padStart(2, "0")}`;
+      return {
+        startDate: start,
+        endDate: end,
+        unitId: unidadeSelecionada || undefined,
+      };
+    }
+    return {
+      startDate: `${ano}-01-01`,
+      endDate: `${ano}-12-31`,
+      unitId: unidadeSelecionada || undefined,
+    };
+  }, [modoVisao, data, ano, mes, unidadeSelecionada]);
+
+  const reservasQ = useReservas(dateFilters, !!unidadeSelecionada);
+  const reservas = reservasQ.data ?? [];
+
+  const [preset, setPreset] = useState<SlotInfo | null>(null);
+  const [formOpen, setFormOpen] = useState(false);
+  const [especialOpen, setEspecialOpen] = useState(false);
+  const [detalhe, setDetalhe] = useState<Reserva | null>(null);
+  const [editando, setEditando] = useState<Reserva | null>(null);
+  const [detalheCompleto, setDetalheCompleto] = useState<Reserva | null>(null);
+  const [alvoVisualizacaoComprovante, setAlvoVisualizacaoComprovante] = useState<string | null>(
+    null,
+  );
+
   const salasVisiveis = salas.filter(
     (s) =>
       unidadesVisiveis.some((u) => u.id === s.unidade_id) &&
-      (unidadeFiltro === "todas" || s.unidade_id === unidadeFiltro),
+      s.unidade_id === unidadeSelecionada,
   );
 
   const idsSalasVisiveis = useMemo(() => new Set(salasVisiveis.map((s) => s.id)), [salasVisiveis]);
@@ -138,8 +146,14 @@ function AgendaPage() {
   );
 
   const reservasDoDia = reservasFiltradas.filter((r) => r.data === data);
-  const loading = unidadesQ.isLoading || salasQ.isLoading || reservasQ.isLoading;
-  const error = unidadesQ.error ?? salasQ.error ?? reservasQ.error;
+  const loading =
+    unidadesQ.isLoading ||
+    salasQ.isLoading ||
+    (!!unidadeSelecionada && reservasQ.isLoading);
+  const error =
+    unidadesQ.error ??
+    salasQ.error ??
+    (unidadeSelecionada ? reservasQ.error : null);
 
   function handleSlot(slot: SlotInfo) {
     if (slot.tipo === "reserva") {
@@ -240,12 +254,11 @@ function AgendaPage() {
           <div className="grid gap-4 sm:flex sm:items-end flex-1">
             <div className="space-y-2 min-w-[200px]">
               <Label>Unidade</Label>
-              <Select value={unidadeFiltro} onValueChange={setUnidadeFiltro}>
+              <Select value={unidadeSelecionada} onValueChange={setUnidadeFiltro}>
                 <SelectTrigger>
-                  <SelectValue />
+                  <SelectValue placeholder="Selecione a unidade" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="todas">Todas as unidades</SelectItem>
                   {unidadesVisiveis.map((u) => (
                     <SelectItem key={u.id} value={u.id}>
                       {u.nome}
@@ -300,7 +313,35 @@ function AgendaPage() {
           </div>
         </div>
 
-        {loading ? (
+        {!unidadeSelecionada ? (
+          <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-primary/35 bg-primary/5 px-6 py-14 text-center shadow-soft">
+            <div className="mb-3 flex size-12 items-center justify-center rounded-full bg-primary/10 text-primary">
+              <Building2 className="size-6" />
+            </div>
+            <h3 className="text-base font-semibold text-foreground">
+              Selecione uma unidade para visualizar a agenda
+            </h3>
+            <p className="mt-1 max-w-md text-sm text-muted-foreground">
+              Para exibir as salas e os horários disponíveis, escolha primeiro uma unidade no seletor acima{unidadesVisiveis.length > 0 ? " ou clique em uma das unidades abaixo:" : "."}
+            </p>
+            {unidadesVisiveis.length > 0 && (
+              <div className="mt-5 flex flex-wrap items-center justify-center gap-2.5">
+                {unidadesVisiveis.map((u) => (
+                  <Button
+                    key={u.id}
+                    type="button"
+                    variant="outline"
+                    onClick={() => setUnidadeFiltro(u.id)}
+                    className="gap-2 border-primary/30 bg-background hover:bg-primary hover:text-primary-foreground"
+                  >
+                    <Building2 className="size-4" />
+                    {u.nome}
+                  </Button>
+                ))}
+              </div>
+            )}
+          </div>
+        ) : loading ? (
           <LoadingState label="Carregando dados de disponibilidade..." />
         ) : error ? (
           <ErrorState message={error.message} />
@@ -359,7 +400,7 @@ function AgendaPage() {
                 data,
                 hora_inicio: preset.hora,
               }
-            : { data }
+            : { unidade_id: unidadeSelecionada, data }
         }
       />
 

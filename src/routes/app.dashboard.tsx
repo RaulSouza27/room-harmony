@@ -1,7 +1,9 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { Link, createFileRoute } from "@tanstack/react-router";
 import { CalendarClock, CalendarPlus, ClipboardList, DoorOpen, Percent } from "lucide-react";
 import { AppShell } from "@/components/AppShell";
+import { ExpiringReservationsAlert } from "@/components/ExpiringReservationsAlert";
+import { ReservaFormDialog } from "@/components/ReservaFormDialog";
 import {
   EmptyState,
   ErrorState,
@@ -11,9 +13,10 @@ import {
 } from "@/components/common";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/contexts/AuthContext";
-import { useReservas, useSalas, useUnidades, useUsuarios } from "@/hooks/useApi";
+import { useExpiringAlerts, useReservas, useSalas, useUnidades, useUsuarios } from "@/hooks/useApi";
 import { HORARIOS, toMinutes } from "@/services/db";
 import { formatarData } from "@/lib/format";
+import type { ExpiringReservationAlert } from "@/types";
 
 export const Route = createFileRoute("/app/dashboard")({
   ssr: false,
@@ -67,6 +70,8 @@ function DashboardPage() {
   const salasQ = useSalas();
   const unidadesQ = useUnidades();
   const usuariosQ = useUsuarios();
+  const expiringAlertsQ = useExpiringAlerts(!isAdmin ? user?.id : undefined, !!user?.id);
+  const [alertaParaRenovar, setAlertaParaRenovar] = useState<ExpiringReservationAlert | null>(null);
 
   const loading = reservasQ.isLoading || salasQ.isLoading || unidadesQ.isLoading;
   const error = reservasQ.error ?? salasQ.error ?? unidadesQ.error;
@@ -130,6 +135,12 @@ function DashboardPage() {
         <ErrorState message={error.message} />
       ) : (
         <div className="space-y-6">
+          <ExpiringReservationsAlert
+            alerts={expiringAlertsQ.data ?? []}
+            isAdmin={isAdmin}
+            onRenew={(alert) => setAlertaParaRenovar(alert)}
+          />
+
           <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
             {isAdmin ? (
               <>
@@ -287,6 +298,26 @@ function DashboardPage() {
             </SectionCard>
           )}
         </div>
+      )}
+
+      {alertaParaRenovar && (
+        <ReservaFormDialog
+          open={!!alertaParaRenovar}
+          onOpenChange={(v) => !v && setAlertaParaRenovar(null)}
+          unidades={unidades}
+          salas={salas}
+          usuarios={isAdmin ? usuarios : user ? [user] : []}
+          reservas={reservas}
+          preset={{
+            unidade_id: alertaParaRenovar.unitId ? String(alertaParaRenovar.unitId) : undefined,
+            sala_id: String(alertaParaRenovar.roomId),
+            data: alertaParaRenovar.nextStartDate,
+            hora_inicio: alertaParaRenovar.horaInicio,
+            hora_fim: alertaParaRenovar.horaFim,
+            recorrencia: alertaParaRenovar.recorrencia,
+            profissional_id: String(alertaParaRenovar.userId),
+          }}
+        />
       )}
     </AppShell>
   );
