@@ -1,5 +1,5 @@
 import {BACKEND_URL} from '@/config/api';
-import type {BusinessHours, Complaint, ComplaintPage, ComplaintQuota, ComplaintStats, ExpiringReservationAlert, Holiday, NovaReserva, Profession, Reserva, ReservaStatus, Sala, Unidade, User} from '@/types';
+import type {BusinessHours, ChangelogRelease, Complaint, ComplaintPage, ComplaintQuota, ComplaintStats, ExpiringReservationAlert, Holiday, NovaReserva, Profession, Reserva, ReservaStatus, Sala, TransferReservationHoursInput, Unidade, User} from '@/types';
 
 import {createAuditLog} from './auditService';
 import {overlaps, readDB, uid, writeDB} from './db';
@@ -1136,4 +1136,65 @@ export async function updateComplaintSolved(
   }
   const item = await response.json();
   return mapComplaintItem(item);
+}
+
+/* ------------------ Transferência de Horário de Turno ------------------ */
+export async function transferReservaHours(
+    input: TransferReservationHoursInput,
+    ): Promise<Reserva> {
+  const response = await fetch(
+      `${BACKEND_URL}/reservations/${input.reservaId}/transfer-hours`,
+      {
+        method: 'POST',
+        headers: getHeaders(),
+        body: JSON.stringify({
+          targetUserId: Number(input.targetUserId),
+          slots: input.slots,
+          observacoes: input.observacoes || '',
+        }),
+      },
+  );
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    throw new Error(
+        errorText || 'Falha ao transferir horário(s) para o profissional.');
+  }
+
+  const data = await response.json();
+  return {
+    id: String(data.id),
+    sala_id: String(data.roomsId),
+    unidade_id: data.unitId ? String(data.unitId) : '',
+    profissional_id: String(data.userId),
+    data: data.data,
+    hora_inicio: data.horaInicio.slice(0, 5),
+    hora_fim: data.horaFim.slice(0, 5),
+    status: data.statusString || 'aprovada',
+    criado_em: new Date().toISOString(),
+    observacoes: data.description || '',
+    motivo_negacao: data.motivoNegacao || '',
+    aprovado_por: data.aprovadoPor || '',
+    recorrencia: data.recorrencia || 'unica',
+    comprovante: data.depositImage || '',
+  };
+}
+
+/* ------------------------------ Changelog ------------------------------ */
+export async function listChangelog(
+    audience?: 'ADMIN'|'LOCADOR',
+    ): Promise<ChangelogRelease[]> {
+  const params = new URLSearchParams();
+  if (audience) params.append('audience', audience);
+  const qs = params.toString();
+  const response = await fetch(
+      `${BACKEND_URL}/changelog${qs ? `?${qs}` : ''}`,
+      {
+        headers: getHeaders(),
+      },
+  );
+  if (!response.ok) {
+    throw new Error('Falha ao carregar novidades da versão.');
+  }
+  return response.json();
 }

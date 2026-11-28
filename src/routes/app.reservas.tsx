@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
-import { Eye, FileText, Images, Sparkles } from "lucide-react";
+import { ArrowRightLeft, Eye, FileText, Images, Sparkles } from "lucide-react";
 import { AppShell } from "@/components/AppShell";
 import {
   AprovacaoActions,
@@ -11,6 +11,7 @@ import {
 import { ReservaFormDialog } from "@/components/ReservaFormDialog";
 import { ReservaEspecialDialog } from "@/components/ReservaEspecialDialog";
 import { ReservaDetailDialog } from "@/components/ReservaDetailDialog";
+import { TransferirHorarioDialog } from "@/components/TransferirHorarioDialog";
 import { useAuth } from "@/contexts/AuthContext";
 import { EmptyState, ErrorState, LoadingState, StatusBadge } from "@/components/common";
 import { Button } from "@/components/ui/button";
@@ -96,6 +97,7 @@ function ReservasPage() {
   const [criar, setCriar] = useState(false);
   const [criarEspecial, setCriarEspecial] = useState(false);
   const [editando, setEditando] = useState<Reserva | null>(null);
+  const [transferindoReserva, setTransferindoReserva] = useState<Reserva | null>(null);
   const [detalheReserva, setDetalheReserva] = useState<Reserva | null>(null);
   const [alvoVisualizacaoComprovante, setAlvoVisualizacaoComprovante] = useState<string | null>(
     null,
@@ -466,6 +468,17 @@ function ReservasPage() {
                           {r.status === "pendente" ? (
                             <AprovacaoActions reserva={r} reservas={reservas} compact />
                           ) : null}
+                          {isAdmin && r.status !== "cancelada" && r.status !== "negada" ? (
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="gap-1.5 border-primary/40 text-primary hover:bg-primary/10"
+                              onClick={() => setTransferindoReserva(r)}
+                            >
+                              <ArrowRightLeft className="size-3.5" />
+                              Transferir Horário
+                            </Button>
+                          ) : null}
                           <Button size="sm" variant="outline" onClick={() => setEditando(r)}>
                             Editar
                           </Button>
@@ -527,6 +540,14 @@ function ReservasPage() {
         sala={salas.find((s) => s.id === detalheReserva?.sala_id)}
         unidade={unidades.find((u) => u.id === detalheReserva?.unidade_id)}
         usuario={usuarios.find((u) => u.id === detalheReserva?.profissional_id)}
+      />
+      <TransferirHorarioDialog
+        open={!!transferindoReserva}
+        onOpenChange={(v) => !v && setTransferindoReserva(null)}
+        reserva={transferindoReserva}
+        sala={salas.find((s) => s.id === transferindoReserva?.sala_id)}
+        unidade={unidades.find((u) => u.id === transferindoReserva?.unidade_id)}
+        usuarios={usuarios}
       />
       <ConfirmDialog
         open={confirmBatchCancel}
