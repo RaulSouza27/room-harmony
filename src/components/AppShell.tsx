@@ -16,12 +16,14 @@ import {
   CheckCircle2,
   ShieldCheck,
   MessageSquareWarning,
+  Sparkles,
 } from "lucide-react";
 import { useState, useMemo, useEffect, type ReactNode } from "react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
+import { ChangelogDialog } from "@/components/ChangelogDialog";
 import { useAuth } from "@/contexts/AuthContext";
 import { useExpiringAlerts, useReservasPendentesCount, useCompleteTour } from "@/hooks/useApi";
 import { DEFAULT_PASSWORD } from "@/config/api";
@@ -49,6 +51,7 @@ export function AppShell({
   const { user, isAdmin, signOut } = useAuth();
   const navigate = useNavigate();
   const [openMobile, setOpenMobile] = useState(false);
+  const [changelogOpen, setChangelogOpen] = useState(false);
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const pendentes = useReservasPendentesCount(isAdmin);
   const { data: expiringAlerts = [] } = useExpiringAlerts(
@@ -196,10 +199,23 @@ export function AppShell({
               </p>
             ) : null}
           </div>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={() => setChangelogOpen(true)}
+            className="gap-1.5 border-primary/30 text-primary hover:bg-primary/10 shrink-0"
+            title="Ver novidades e atualizações da plataforma"
+          >
+            <Sparkles className="size-3.5" />
+            <span className="hidden sm:inline">Novidades</span>
+          </Button>
           {actions}
         </header>
         <main className="flex-1 p-4 md:p-8">{children}</main>
       </div>
+
+      <ChangelogDialog open={changelogOpen} onOpenChange={setChangelogOpen} />
 
       {user?.mustCompleteTour && !user?.firstLogin && <TourOverlay />}
     </div>
@@ -227,49 +243,50 @@ function TourOverlay() {
           {
             to: "/app/dashboard",
             title: "Painel Geral (Dashboard)",
-            description: "Esta é a tela principal de controle da clínica. Nela você tem um panorama rápido das operações diárias.",
+            description: "Esta é a tela principal de controle da clínica. Nela você tem um panorama rápido das operações diárias e alertas de vencimento.",
             actions: [
-              "Acompanhe o total de salas ativas e profissionais cadastrados.",
-              "Veja todas as reservas agendadas para a data de hoje.",
-              "Acesse atalhos rápidos de navegação pelo menu lateral."
+              "Acompanhe o total de salas ativas, pendências e reservas futuras.",
+              "Monitore reservas recorrentes (Hora Fixa e Turno) próximas da expiração e avise os locatários pelo WhatsApp.",
+              "Consulte o botão 'Novidades' no topo para ver o Changelog exclusivo de administradores."
             ]
           },
           {
             to: "/app/agenda",
             title: "Agenda Interativa Geral",
-            description: "A grade horária completa que mostra em tempo real a ocupação de cada espaço físico.",
+            description: "A grade horária completa que mostra em tempo real a ocupação de cada espaço físico por unidade.",
             actions: [
-              "Filtre os horários por filiais/unidades específicas da clínica.",
-              "Navegue pelo calendário para ver a disponibilidade de qualquer data futura.",
-              "Reserve diretamente: clique em qualquer slot verde ('Livre') para abrir o formulário já pré-preenchido."
+              "Selecione primeiro a unidade desejada para visualizar suas salas nos modos Dia, Mês ou Ano.",
+              "Reserve diretamente: clique em qualquer horário livre ou crie uma Reserva Especial (Admin).",
+              "Transfira horários de um Turno: clique em um turno aprovado para ceder 1 ou mais horas específicas a outro profissional."
             ]
           },
           {
             to: "/app/aprovacoes",
-            title: "Fila de Aprovações de Reserva",
-            description: "Central de aprovação para solicitações recebidas de psicólogos.",
+            title: "Fila de Aprovações e Cancelamentos",
+            description: "Central de decisão para solicitações de reserva, reagendamentos de feriado e pedidos de cancelamento.",
             actions: [
               "Aprove reservas ou negue inserindo uma justificativa para o profissional.",
-              "Alerta de conflito: o sistema avisa se dois pedidos concorrerem pelo mesmo espaço e horário.",
-              "Verifique imagens de comprovantes de depósito ou transferência bancária anexadas."
+              "Gerencie as 3 abas dedicadas: Solicitações de Reserva, A Reagendar (Feriado) e Solicitações de Cancelamento.",
+              "Selecione múltiplos itens para efetivar cancelamentos em massa e navegue pelos comprovantes anexados."
             ]
           },
           {
             to: "/app/reservas",
-            title: "Histórico de Reservas da Clínica",
-            description: "Listagem e consulta de todos os agendamentos registrados.",
+            title: "Todas as Reservas da Clínica",
+            description: "Listagem completa e gestão avançada de todos os agendamentos registrados.",
             actions: [
-              "Filtre reservas por profissional, unidade, sala, data ou status.",
-              "Edite agendamentos, confirme pagamentos ou remova registros se necessário."
+              "Filtre reservas por unidade, sala, profissional, tipo (Avulsa, Fixa, Turno, Especial), data ou status.",
+              "Selecione várias reservas para cancelar ou excluir em lote com apenas um clique.",
+              "Transfira horas específicas de um turno de administrador para qualquer locatário."
             ]
           },
           {
             to: "/app/profissionais",
             title: "Cadastro de Profissionais",
-            description: "Controle de usuários, níveis de acesso e contas de psicólogos e administradores.",
+            description: "Controle de usuários, níveis de acesso e contas de profissionais e administradores.",
             actions: [
-              `Cadastre novas contas. A senha inicial gerada por padrão é '${DEFAULT_PASSWORD}'.`,
-              "Resetar senha: use o botão 'Resetar Senha' para restaurar a credencial inicial do usuário em caso de perda.",
+              `Cadastre individualmente ou importe vários profissionais de uma vez via planilha CSV (senha padrão '${DEFAULT_PASSWORD}').`,
+              "Use o botão 'Resetar Senha' para restaurar a credencial inicial do usuário quando necessário.",
               "Inative ou ative o acesso de contas à plataforma a qualquer momento."
             ]
           },
@@ -278,33 +295,62 @@ function TourOverlay() {
             title: "Cadastro de Profissões",
             description: "Gerencie a lista de profissões aceitas e vinculadas aos perfis dos usuários.",
             actions: [
-              "Adicione especialidades ou profissões para segmentação no cadastro."
+              "Adicione ou edite especialidades e profissões para segmentação no cadastro de profissionais."
             ]
           },
           {
             to: "/app/salas",
             title: "Configuração de Salas",
-            description: "Painel de administração dos consultórios específicos disponíveis.",
+            description: "Painel de administração dos consultórios específicos disponíveis em cada sede.",
             actions: [
-              "Insira fotos das salas para visualização dos psicólogos no agendamento.",
-              "Descreva a estrutura interna (presença de divã, ar condicionado, brinquedos, etc.).",
+              "Insira até 4 fotos por sala para visualização dos profissionais no momento do agendamento.",
+              "Descreva a estrutura interna (presença de divã, ar-condicionado, poltronas, recursos infantis, etc.).",
               "Ative ou inative salas para manutenção periódica."
             ]
           },
           {
             to: "/app/unidades",
             title: "Configuração de Unidades",
-            description: "Cadastro de filiais físicas e endereços da clínica.",
+            description: "Cadastro de filiais físicas, endereços e expediente de funcionamento da clínica.",
             actions: [
-              "Defina novas sedes clínicas informando nome e endereço completo."
+              "Cadastre sedes clínicas informando nome e endereço completo.",
+              "Configure os horários de abertura e fechamento de cada dia da semana para validação automática das reservas."
+            ]
+          },
+          {
+            to: "/app/feriados",
+            title: "Feriados e Bloqueios",
+            description: "Gerencie dias de fechamento global da clínica ou bloqueios específicos por unidade.",
+            actions: [
+              "Cadastre feriados ou períodos de manutenção em uma unidade específica ou para toda a clínica.",
+              "Reservas existentes na data bloqueada mudam automaticamente para o status 'A Reagendar' para que o profissional escolha nova data."
+            ]
+          },
+          {
+            to: "/app/ouvidoria",
+            title: "Fale Conosco — Gestão de Manifestações",
+            description: "Canal oficial para receber e responder elogios, sugestões, comentários e reclamações dos locatários.",
+            actions: [
+              "Visualize relatos identificados ou anônimos enviados pelos profissionais e filtre por status.",
+              "Registre obrigatoriamente o Parecer da Resolução ao concluir uma manifestação.",
+              "Envie o parecer diretamente ao WhatsApp do profissional nos relatos identificados."
+            ]
+          },
+          {
+            to: "/app/auditoria",
+            title: "Histórico de Auditoria",
+            description: "Monitoramento e rastreabilidade completa de todas as operações administrativas e de agendamento.",
+            actions: [
+              "Consulte quem solicitou cada reserva, quem aprovou/negou, transferências de turno e alterações cadastrais.",
+              "Filtre eventos por tipo de recurso (Reservas, Usuários, Salas, Unidades, Feriados, Fale Conosco) e por ação."
             ]
           },
           {
             to: "/app/perfil",
             title: "Meu Perfil e Segurança",
-            description: "Área de controle do seu cadastro e credenciais de acesso.",
+            description: "Área de controle do seu cadastro pessoal e credenciais de acesso.",
             actions: [
-              "Confira suas informações e nível de acesso atual.",
+              "Confira e atualize suas informações de contato, foto e endereço.",
               "Altere sua senha de acesso definindo uma nova credencial segura."
             ]
           }
@@ -313,10 +359,11 @@ function TourOverlay() {
           {
             to: "/app/dashboard",
             title: "Seu Painel Inicial",
-            description: "O seu centro de controle diário como profissional na clínica.",
+            description: "O seu centro de controle diário como profissional na Clínica Escuta.",
             actions: [
-              "Acompanhe o painel de atendimentos do dia.",
-              "Visualize rapidamente o status de suas solicitações mais recentes."
+              "Acompanhe seus próximos atendimentos e o resumo das suas reservas.",
+              "Receba alertas automáticos quando suas reservas de Hora Fixa ou Turno estiverem próximas de expirar e renove em 1 clique.",
+              "Clique em 'Novidades' no topo da tela para conferir as melhorias liberadas para você."
             ]
           },
           {
@@ -324,28 +371,38 @@ function TourOverlay() {
             title: "Consulta de Disponibilidade",
             description: "Grade interativa de salas e horários livres por unidade.",
             actions: [
-              "Verifique se o consultório desejado está livre no dia pretendido.",
-              "Navegue pelas datas para programar futuros atendimentos de pacientes."
+              "Selecione a unidade desejada para carregar os consultórios e horários disponíveis.",
+              "Alterne entre as visões de Dia, Mês e Ano para planejar seus atendimentos.",
+              "Clique diretamente em um horário livre para abrir a solicitação já preenchida."
             ]
           },
           {
             to: "/app/solicitar",
             title: "Formulário de Solicitação",
-            description: "Área para requisitar reservas de salas de forma prática.",
+            description: "Área para requisitar reservas de salas de forma rápida e validada.",
             actions: [
               "Escolha o tipo de reserva: Hora Avulsa (1h), Hora Avulsa Fixa (mensal) ou Turno (4h anual).",
-              "Anexe o comprovante de pagamento diretamente na requisição.",
-              "Consulte fotos e detalhes do consultório selecionado antes de fechar a reserva."
+              "Anexe a imagem do comprovante de pagamento diretamente na solicitação.",
+              "Consulte fotos e detalhes da estrutura do consultório selecionado antes de confirmar."
             ]
           },
           {
             to: "/app/minhas-reservas",
-            title: "Histórico de Reservas Pessoais",
-            description: "O seu painel de acompanhamento e controle de agendas solicitadas.",
+            title: "Minhas Reservas",
+            description: "O seu painel completo de acompanhamento, renovação e gestão de horários.",
             actions: [
-              "Acompanhe se a solicitação foi Aprovada, Negada ou está Pendente.",
-              "Cancele horários reservados com antecedência para liberar o espaço.",
-              "Leia as justificativas enviadas pela coordenação em caso de reservas negadas."
+              "Acompanhe o status das suas reservas (Aprovadas, Pendentes, A Reagendar ou Canceladas).",
+              "Selecione várias reservas ao mesmo tempo para cancelar ou solicitar cancelamento em massa (> 24h).",
+              "Reagende facilmente reservas atingidas por feriados sem precisar enviar novo comprovante."
+            ]
+          },
+          {
+            to: "/app/ouvidoria",
+            title: "Fale Conosco",
+            description: "Espaço dedicado para você compartilhar elogios, sugestões, comentários ou reclamações.",
+            actions: [
+              "Envie sua mensagem de forma Identificada ou 100% Anônima para a administração da clínica.",
+              "Nos envios identificados, acompanhe o andamento e leia a Resposta / Parecer da Administração diretamente nesta tela."
             ]
           },
           {
@@ -353,7 +410,8 @@ function TourOverlay() {
             title: "Seu Perfil Profissional",
             description: "Cadastro pessoal e segurança de acesso à plataforma.",
             actions: [
-              "Veja seus dados de cadastro pessoal nesta tela."
+              "Mantenha seu telefone, endereço e foto de perfil atualizados.",
+              "Altere sua senha de acesso sempre que desejar."
             ]
           }
         ];

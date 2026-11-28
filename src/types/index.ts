@@ -162,3 +162,25 @@ export interface ExpiringReservationAlert {
   nextCycleLabel: string;
 }
 
+export interface ChangelogItem {
+  category: 'feature' | 'improvement' | 'fix';
+  categoryLabel: string;
+  title: string;
+  description: string;
+}
+
+export interface ChangelogRelease {
+  version: string;
+  releaseDate: string;
+  title: string;
+  audience: 'ADMIN' | 'LOCADOR';
+  items: ChangelogItem[];
+}
+
+export interface TransferReservationHoursInput {
+  reservaId: string;
+  targetUserId: string;
+  slots: string[];
+  observacoes?: string;
+}
+

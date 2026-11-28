@@ -147,6 +147,8 @@ function AuditoriaPage() {
         return <Badge className="bg-violet-600 text-white hover:bg-violet-700">Gestão de Profissão</Badge>;
       case "ALTERACAO_STATUS_OUVIDORIA":
         return <Badge className="bg-amber-700 text-white hover:bg-amber-800">Status Fale Conosco</Badge>;
+      case "TRANSFERENCIA_HORARIO_TURNO":
+        return <Badge className="bg-indigo-600 text-white hover:bg-indigo-700">Transferência de Turno</Badge>;
       default:
         return <Badge variant="outline">{action}</Badge>;
     }
@@ -290,6 +292,7 @@ function AuditoriaPage() {
                 <SelectItem value="ALL">Todas as Ações</SelectItem>
                 <SelectItem value="SOLICITACAO_RESERVA">Solicitação de Reserva</SelectItem>
                 <SelectItem value="RESERVA_ESPECIAL_CRIADA">Reserva Especial (Admin)</SelectItem>
+                <SelectItem value="TRANSFERENCIA_HORARIO_TURNO">Transferência de Horário de Turno</SelectItem>
                 <SelectItem value="ALTERACAO_RESERVA">Alteração / Reagendamento</SelectItem>
                 <SelectItem value="SOLICITACAO_CANCELAMENTO_RESERVA">Solicitação de Cancelamento</SelectItem>
                 <SelectItem value="CANCELAMENTO_RESERVA">Cancelamento de Reserva</SelectItem>

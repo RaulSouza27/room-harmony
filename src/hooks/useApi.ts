@@ -1,7 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import * as api from "@/services/api";
-import type { NovaReserva, Reserva, Sala, Unidade, User } from "@/types";
+import type { NovaReserva, Reserva, Sala, TransferReservationHoursInput, Unidade, User } from "@/types";
 import { DEFAULT_PASSWORD } from "@/config/api";
 
 export const keys = {
@@ -22,6 +22,7 @@ export const keys = {
     ["myComplaints", "paged", params] as const,
   complaintQuota: ["complaintQuota"] as const,
   expiringAlerts: (userId?: string) => ["expiringAlerts", userId ?? "all"] as const,
+  changelog: (audience?: "ADMIN" | "LOCADOR") => ["changelog", audience ?? "default"] as const,
 };
 
 export const useUnidades = () =>
@@ -513,3 +514,24 @@ export function useUpdateComplaintSolved() {
   });
 }
 
+export function useTransferReservaHours() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (input: TransferReservationHoursInput) => api.transferReservaHours(input),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["reservas"] });
+      qc.invalidateQueries({ queryKey: ["expiringAlerts"] });
+      toast.success("Horário(s) transferido(s) com sucesso!");
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+}
+
+export function useChangelog(audience?: "ADMIN" | "LOCADOR", enabled = true) {
+  return useQuery({
+    queryKey: keys.changelog(audience),
+    queryFn: () => api.listChangelog(audience),
+    enabled,
+    staleTime: 1000 * 60 * 30,
+  });
+}

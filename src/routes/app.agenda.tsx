@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
-import { Building2, Calendar, CalendarDays, CalendarRange, Eye, FileText, Sparkles } from "lucide-react";
+import { ArrowRightLeft, Building2, Calendar, CalendarDays, CalendarRange, Eye, FileText, Sparkles } from "lucide-react";
 import { AppShell } from "@/components/AppShell";
 import { AvailabilityGrid, type SlotInfo } from "@/components/AvailabilityGrid";
 import { MonthlyCalendarView } from "@/components/MonthlyCalendarView";
@@ -14,6 +14,7 @@ import { ReservaFormDialog } from "@/components/ReservaFormDialog";
 import { ReservaEspecialDialog } from "@/components/ReservaEspecialDialog";
 import { ReceiptViewerDialog } from "@/components/ReceiptViewerDialog";
 import { ReservaDetailDialog } from "@/components/ReservaDetailDialog";
+import { TransferirHorarioDialog } from "@/components/TransferirHorarioDialog";
 import { ErrorState, LoadingState, StatusBadge } from "@/components/common";
 import { Button } from "@/components/ui/button";
 import {
@@ -126,6 +127,8 @@ function AgendaPage() {
   const [formOpen, setFormOpen] = useState(false);
   const [especialOpen, setEspecialOpen] = useState(false);
   const [detalhe, setDetalhe] = useState<Reserva | null>(null);
+  const [horaSlotClicado, setHoraSlotClicado] = useState<string | null>(null);
+  const [transferindoReserva, setTransferindoReserva] = useState<Reserva | null>(null);
   const [editando, setEditando] = useState<Reserva | null>(null);
   const [detalheCompleto, setDetalheCompleto] = useState<Reserva | null>(null);
   const [alvoVisualizacaoComprovante, setAlvoVisualizacaoComprovante] = useState<string | null>(
@@ -160,6 +163,7 @@ function AgendaPage() {
       if (!isAdmin && slot.reserva.profissional_id !== user?.id) {
         return;
       }
+      setHoraSlotClicado(slot.hora);
       setDetalhe(slot.reserva);
       return;
     }
@@ -492,6 +496,20 @@ function AgendaPage() {
                   >
                     Editar
                   </Button>
+                  {detalhe.status !== "cancelada" && detalhe.status !== "negada" ? (
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="gap-1.5 border-primary/40 text-primary hover:bg-primary/10"
+                      onClick={() => {
+                        setTransferindoReserva(detalhe);
+                        setDetalhe(null);
+                      }}
+                    >
+                      <ArrowRightLeft className="size-3.5" />
+                      Transferir Horário
+                    </Button>
+                  ) : null}
                   {detalhe.status !== "cancelada" ? (
                     <CancelarReservaButton reserva={detalhe} />
                   ) : null}
@@ -545,6 +563,20 @@ function AgendaPage() {
         onOpenChange={setEspecialOpen}
         unidades={unidades}
         salas={salas}
+        usuarios={usuarios}
+      />
+      <TransferirHorarioDialog
+        open={!!transferindoReserva}
+        onOpenChange={(v) => {
+          if (!v) {
+            setTransferindoReserva(null);
+            setHoraSlotClicado(null);
+          }
+        }}
+        reserva={transferindoReserva}
+        initialSlotHora={horaSlotClicado}
+        sala={salas.find((s) => s.id === transferindoReserva?.sala_id)}
+        unidade={unidades.find((u) => u.id === transferindoReserva?.unidade_id)}
         usuarios={usuarios}
       />
     </AppShell>
